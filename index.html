@@ -993,6 +993,27 @@
   </div>
 </div>
 
+<!-- Bloqueio obrigatório de troca de senha no 1º acesso (conta criada pelo admin) — sem opção de fechar/cancelar -->
+<div class="modal-backdrop" id="trocarSenhaBackdrop">
+  <div class="modal" style="max-width:420px;">
+    <h3>Defina sua senha</h3>
+    <div class="desc">Sua conta foi criada com uma senha padrão. Antes de continuar, defina uma senha só sua (mínimo 6 caracteres).</div>
+    <form id="formTrocarSenha">
+      <div class="form-group">
+        <label for="trocarSenhaNova">Nova senha</label>
+        <input type="password" id="trocarSenhaNova" minlength="6" required autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="trocarSenhaConfirmar">Confirmar nova senha</label>
+        <input type="password" id="trocarSenhaConfirmar" minlength="6" required autocomplete="new-password">
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn primary" id="btnSalvarNovaSenha">Salvar e continuar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -4331,7 +4352,7 @@ async function exigirLogin(){
 async function carregarPerfilAtual(user){
   const { data, error } = await supabaseClient
     .from('perfis')
-    .select('nome_completo, papel, regionais_permitidas, ativo')
+    .select('nome_completo, papel, regionais_permitidas, ativo, deve_trocar_senha')
     .eq('id', user.id)
     .single();
   if (error){ console.error('Falha ao carregar perfil', error); return null; }
@@ -4401,7 +4422,24 @@ async function renderAdministracao(){
     return;
   }
   const PAPEL_OPCOES = ['administrador', 'operador', 'visualizacao'];
-  let html = '<div class="panel"><div class="panel-head"><h3>Usuários</h3><div class="desc">' + data.length + ' conta(s) · papel e acesso de cada pessoa</div></div>';
+  let html = `<div class="panel">
+    <div class="panel-head"><h3>Adicionar usuário</h3><div class="desc">cria o login com a senha padrão — a pessoa troca no primeiro acesso</div></div>
+    <form id="formNovoUsuario" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="form-group" style="flex:1 1 240px;margin-bottom:0;">
+        <label for="novoUsuarioEmail">E-mail</label>
+        <input type="email" id="novoUsuarioEmail" placeholder="nome@empresa.com" required>
+      </div>
+      <div class="form-group" style="flex:0 0 180px;margin-bottom:0;">
+        <label for="novoUsuarioPapel">Papel</label>
+        <select id="novoUsuarioPapel">
+          <option value="operador">Operador</option>
+          <option value="visualizacao">Visualização</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" id="btnCriarUsuario">Criar usuário</button>
+    </form>
+  </div>
+  <div class="panel"><div class="panel-head"><h3>Usuários</h3><div class="desc">${data.length} conta(s) · papel e acesso de cada pessoa</div></div>`;
   html += '<div class="table-scroll"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Ativo</th><th>Desde</th></tr></thead><tbody>';
   data.forEach(u => {
     const dt = new Date(u.created_at).toLocaleDateString('pt-BR');
@@ -4451,6 +4489,56 @@ async function renderAdministracao(){
       showToast(novoAtivo ? 'Usuário reativado' : 'Usuário desativado');
     });
   });
+
+  document.getElementById('formNovoUsuario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('novoUsuarioEmail').value.trim();
+    const papel = document.getElementById('novoUsuarioPapel').value;
+    const btn = document.getElementById('btnCriarUsuario');
+    btn.disabled = true; btn.textContent = 'Criando…';
+    try {
+      const { data: resp, error: invokeErr } = await supabaseClient.functions.invoke('criar-usuario', {
+        body: { email, papel }
+      });
+      if (invokeErr) throw invokeErr;
+      if (resp && resp.error) throw new Error(resp.error);
+      registrarAuditoria('criar_usuario', { email, papel });
+      showToast('Usuário criado! Senha padrão: ' + resp.senha_padrao + ' (a pessoa troca no 1º acesso)');
+      renderAdministracao();
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao criar usuário: ' + (err.message || err));
+      btn.disabled = false; btn.textContent = 'Criar usuário';
+    }
+  });
+}
+
+/* Bloqueia o painel até a pessoa trocar a senha padrão (conta criada pelo admin). */
+function verificarTrocaSenhaObrigatoria(){
+  if (!CURRENT_PERFIL || !CURRENT_PERFIL.deve_trocar_senha) return;
+  document.getElementById('trocarSenhaBackdrop').classList.add('open');
+  document.getElementById('formTrocarSenha').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nova = document.getElementById('trocarSenhaNova').value;
+    const confirmar = document.getElementById('trocarSenhaConfirmar').value;
+    if (nova.length < 6){ alert('A senha precisa ter no mínimo 6 caracteres.'); return; }
+    if (nova !== confirmar){ alert('As senhas não coincidem.'); return; }
+    const btn = document.getElementById('btnSalvarNovaSenha');
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    try {
+      const { error: updErr } = await supabaseClient.auth.updateUser({ password: nova });
+      if (updErr) throw updErr;
+      const { error: rpcErr } = await supabaseClient.rpc('marcar_senha_trocada');
+      if (rpcErr) throw rpcErr;
+      CURRENT_PERFIL.deve_trocar_senha = false;
+      document.getElementById('trocarSenhaBackdrop').classList.remove('open');
+      showToast('Senha atualizada!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao trocar a senha: ' + (err.message || err));
+      btn.disabled = false; btn.textContent = 'Salvar e continuar';
+    }
+  }, { once: true });
 }
 
 /* ============================= INIT ============================= */
@@ -4464,6 +4552,7 @@ async function init(){
     await fazerLogout();
     return;
   }
+  verificarTrocaSenhaObrigatoria();
   atualizarTopbarUsuario();
   aplicarRestricoesDePerfil();
   document.getElementById('btnLogout').addEventListener('click', fazerLogout);
