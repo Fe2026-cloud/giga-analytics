@@ -4807,10 +4807,14 @@ function ehAdministrador(){
 function aplicarRestricoesDePerfil(){
   const podeEditar = podeEditarDados();
   const ehAdmin = ehAdministrador();
-  ['btnImportToggle', 'btnConfig', 'btnClear', 'sidebarConfig', 'btnCapacity'].forEach(id => {
+  ['btnImportToggle', 'btnConfig', 'sidebarConfig', 'btnCapacity'].forEach(id => {
     const elx = document.getElementById(id);
     if (elx) elx.style.display = podeEditar ? '' : 'none';
   });
+  // "Limpar base" apaga TUDO (operacional + histórico) pra todo mundo — só administrador,
+  // mesmo que operador normalmente possa importar/editar.
+  const btnClear = document.getElementById('btnClear');
+  if (btnClear) btnClear.style.display = ehAdmin ? '' : 'none';
   const menuAdmin = document.querySelector('.sidebar-item[data-module="administracao"]');
   if (menuAdmin) menuAdmin.style.display = ehAdmin ? '' : 'none';
 }
