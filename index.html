@@ -504,8 +504,15 @@
   }
   .sidebar.collapsed{width:64px;}
   .sidebar-brand{display:flex;align-items:center;justify-content:flex-start;padding:6px 6px 18px 6px;}
-  .sidebar-wordmark{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;}
-  .sidebar-wordmark span{color:var(--accent);}
+  .sidebar-wordmark{
+    font-size:15px;font-weight:800;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;
+    background:linear-gradient(100deg, var(--text) 0%, var(--text) 40%, #6FA8FF 50%, var(--text) 60%, var(--text) 100%);
+    background-size:250% 100%;
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:sidebarShimmer 3.4s linear infinite;
+  }
+  .sidebar-wordmark span{-webkit-text-fill-color:var(--accent);color:var(--accent);}
+  @keyframes sidebarShimmer{ from{background-position:200% 0;} to{background-position:-50% 0;} }
   .sidebar.collapsed .sidebar-wordmark{display:none;}
   .sidebar-toggle{width:100%;display:flex;justify-content:flex-end;margin-bottom:6px;}
   .sidebar-toggle button{background:transparent;border:none;color:var(--text-faint);font-size:16px;padding:4px 6px;border-radius:6px;transition:background .2s, color .2s;}
@@ -601,12 +608,7 @@
   <div class="topbar-row">
     <div class="brand">
       <span class="eyebrow">GIGA+ FIBRA · Grupo Alloha</span>
-      <h1>GIGA+ Analytics</h1>
       <span class="sub" id="subHeader">Nenhum dado carregado ainda</span>
-    </div>
-    <div class="topbar-search">
-      <span class="search-ic">🔍</span>
-      <input type="text" placeholder="Buscar operação, OS, técnico..." disabled title="Busca — estrutura preparada">
     </div>
     <div class="topbar-actions">
       <button class="btn ghost" id="btnImportToggle" title="Importação de CSV">📁 Importar</button>
@@ -4328,7 +4330,7 @@ async function saveConfig(){
 /* ============================= TEMA ============================= */
 async function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('btnTheme').textContent = theme === 'light' ? '☀ Tema' : '☾ Tema';
+  document.getElementById('btnTheme').textContent = theme === 'light' ? '☀' : '☾';
   try{ await storage.set('theme', theme, false); }catch(e){}
 }
 async function toggleTheme(){
