@@ -519,7 +519,12 @@
   }
   .sidebar-subtitle .cursor-blink{animation:cursorBlink 1.1s step-end infinite;}
   @keyframes cursorBlink{ 0%,49%{opacity:1;} 50%,100%{opacity:0;} }
-  .sidebar.collapsed .sidebar-wordmark, .sidebar.collapsed .sidebar-subtitle{display:none;}
+  .sidebar-map{margin-top:8px;}
+  .sidebar-map .sp-outline{fill:var(--surface-2);stroke:var(--border);stroke-width:1.4;}
+  .sidebar-map .sp-dot{fill:var(--accent);}
+  .sidebar-map .sp-dot-pulse{fill:none;stroke:var(--accent);stroke-width:1.5;transform-origin:center;animation:mapPulse 2.2s ease-out infinite;}
+  @keyframes mapPulse{ 0%{transform:scale(0.4);opacity:.8;} 100%{transform:scale(2.6);opacity:0;} }
+  .sidebar.collapsed .sidebar-wordmark, .sidebar.collapsed .sidebar-subtitle, .sidebar.collapsed .sidebar-map{display:none;}
   .sidebar-toggle{width:100%;display:flex;justify-content:flex-end;margin-bottom:6px;}
   .sidebar-toggle button{background:transparent;border:none;color:var(--text-faint);font-size:16px;padding:4px 6px;border-radius:6px;transition:background .2s, color .2s;}
   .sidebar-toggle button:hover{color:var(--text);background:var(--surface-2);}
@@ -591,6 +596,11 @@
     <div class="sidebar-brand">
       <div class="sidebar-wordmark">GIGA<span>+</span> Analytics</div>
       <div class="sidebar-subtitle">Operação Litoral SP <span class="cursor-blink">_</span></div>
+      <svg class="sidebar-map" width="60" height="54" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
+        <path class="sp-outline" d="M20,10 L55,8 L75,18 L85,30 L78,42 L88,50 L82,60 L70,68 L58,75 L40,72 L22,65 L12,45 L15,25 Z"/>
+        <circle class="sp-dot-pulse" cx="70" cy="66" r="3"/>
+        <circle class="sp-dot" cx="70" cy="66" r="2.6"/>
+      </svg>
     </div>
     <div class="sidebar-toggle"><button id="btnSidebarToggle" title="Recolher menu">⟨</button></div>
     <nav class="sidebar-nav">
@@ -1691,10 +1701,9 @@ async function loadPersisted(){
       });
     });
   }catch(e){ console.error('Falha ao carregar snapshots de backlog do Supabase', e); }
-  try{
-    const themeRes = await storage.get('theme', false);
-    await applyTheme(themeRes && themeRes.value ? themeRes.value : 'dark');
-  }catch(e){ await applyTheme('dark'); }
+  // O painel sempre abre no tema claro — não guarda/lê preferência entre sessões
+  // (dá pra alternar durante o uso, mas volta pro claro no próximo carregamento).
+  await applyTheme('light');
 }
 
 /* ============================= UPLOAD HANDLING (lote + operacional/histórico) ============================= */

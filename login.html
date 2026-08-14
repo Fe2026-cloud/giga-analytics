@@ -29,6 +29,7 @@
     width:100%; max-width:380px; background:var(--surface); border:1px solid var(--border);
     border-radius:14px; padding:28px 26px; box-shadow:0 1px 3px rgba(0,32,96,0.06), 0 8px 30px rgba(0,32,96,0.06);
   }
+  .card-header{text-align:center;margin-bottom:6px;}
   .eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;}
   h1{margin:4px 0 2px 0;font-size:20px;font-weight:750;}
   .sub{font-size:12.5px;color:var(--text-faint);margin-bottom:22px;}
@@ -45,15 +46,12 @@
   }
   button.submit:hover{opacity:.9;}
   button.submit:disabled{opacity:.5;cursor:not-allowed;}
-  .toggle-mode{
-    margin-top:16px;text-align:center;font-size:12.5px;color:var(--text-faint);
+  .contact-note{
+    margin-top:16px;text-align:center;font-size:12px;color:var(--text-faint);line-height:1.5;
   }
-  .toggle-mode button{background:none;border:none;color:var(--accent);font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px;padding:0;}
   .msg{margin-top:14px;padding:9px 12px;border-radius:8px;font-size:12px;display:none;}
   .msg.error{display:block;background:var(--red-bg);color:var(--red);}
   .msg.ok{display:block;background:rgba(30,158,55,0.10);color:var(--green);}
-  .field-signup{display:none;}
-  .field-signup.show{display:block;}
 
   /* ---------- Tela de boas-vindas (pós-login) ---------- */
   #welcomeScreen{
@@ -95,16 +93,13 @@
 <body>
 
 <div class="card" id="loginCard">
-  <span class="eyebrow">GIGA+ FIBRA · Grupo Alloha</span>
-  <h1 id="formTitle">Entrar</h1>
-  <div class="sub" id="formSub">Acesse o painel com seu e-mail e senha.</div>
+  <div class="card-header">
+    <span class="eyebrow">GIGA+ FIBRA · Grupo Alloha</span>
+    <h1>Entrar</h1>
+    <div class="sub">Acesse o painel com seu e-mail e senha.</div>
+  </div>
 
   <form id="authForm">
-    <div class="field-signup" id="fieldNome">
-      <label for="nome">Nome completo</label>
-      <input type="text" id="nome" autocomplete="name" placeholder="Seu nome">
-    </div>
-
     <label for="email">E-mail</label>
     <input type="email" id="email" autocomplete="email" required placeholder="voce@empresa.com">
 
@@ -115,10 +110,7 @@
     <div class="msg" id="msg"></div>
   </form>
 
-  <div class="toggle-mode">
-    <span id="toggleText">Ainda não tem conta?</span>
-    <button type="button" id="btnToggleMode">Criar conta</button>
-  </div>
+  <div class="contact-note">Tentando acesso? Entre em contato com o administrador.</div>
 </div>
 
 <div id="welcomeScreen">
@@ -131,23 +123,6 @@
 </div>
 
 <script>
-let modo = 'entrar'; // 'entrar' | 'cadastrar'
-
-function setModo(novo){
-  modo = novo;
-  const isCadastro = modo === 'cadastrar';
-  document.getElementById('formTitle').textContent = isCadastro ? 'Criar conta' : 'Entrar';
-  document.getElementById('formSub').textContent = isCadastro
-    ? 'Primeiro acesso vira administrador automaticamente; os demais entram como operador.'
-    : 'Acesse o painel com seu e-mail e senha.';
-  document.getElementById('fieldNome').classList.toggle('show', isCadastro);
-  document.getElementById('senha').setAttribute('autocomplete', isCadastro ? 'new-password' : 'current-password');
-  document.getElementById('btnSubmit').textContent = isCadastro ? 'Criar conta' : 'Entrar';
-  document.getElementById('toggleText').textContent = isCadastro ? 'Já tem conta?' : 'Ainda não tem conta?';
-  document.getElementById('btnToggleMode').textContent = isCadastro ? 'Entrar' : 'Criar conta';
-  esconderMsg();
-}
-
 function mostrarMsg(texto, tipo){
   const el = document.getElementById('msg');
   el.textContent = texto;
@@ -182,35 +157,18 @@ function mostrarBoasVindasEIr(destino){
   requestAnimationFrame(passo);
 }
 
-document.getElementById('btnToggleMode').addEventListener('click', () => setModo(modo === 'entrar' ? 'cadastrar' : 'entrar'));
-
 document.getElementById('authForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('email').value.trim();
   const senha = document.getElementById('senha').value;
-  const nome = document.getElementById('nome').value.trim();
   const btn = document.getElementById('btnSubmit');
   btn.disabled = true;
   esconderMsg();
 
   try{
-    if (modo === 'cadastrar'){
-      const { data, error } = await supabaseClient.auth.signUp({
-        email, password: senha,
-        options: { data: { nome_completo: nome || email } }
-      });
-      if (error) throw error;
-      if (data.session){
-        mostrarBoasVindasEIr('index.html');
-      } else {
-        mostrarMsg('Conta criada! Verifique seu e-mail para confirmar o cadastro antes de entrar.', 'ok');
-        setModo('entrar');
-      }
-    } else {
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
-      if (error) throw error;
-      mostrarBoasVindasEIr('index.html');
-    }
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+    if (error) throw error;
+    mostrarBoasVindasEIr('index.html');
   } catch(err){
     mostrarMsg(traduzErro(err.message), 'error');
     btn.disabled = false;
@@ -219,8 +177,6 @@ document.getElementById('authForm').addEventListener('submit', async (e) => {
 
 function traduzErro(msg){
   if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
-  if (/User already registered/i.test(msg)) return 'Já existe uma conta com esse e-mail. Tente entrar.';
-  if (/Password should be at least/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
   if (/Email not confirmed/i.test(msg)) return 'Confirme seu e-mail antes de entrar (verifique sua caixa de entrada).';
   return msg;
 }
