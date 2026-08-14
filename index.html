@@ -694,15 +694,15 @@
       </div>
     </div>
     <div class="upload-grid" style="grid-template-columns:320px 320px;margin-top:12px;">
-      <div class="dropzone" id="dz-REDEEXTERNA">
-        <div class="dz-head"><span class="dz-regional">🌐 Rede Externa (CSV diário)</span></div>
-        <span class="dz-status" id="dz-status-REDEEXTERNA">Aguardando arquivo</span>
-        <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-file-input"></label>
+      <div class="dropzone" id="dz-REDEEXTERNAINFRA">
+        <div class="dz-head"><span class="dz-regional">🏗️ Infraestrutura POP (CSV diário)</span></div>
+        <span class="dz-status" id="dz-status-REDEEXTERNAINFRA">Aguardando arquivo</span>
+        <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-infra-file-input"></label>
       </div>
-      <div class="dropzone" id="dz-REDEEXTERNAEQUIPE">
-        <div class="dz-head"><span class="dz-regional">👥 Equipe Rede Externa (nome + grupo)</span></div>
-        <span class="dz-status" id="dz-status-REDEEXTERNAEQUIPE">Aguardando arquivo</span>
-        <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-roster-file-input"></label>
+      <div class="dropzone" id="dz-REDEEXTERNAREDES">
+        <div class="dz-head"><span class="dz-regional">🌐 Rede Externa (CSV diário)</span></div>
+        <span class="dz-status" id="dz-status-REDEEXTERNAREDES">Aguardando arquivo</span>
+        <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-redes-file-input"></label>
       </div>
     </div>
 
@@ -1179,13 +1179,19 @@ const ROSTER_SEED_VIRTUS = [
 let ROSTER = { C10:[...ROSTER_SEED_C10], C13:[...ROSTER_SEED_C13], C14:[...ROSTER_SEED_C14], JH:[...ROSTER_SEED_JH], VIRTUS:[...ROSTER_SEED_VIRTUS] };   // lista fixa de técnicos por regional/empresa (nome do CSV de equipe)
 let HISTORY = {};                          // history[data] = snapshot resumido daquele dia (para absenteísmo/evolução)
 
-/* Rede Externa (Infraestrutura POP / Rede Externa / B2B) — time nacional, separado das
-   regionais C10/C13/C14/JH/VIRTUS. Mesmo padrão dia vigente + histórico, só que 1 bucket só
-   (não 5), porque o CSV é único (não vem dividido por regional). */
-let REDE_EXT_OPERACIONAL = null;           // {data, rows, uploadedAt, filename} | null
-let REDE_EXT_HIST = {};                    // { 'DD/MM/YY': {rows, uploadedAt, filename, data} }
-let REDE_EXT_EQUIPE = [];                  // [{nome, grupo}] — roster nome -> grupo (Infraestrutura POP/Rede Externa/B2B)
-const REDE_EXT_GRUPOS = ['Infraestrutura POP', 'Rede Externa', 'B2B'];
+/* Rede Externa — 2 CSVs diários separados (Infraestrutura POP e Rede Externa), cada um seu
+   próprio dia vigente + histórico. O grupo vem de qual arquivo foi importado (não precisa de
+   lista de técnicos). Escopo restrito às cidades de Litoral Sul/Norte/Vale do Paraíba. */
+const REDE_EXT_GRUPOS = ['Infraestrutura POP', 'Rede Externa'];
+let REDE_EXT_OPERACIONAL = { 'Infraestrutura POP': null, 'Rede Externa': null };   // grupo -> {data, rows, uploadedAt, filename} | null
+let REDE_EXT_HIST = { 'Infraestrutura POP': {}, 'Rede Externa': {} };             // grupo -> { 'DD/MM/YY': {rows, uploadedAt, filename, data} }
+// Cidades de Litoral Sul (C10) / Litoral Norte (C14) / Vale do Paraíba (C13) — únicas
+// consideradas nesse módulo (o CSV de origem cobre um território bem mais amplo).
+const REDE_EXT_CIDADES_PERMITIDAS = new Set([
+  'BERTIOGA','CUBATAO','GUARUJA','ITANHAEM','PERUIBE','PRAIA GRANDE','SANTOS','SAO VICENTE','MONGAGUA',
+  'SAO SEBASTIAO','ILHABELA','CARAGUATATUBA','UBATUBA','BOICUCANGA',
+  'SAO JOSE DOS CAMPOS','JACAREI','TAUBATE','TREMEMBE','CACAPAVA','PINDAMONHANGABA'
+].map(c => semAcento(c)));
 let currentFilterType = 'all';   // 'all' | 'regional' | 'empresa'
 let currentFilterValue = '';     // 'C10'/'C13'/'C14' quando regional; 'JH'/'VIRTUS' quando empresa
 let importOpen = false;          // estado do painel recolhível (memória de sessão)
@@ -1336,27 +1342,35 @@ function normalizeRows(objs, regional, empresa){
     };
   });
 }
-// Mesmas colunas do CSV de OS normal, mas sem regional/empresa — Rede Externa é 1 time
-// nacional só, atuando em várias cidades/estados, sem vínculo com C10/C13/C14/JH/VIRTUS.
-function normalizeRedeExternaRows(objs){
-  return objs.map(o => {
+// Mesmo "formato-base" do CSV de OS normal, mas o export de Rede Externa não tem Bairro e usa
+// campos de data de abertura diferentes ("Horário de Criação/Acionamento" — igual formato
+// DD/MM/AA HH:MM da abertura de OS normal; cai pro formato antigo "Data Abertura Chamado" se
+// vier de um export diferente). Filtra só as cidades de Litoral Sul/Norte/Vale do Paraíba.
+function normalizeRedeExternaRows(objs, grupo){
+  const out = [];
+  objs.forEach(o => {
+    const cidade = (o['Cidade']||'').trim();
+    if (!REDE_EXT_CIDADES_PERMITIDAS.has(semAcento(cidade))) return; // fora do escopo (litoral SP)
     const status = (o['Status da Atividade']||'').trim().toLowerCase();
     const tipo = (o['Tipo de Atividade']||'').trim();
-    const aberturaDate = parseAberturaChamado(o['Data Abertura Chamado'], o['Data de Abertura OS'] || o['Data']);
+    const aberturaDate = o['Horário de Criação/Acionamento']
+      ? parseAberturaOS(o['Horário de Criação/Acionamento'])
+      : parseAberturaChamado(o['Data Abertura Chamado'], o['Data de Abertura OS'] || o['Data']);
     const inicioDate = o['Início'] ? parseDDMMYY(o['Data'], o['Início']) : null;
     const fimDate = o['Fim'] ? parseDDMMYY(o['Data'], o['Fim']) : null;
-    return {
+    out.push({
+      grupo,
       os: o['Ordem de Serviço'] || '',
       data: o['Data'] || '',
       status,
-      bairro: (o['Bairro']||'').trim() || '(sem bairro)',
-      cidade: (o['Cidade']||'').trim() || '(sem cidade)',
+      cidade: cidade || '(sem cidade)',
       tipo,
       motivo: (o['Motivo de Encerramento das atividades']||'').trim() || '(sem motivo informado)',
       recurso: (o['Recurso']||'').trim() || '(sem recurso)',
       aberturaDate, inicioDate, fimDate
-    };
+    });
   });
+  return out;
 }
 function detectRegional(filename){
   const up = filename.toUpperCase();
@@ -1557,15 +1571,6 @@ async function recarregarRedeExternaRealtime(){
     if (currentModule === 'rede-externa') renderRedeExterna();
   }catch(e){ console.error('Falha ao recarregar Rede Externa em tempo real', e); }
 }
-async function recarregarRedeExternaEquipeRealtime(){
-  try{
-    const { data, error } = await supabaseClient.from('rede_externa_equipe').select('nome, grupo').eq('ativo', true).order('nome');
-    if (error) throw error;
-    REDE_EXT_EQUIPE = (data||[]).map(r => ({ nome: r.nome, grupo: r.grupo }));
-    updateRedeExternaRosterDzStatus(null);
-    if (currentModule === 'rede-externa') renderRedeExterna();
-  }catch(e){ console.error('Falha ao recarregar equipe de Rede Externa em tempo real', e); }
-}
 async function recarregarBacklogRealtime(){
   try{
     const { data, error } = await supabaseClient.from('backlog_atual').select('*').eq('id', true).maybeSingle();
@@ -1616,7 +1621,6 @@ function iniciarRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'equipe' }, recarregarEquipeRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_importacoes' }, recarregarRedeExternaRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_atividades' }, recarregarRedeExternaRealtime)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_equipe' }, recarregarRedeExternaEquipeRealtime)
     .subscribe();
 }
 
@@ -1730,18 +1734,18 @@ async function carregarOrdensServicoDoSupabase(){
 // Recarrega REDE_EXT_OPERACIONAL/REDE_EXT_HIST a partir do Supabase — mesmo padrão de
 // carregarOrdensServicoDoSupabase, só que 1 bucket só (não por slot/regional).
 async function carregarRedeExternaDoSupabase(){
-  REDE_EXT_OPERACIONAL = null;
-  REDE_EXT_HIST = {};
+  REDE_EXT_OPERACIONAL = { 'Infraestrutura POP': null, 'Rede Externa': null };
+  REDE_EXT_HIST = { 'Infraestrutura POP': {}, 'Rede Externa': {} };
 
   const { data: importacoes, error: impErr } = await supabaseClient
     .from('rede_externa_importacoes')
-    .select('id, vigente, data_referencia, uploaded_at, filename');
+    .select('id, grupo, vigente, data_referencia, uploaded_at, filename');
   if (impErr){ console.error('Falha ao carregar importações de Rede Externa', impErr); return; }
   const mapaImportacoes = {};
   (importacoes || []).forEach(ic => { mapaImportacoes[ic.id] = ic; });
 
   const PAGE = 1000;
-  const COLUNAS = 'os, data, status, bairro, cidade, tipo, motivo, recurso, abertura_at, inicio_at, fim_at, importacao_id';
+  const COLUNAS = 'os, data, status, cidade, tipo, motivo, recurso, abertura_at, inicio_at, fim_at, importacao_id';
   const primeira = await supabaseClient.from('rede_externa_atividades').select(COLUNAS, { count: 'exact' }).range(0, PAGE - 1);
   if (primeira.error){ console.error('Falha ao carregar atividades de Rede Externa', primeira.error); return; }
   const todasLinhas = [...(primeira.data || [])];
@@ -1756,15 +1760,16 @@ async function carregarRedeExternaDoSupabase(){
     else todasLinhas.push(...(r.data || []));
   });
 
-  const grupos = {}; // key = data_referencia -> { ...meta, rows:[] }
+  const grupos = {}; // key = grupo + '|' + data_referencia -> { ...meta, rows:[] }
   todasLinhas.forEach(row => {
     const ic = mapaImportacoes[row.importacao_id];
-    if (!ic) return;
-    const key = ic.data_referencia;
-    if (!grupos[key]) grupos[key] = { vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
+    if (!ic || !REDE_EXT_OPERACIONAL.hasOwnProperty(ic.grupo)) return;
+    const key = ic.grupo + '|' + ic.data_referencia;
+    if (!grupos[key]) grupos[key] = { grupo: ic.grupo, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
     grupos[key].rows.push({
+      grupo: ic.grupo,
       os: row.os || '', data: row.data || '', status: row.status || '',
-      bairro: row.bairro || '(sem bairro)', cidade: row.cidade || '(sem cidade)',
+      cidade: row.cidade || '(sem cidade)',
       tipo: row.tipo || '', motivo: row.motivo || '(sem motivo informado)',
       recurso: row.recurso || '(sem recurso)',
       aberturaDate: row.abertura_at ? new Date(row.abertura_at) : null,
@@ -1774,7 +1779,7 @@ async function carregarRedeExternaDoSupabase(){
   });
   Object.values(grupos).forEach(g => {
     const entry = { rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
-    if (g.vigente) REDE_EXT_OPERACIONAL = entry; else REDE_EXT_HIST[g.data] = entry;
+    if (g.vigente) REDE_EXT_OPERACIONAL[g.grupo] = entry; else REDE_EXT_HIST[g.grupo][g.data] = entry;
   });
 }
 
@@ -1804,11 +1809,6 @@ async function loadPersisted(){
   try{
     await carregarRedeExternaDoSupabase();
   }catch(e){ console.error('Falha ao carregar Rede Externa do Supabase', e); }
-  try{
-    const { data, error } = await supabaseClient.from('rede_externa_equipe').select('nome, grupo').eq('ativo', true).order('nome');
-    if (error) throw error;
-    if ((data||[]).length) REDE_EXT_EQUIPE = data.map(r => ({ nome: r.nome, grupo: r.grupo }));
-  }catch(e){ console.error('Falha ao carregar equipe de Rede Externa do Supabase', e); }
   try{
     await carregarHistoricoDoSupabase();
   }catch(e){ console.error('Falha ao carregar histórico diário do Supabase', e); }
@@ -1975,14 +1975,14 @@ async function handleFilesBatchInterno(fileList, expectedSlot){
 }
 
 /* ============================= REDE EXTERNA · importação (1 CSV nacional por dia) ============================= */
-async function upsertImportacaoRedeExterna(data, entry, vigente){
+async function upsertImportacaoRedeExterna(grupo, data, entry, vigente){
   const { data: imp, error } = await supabaseClient
     .from('rede_externa_importacoes')
     .upsert({
-      data_referencia: data, vigente,
+      grupo, data_referencia: data, vigente,
       filename: entry.filename, total_linhas: entry.rows.length,
       uploaded_by: CURRENT_USER.id, uploaded_at: entry.uploadedAt
-    }, { onConflict: 'data_referencia' })
+    }, { onConflict: 'data_referencia,grupo' })
     .select('id')
     .single();
   if (error) throw error;
@@ -1991,7 +1991,7 @@ async function upsertImportacaoRedeExterna(data, entry, vigente){
   if (delErr) throw delErr;
 
   const linhas = entry.rows.map(r => ({
-    importacao_id: imp.id, os: r.os, data: r.data, status: r.status, bairro: r.bairro,
+    importacao_id: imp.id, os: r.os, data: r.data, status: r.status,
     cidade: r.cidade, tipo: r.tipo, motivo: r.motivo, recurso: r.recurso,
     abertura_at: r.aberturaDate ? r.aberturaDate.toISOString() : null,
     inicio_at: r.inicioDate ? r.inicioDate.toISOString() : null,
@@ -2004,19 +2004,19 @@ async function upsertImportacaoRedeExterna(data, entry, vigente){
   }
   return imp.id;
 }
-async function marcarComoHistoricoRedeExterna(data){
-  const { error } = await supabaseClient.from('rede_externa_importacoes').update({ vigente: false }).eq('data_referencia', data);
+async function marcarComoHistoricoRedeExterna(grupo, data){
+  const { error } = await supabaseClient.from('rede_externa_importacoes').update({ vigente: false }).eq('grupo', grupo).eq('data_referencia', data);
   if (error) throw error;
 }
-async function handleRedeExternaCsv(file){
+async function handleRedeExternaCsv(file, grupo){
   if (!/\.csv$/i.test(file.name)){ showToast('Selecione um arquivo .csv'); return; }
   showProgress(true);
   updateProgress(0, 1, file.name);
   try{
     const text = await readFileAsText(file);
     const objs = csvToObjects(text);
-    const rows = normalizeRedeExternaRows(objs);
-    if (!rows.length){ showToast('Nenhuma linha reconhecida nesse CSV.'); showProgress(false); return; }
+    const rows = normalizeRedeExternaRows(objs, grupo);
+    if (!rows.length){ showToast('Nenhuma linha de Litoral Sul/Norte/Vale do Paraíba encontrada nesse CSV.'); showProgress(false); return; }
     const dateCounts = {};
     rows.forEach(r => { if (r.data) dateCounts[r.data] = (dateCounts[r.data]||0) + 1; });
     const entries = Object.entries(dateCounts).sort((a,b) => b[1]-a[1]);
@@ -2024,47 +2024,55 @@ async function handleRedeExternaCsv(file){
     const data = entries[0][0];
     const entry = { rows, uploadedAt: new Date().toISOString(), filename: file.name, data };
 
-    if (!REDE_EXT_OPERACIONAL || data === REDE_EXT_OPERACIONAL.data){
-      await upsertImportacaoRedeExterna(data, entry, true);
-      REDE_EXT_OPERACIONAL = entry;
+    const opAtual = REDE_EXT_OPERACIONAL[grupo];
+    if (!opAtual || data === opAtual.data){
+      await upsertImportacaoRedeExterna(grupo, data, entry, true);
+      REDE_EXT_OPERACIONAL[grupo] = entry;
     } else {
-      const opDate = parseDDMMYY(REDE_EXT_OPERACIONAL.data), newDate = parseDDMMYY(data);
+      const opDate = parseDDMMYY(opAtual.data), newDate = parseDDMMYY(data);
       if (newDate.getTime() > opDate.getTime()){
-        await marcarComoHistoricoRedeExterna(REDE_EXT_OPERACIONAL.data);
-        REDE_EXT_HIST[REDE_EXT_OPERACIONAL.data] = REDE_EXT_OPERACIONAL;
-        await upsertImportacaoRedeExterna(data, entry, true);
-        REDE_EXT_OPERACIONAL = entry;
+        await marcarComoHistoricoRedeExterna(grupo, opAtual.data);
+        REDE_EXT_HIST[grupo][opAtual.data] = opAtual;
+        await upsertImportacaoRedeExterna(grupo, data, entry, true);
+        REDE_EXT_OPERACIONAL[grupo] = entry;
       } else {
-        await upsertImportacaoRedeExterna(data, entry, false);
-        REDE_EXT_HIST[data] = entry;
+        await upsertImportacaoRedeExterna(grupo, data, entry, false);
+        REDE_EXT_HIST[grupo][data] = entry;
       }
     }
-    updateDzStatusRedeExterna();
+    updateDzStatusRedeExterna(grupo);
     renderRedeExterna();
-    registrarAuditoria('importar_rede_externa', { data, linhas: rows.length, filename: file.name });
-    showToast('Rede Externa importada — ' + rows.length + ' linhas (' + data + ')');
+    registrarAuditoria('importar_rede_externa', { grupo, data, linhas: rows.length, filename: file.name });
+    showToast(grupo + ' importado — ' + rows.length + ' linhas (' + data + ')');
   }catch(err){
     console.error('Erro ao importar CSV de Rede Externa', err);
-    showToast('Erro ao importar Rede Externa: ' + (err.message || err));
+    showToast('Erro ao importar ' + grupo + ': ' + (err.message || err));
   } finally {
     showProgress(false);
   }
 }
-function updateDzStatusRedeExterna(){
-  const dz = document.getElementById('dz-REDEEXTERNA');
-  const statusEl = document.getElementById('dz-status-REDEEXTERNA');
-  const histDias = Object.keys(REDE_EXT_HIST).length;
-  if (!REDE_EXT_OPERACIONAL && !histDias){ statusEl.innerHTML = 'Aguardando arquivo'; dz.classList.remove('filled'); return; }
-  dz.classList.add('filled');
-  let html = '';
-  if (REDE_EXT_OPERACIONAL){
-    const dt = new Date(REDE_EXT_OPERACIONAL.uploadedAt);
-    html += '<b>Operacional: '+REDE_EXT_OPERACIONAL.data+'</b> · '+REDE_EXT_OPERACIONAL.rows.length+' atividades · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  } else {
-    html += '<span class="muted">sem dia operacional aberto</span>';
-  }
-  if (histDias) html += '<br><span class="muted">'+histDias+' dia(s) no histórico</span>';
-  statusEl.innerHTML = html;
+const REDE_EXT_DZ_ID = { 'Infraestrutura POP': 'REDEEXTERNAINFRA', 'Rede Externa': 'REDEEXTERNAREDES' };
+function updateDzStatusRedeExterna(grupo){
+  const grupos = grupo ? [grupo] : REDE_EXT_GRUPOS;
+  grupos.forEach(g => {
+    const suf = REDE_EXT_DZ_ID[g];
+    const dz = document.getElementById('dz-'+suf);
+    const statusEl = document.getElementById('dz-status-'+suf);
+    if (!dz || !statusEl) return;
+    const op = REDE_EXT_OPERACIONAL[g];
+    const histDias = Object.keys(REDE_EXT_HIST[g]||{}).length;
+    if (!op && !histDias){ statusEl.innerHTML = 'Aguardando arquivo'; dz.classList.remove('filled'); return; }
+    dz.classList.add('filled');
+    let html = '';
+    if (op){
+      const dt = new Date(op.uploadedAt);
+      html += '<b>Operacional: '+op.data+'</b> · '+op.rows.length+' atividades · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    } else {
+      html += '<span class="muted">sem dia operacional aberto</span>';
+    }
+    if (histDias) html += '<br><span class="muted">'+histDias+' dia(s) no histórico</span>';
+    statusEl.innerHTML = html;
+  });
 }
 
 /* Painel do módulo Rede Externa: pivot consolidado (Tipo x Status) + quebra por
@@ -2074,27 +2082,30 @@ function renderRedeExterna(){
   const el = document.getElementById('redeExternaContainer');
   if (!el) return;
   const hintEl = document.getElementById('redeExternaHint');
-  const entry = REDE_EXT_OPERACIONAL;
-  if (!entry || !entry.rows.length){
-    if (hintEl) hintEl.textContent = 'Infraestrutura POP / Rede Externa / B2B — time nacional, dia vigente';
-    el.innerHTML = '<div class="panel muted">Nenhum dado importado ainda. Carregue o CSV de Rede Externa em Importar.</div>';
+
+  const rows = [];
+  const datasPorGrupo = [];
+  REDE_EXT_GRUPOS.forEach(g => {
+    const entry = REDE_EXT_OPERACIONAL[g];
+    if (entry && entry.rows.length){ rows.push(...entry.rows); datasPorGrupo.push(g + ': ' + entry.data); }
+  });
+
+  if (!rows.length){
+    if (hintEl) hintEl.textContent = 'Infraestrutura POP / Rede Externa — Litoral Sul/Norte/Vale do Paraíba, dia vigente';
+    el.innerHTML = '<div class="panel muted">Nenhum dado importado ainda. Carregue os CSVs de Rede Externa em Importar.</div>';
     return;
   }
-  const rows = entry.rows;
-  if (hintEl) hintEl.textContent = `Infraestrutura POP / Rede Externa / B2B — dia vigente: ${entry.data}`;
-
-  const mapaGrupo = {};
-  REDE_EXT_EQUIPE.forEach(r => { mapaGrupo[normNome(r.nome)] = r.grupo; });
+  if (hintEl) hintEl.textContent = 'Litoral Sul/Norte/Vale do Paraíba — dia vigente: ' + datasPorGrupo.join(' · ');
 
   let html = `<div class="panel">
-    <div class="panel-head"><h3>Consolidado</h3><span class="desc">${entry.data}</span></div>
+    <div class="panel-head"><h3>Consolidado</h3><span class="desc">${datasPorGrupo.join(' · ')}</span></div>
     <div class="pivot-wrap">${buildTipoPivotTable(rows)}</div>
   </div>`;
 
   const porTecnico = {};
   rows.forEach(r => {
     if (!isRecursoTecnicoOuParceira(r.recurso)) return; // ignora placeholders tipo cidade/fila
-    const d = porTecnico[r.recurso] = porTecnico[r.recurso] || { recurso: r.recurso, byStatus:{}, total:0 };
+    const d = porTecnico[r.recurso] = porTecnico[r.recurso] || { recurso: r.recurso, grupo: r.grupo, byStatus:{}, total:0 };
     d.total++;
     d.byStatus[r.status] = (d.byStatus[r.status]||0) + 1;
   });
@@ -2104,14 +2115,11 @@ function renderRedeExterna(){
   const mediaMix = totalTecnicos ? (totalConcluido/totalTecnicos) : 0;
 
   const porGrupo = {};
-  [...REDE_EXT_GRUPOS, 'Não classificado'].forEach(g => porGrupo[g] = []);
-  listaTecnicos.forEach(t => {
-    const g = mapaGrupo[normNome(t.recurso)] || 'Não classificado';
-    (porGrupo[g] = porGrupo[g] || []).push(t);
-  });
+  REDE_EXT_GRUPOS.forEach(g => porGrupo[g] = []);
+  listaTecnicos.forEach(t => { (porGrupo[t.grupo] = porGrupo[t.grupo] || []).push(t); });
 
   let tbl = '<thead><tr><th>Técnico</th>' + STATUS_COLS.map(s => `<th class="num ${statusColClass(s)}">${STATUS_COL_LABEL[s]}</th>`).join('') + '<th class="num col-total">Total Geral</th></tr></thead><tbody>';
-  const gruposComGente = [...REDE_EXT_GRUPOS, 'Não classificado'].filter(g => (porGrupo[g]||[]).length);
+  const gruposComGente = REDE_EXT_GRUPOS.filter(g => (porGrupo[g]||[]).length);
   gruposComGente.forEach(g => {
     const membros = (porGrupo[g]||[]).slice().sort((a,b) => a.recurso.localeCompare(b.recurso));
     const gTotais = {}; STATUS_COLS.forEach(s => gTotais[s]=0); let gGrand = 0;
@@ -2125,7 +2133,7 @@ function renderRedeExterna(){
   tbl += '</tbody>';
 
   html += `<div class="panel">
-    <div class="panel-head"><h3>Por técnico</h3><span class="desc">${REDE_EXT_EQUIPE.length ? 'agrupado pela lista de equipe' : 'sem lista de equipe carregada — todo mundo aparece em "Não classificado"'}</span></div>
+    <div class="panel-head"><h3>Por técnico</h3><span class="desc">agrupado pelo arquivo de origem (Infraestrutura POP / Rede Externa)</span></div>
     <div class="stat-strip">
       <div class="stat-block"><div class="n">${totalTecnicos}</div><div class="l">Total técnicos</div></div>
       <div class="stat-block"><div class="n">${mediaMix.toFixed(2).replace('.',',')}</div><div class="l">Média mix serviços</div></div>
@@ -2297,67 +2305,6 @@ function updateRosterDzStatus(filename){
   if (!total){ statusEl.innerHTML = 'Aguardando arquivo'; return; }
   document.getElementById('dz-ROSTER').classList.add('filled');
   statusEl.innerHTML = '<b>'+total+' técnicos</b> na lista' + (filename ? '<br><span class="muted">'+filename+'</span>' : '');
-}
-
-/* ============================= REDE EXTERNA · equipe (nome -> grupo) ============================= */
-function detectGrupoRedeExternaFromLabel(str){
-  const up = semAcento(str).toUpperCase();
-  if (up.includes('POP')) return 'Infraestrutura POP';
-  if (up.includes('B2B')) return 'B2B';
-  if (up.includes('REDE')) return 'Rede Externa';
-  return null;
-}
-function parseRedeExternaEquipeCSV(text){
-  const primeiraLinha = (text.split(/\r?\n/)[0] || '');
-  const delim = (primeiraLinha.split(';').length > primeiraLinha.split(',').length) ? ';' : ',';
-  const objs = csvToObjects(text, delim);
-  const out = [];
-  objs.forEach(o => {
-    const keys = Object.keys(o);
-    const nomeKey = keys.find(k => /nome|t[eé]cnico|recurso/i.test(k)) || keys[0];
-    const grupoKey = keys.find(k => /grupo|equipe|time|categoria/i.test(k)) || keys[1];
-    let nome = (o[nomeKey]||'').trim();
-    nome = nome.split(/\s+-\s+/)[0].trim();
-    const grupo = detectGrupoRedeExternaFromLabel(o[grupoKey]||'');
-    if (nome && grupo) out.push({ nome, grupo });
-  });
-  return out;
-}
-async function sincronizarRedeExternaEquipeComSupabase(){
-  const { error: delErr } = await supabaseClient.from('rede_externa_equipe').delete().not('id','is', null);
-  if (delErr) throw delErr;
-  if (!REDE_EXT_EQUIPE.length) return;
-  const linhas = REDE_EXT_EQUIPE.map(r => ({ nome: r.nome, grupo: r.grupo }));
-  const LOTE = 500;
-  for (let i=0; i<linhas.length; i+=LOTE){
-    const { error: insErr } = await supabaseClient.from('rede_externa_equipe').insert(linhas.slice(i, i+LOTE));
-    if (insErr) throw insErr;
-  }
-}
-function handleRedeExternaRosterFile(file){
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    try{
-      const parsed = parseRedeExternaEquipeCSV(e.target.result);
-      if (!parsed.length){ showToast('Nenhum técnico reconhecido — confira as colunas (Nome, Grupo).'); return; }
-      REDE_EXT_EQUIPE = parsed;
-      updateRedeExternaRosterDzStatus(file.name);
-      await sincronizarRedeExternaEquipeComSupabase();
-      renderRedeExterna();
-      registrarAuditoria('atualizar_equipe_rede_externa', { total: parsed.length, filename: file.name });
-      showToast('Equipe Rede Externa atualizada — ' + parsed.length + ' técnicos');
-    }catch(err){
-      console.error(err);
-      showToast('Erro ao ler a lista de equipe da Rede Externa. Verifique as colunas (Nome, Grupo).');
-    }
-  };
-  reader.readAsText(file, 'utf-8');
-}
-function updateRedeExternaRosterDzStatus(filename){
-  const statusEl = document.getElementById('dz-status-REDEEXTERNAEQUIPE');
-  if (!REDE_EXT_EQUIPE.length){ statusEl.innerHTML = 'Aguardando arquivo'; return; }
-  document.getElementById('dz-REDEEXTERNAEQUIPE').classList.add('filled');
-  statusEl.innerHTML = '<b>'+REDE_EXT_EQUIPE.length+' técnicos</b> na lista' + (filename ? '<br><span class="muted">'+filename+'</span>' : '');
 }
 
 /* ============================= BACKLOG · importação do XLSX de chamados abertos ============================= */
@@ -2751,7 +2698,6 @@ function render(){
   document.getElementById('dashboard').style.display = hasAny ? 'block' : 'none';
   SLOT_KEYS.forEach(updateDzStatus);
   updateDzStatusRedeExterna();
-  updateRedeExternaRosterDzStatus();
   if (currentModule === 'rede-externa') renderRedeExterna();
   renderHistoricoBase();
 
@@ -4995,8 +4941,8 @@ async function init(){
   document.getElementById('btnSidebarToggle').addEventListener('click', toggleSidebar);
   document.getElementById('roster-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRosterFile(e.target.files[0]); });
   document.getElementById('backlog-xlsx-input').addEventListener('change', e => { if (e.target.files[0]) handleBacklogXlsx(e.target.files[0]); });
-  document.getElementById('rede-externa-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRedeExternaCsv(e.target.files[0]); });
-  document.getElementById('rede-externa-roster-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRedeExternaRosterFile(e.target.files[0]); });
+  document.getElementById('rede-externa-infra-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRedeExternaCsv(e.target.files[0], 'Infraestrutura POP'); });
+  document.getElementById('rede-externa-redes-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRedeExternaCsv(e.target.files[0], 'Rede Externa'); });
   document.querySelectorAll('.sidebar-item').forEach(item => item.addEventListener('click', () => setModule(item.dataset.module)));
   document.querySelectorAll('.reg-tab').forEach(btn => btn.addEventListener('click', () => setRegional(btn.dataset.ftype, btn.dataset.fvalue)));
   document.getElementById('btnHoje').addEventListener('click', () => quickPeriodo('hoje'));
