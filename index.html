@@ -503,9 +503,9 @@
     transition:width .22s ease, background .15s ease;padding:16px 12px;display:flex;flex-direction:column;
   }
   .sidebar.collapsed{width:64px;}
-  .sidebar-brand{display:flex;align-items:center;justify-content:flex-start;padding:6px 6px 18px 6px;}
+  .sidebar-brand{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px 6px 20px 6px;gap:4px;}
   .sidebar-wordmark{
-    font-size:15px;font-weight:800;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;
+    font-size:20px;font-weight:800;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;
     background:linear-gradient(100deg, var(--text) 0%, var(--text) 40%, #6FA8FF 50%, var(--text) 60%, var(--text) 100%);
     background-size:250% 100%;
     -webkit-background-clip:text;background-clip:text;color:transparent;
@@ -513,7 +513,13 @@
   }
   .sidebar-wordmark span{-webkit-text-fill-color:var(--accent);color:var(--accent);}
   @keyframes sidebarShimmer{ from{background-position:200% 0;} to{background-position:-50% 0;} }
-  .sidebar.collapsed .sidebar-wordmark{display:none;}
+  .sidebar-subtitle{
+    font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);
+    white-space:nowrap;
+  }
+  .sidebar-subtitle .cursor-blink{animation:cursorBlink 1.1s step-end infinite;}
+  @keyframes cursorBlink{ 0%,49%{opacity:1;} 50%,100%{opacity:0;} }
+  .sidebar.collapsed .sidebar-wordmark, .sidebar.collapsed .sidebar-subtitle{display:none;}
   .sidebar-toggle{width:100%;display:flex;justify-content:flex-end;margin-bottom:6px;}
   .sidebar-toggle button{background:transparent;border:none;color:var(--text-faint);font-size:16px;padding:4px 6px;border-radius:6px;transition:background .2s, color .2s;}
   .sidebar-toggle button:hover{color:var(--text);background:var(--surface-2);}
@@ -584,6 +590,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="sidebar-wordmark">GIGA<span>+</span> Analytics</div>
+      <div class="sidebar-subtitle">Operação Litoral SP <span class="cursor-blink">_</span></div>
     </div>
     <div class="sidebar-toggle"><button id="btnSidebarToggle" title="Recolher menu">⟨</button></div>
     <nav class="sidebar-nav">
