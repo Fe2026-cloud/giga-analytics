@@ -520,7 +520,7 @@
   .sidebar-subtitle .cursor-blink{animation:cursorBlink 1.1s step-end infinite;}
   @keyframes cursorBlink{ 0%,49%{opacity:1;} 50%,100%{opacity:0;} }
   .sidebar-map{margin-top:8px;}
-  .sidebar-map .sp-outline{fill:var(--surface-2);stroke:var(--border);stroke-width:1.4;}
+  .sidebar-map .sp-outline{fill:var(--text-faint);opacity:.4;}
   .sidebar-map .sp-dot{fill:var(--accent);}
   .sidebar-map .sp-dot-pulse{fill:none;stroke:var(--accent);stroke-width:1.5;transform-origin:center;animation:mapPulse 2.2s ease-out infinite;}
   @keyframes mapPulse{ 0%{transform:scale(0.4);opacity:.8;} 100%{transform:scale(2.6);opacity:0;} }
@@ -596,10 +596,10 @@
     <div class="sidebar-brand">
       <div class="sidebar-wordmark">GIGA<span>+</span> Analytics</div>
       <div class="sidebar-subtitle">Operação Litoral SP <span class="cursor-blink">_</span></div>
-      <svg class="sidebar-map" width="60" height="54" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
-        <path class="sp-outline" d="M20,10 L55,8 L75,18 L85,30 L78,42 L88,50 L82,60 L70,68 L58,75 L40,72 L22,65 L12,45 L15,25 Z"/>
-        <circle class="sp-dot-pulse" cx="70" cy="66" r="3"/>
-        <circle class="sp-dot" cx="70" cy="66" r="2.6"/>
+      <svg class="sidebar-map" width="74" height="52" viewBox="0 0 145 100" xmlns="http://www.w3.org/2000/svg">
+        <path class="sp-outline" d="M7,7 L37,2 L47,8 L52,4 L58,8 L76,5 L92,11 L102,18 L112,24 L108,31 L116,36 L113,43 L123,46 L121,53 L128,56 L126,61 L133,64 L136,71 L131,74 L136,79 L128,82 L126,89 L118,84 L113,92 L106,87 L91,94 L76,92 L61,99 L48,96 L36,88 L26,81 L16,71 L11,56 L6,36 L8,21 Z"/>
+        <circle class="sp-dot-pulse" cx="122" cy="80" r="3"/>
+        <circle class="sp-dot" cx="122" cy="80" r="2.6"/>
       </svg>
     </div>
     <div class="sidebar-toggle"><button id="btnSidebarToggle" title="Recolher menu">⟨</button></div>
