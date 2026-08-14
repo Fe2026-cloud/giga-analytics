@@ -1185,6 +1185,9 @@ let HISTORY = {};                          // history[data] = snapshot resumido 
 const REDE_EXT_GRUPOS = ['Infraestrutura POP', 'Rede Externa'];
 let REDE_EXT_OPERACIONAL = { 'Infraestrutura POP': null, 'Rede Externa': null };   // grupo -> {data, rows, uploadedAt, filename} | null
 let REDE_EXT_HIST = { 'Infraestrutura POP': {}, 'Rede Externa': {} };             // grupo -> { 'DD/MM/YY': {rows, uploadedAt, filename, data} }
+// Lista de permissão: só técnicos cadastrados aqui aparecem nas tabelas do módulo (vem do
+// mesmo CSV de Equipe, nas linhas com rótulo "Rede Externa"/"Infraestrutura"/"B2B").
+let ROSTER_REDE_EXTERNA = []; // [{nome, grupo}]
 // Cidades de Litoral Sul (C10) / Litoral Norte (C14) / Vale do Paraíba (C13) — únicas
 // consideradas nesse módulo (o CSV de origem cobre um território bem mais amplo).
 const REDE_EXT_CIDADES_PERMITIDAS = new Set([
@@ -1571,6 +1574,14 @@ async function recarregarRedeExternaRealtime(){
     if (currentModule === 'rede-externa') renderRedeExterna();
   }catch(e){ console.error('Falha ao recarregar Rede Externa em tempo real', e); }
 }
+async function recarregarRedeExternaEquipeRealtime(){
+  try{
+    const { data, error } = await supabaseClient.from('rede_externa_equipe').select('nome, grupo').eq('ativo', true).order('nome');
+    if (error) throw error;
+    ROSTER_REDE_EXTERNA = (data||[]).map(r => ({ nome: r.nome, grupo: r.grupo }));
+    if (currentModule === 'rede-externa') renderRedeExterna();
+  }catch(e){ console.error('Falha ao recarregar equipe de Rede Externa em tempo real', e); }
+}
 async function recarregarBacklogRealtime(){
   try{
     const { data, error } = await supabaseClient.from('backlog_atual').select('*').eq('id', true).maybeSingle();
@@ -1621,6 +1632,7 @@ function iniciarRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'equipe' }, recarregarEquipeRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_importacoes' }, recarregarRedeExternaRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_atividades' }, recarregarRedeExternaRealtime)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_equipe' }, recarregarRedeExternaEquipeRealtime)
     .subscribe();
 }
 
@@ -1809,6 +1821,11 @@ async function loadPersisted(){
   try{
     await carregarRedeExternaDoSupabase();
   }catch(e){ console.error('Falha ao carregar Rede Externa do Supabase', e); }
+  try{
+    const { data, error } = await supabaseClient.from('rede_externa_equipe').select('nome, grupo').eq('ativo', true).order('nome');
+    if (error) throw error;
+    if ((data||[]).length) ROSTER_REDE_EXTERNA = data.map(r => ({ nome: r.nome, grupo: r.grupo }));
+  }catch(e){ console.error('Falha ao carregar equipe de Rede Externa do Supabase', e); }
   try{
     await carregarHistoricoDoSupabase();
   }catch(e){ console.error('Falha ao carregar histórico diário do Supabase', e); }
@@ -2083,7 +2100,7 @@ function renderRedeExterna(){
   if (!el) return;
   const hintEl = document.getElementById('redeExternaHint');
 
-  const rows = [];
+  let rows = [];
   const datasPorGrupo = [];
   REDE_EXT_GRUPOS.forEach(g => {
     const entry = REDE_EXT_OPERACIONAL[g];
@@ -2095,7 +2112,20 @@ function renderRedeExterna(){
     el.innerHTML = '<div class="panel muted">Nenhum dado importado ainda. Carregue os CSVs de Rede Externa em Importar.</div>';
     return;
   }
-  if (hintEl) hintEl.textContent = 'Litoral Sul/Norte/Vale do Paraíba — dia vigente: ' + datasPorGrupo.join(' · ');
+
+  // Lista de permissão: só entram técnicos cadastrados na Equipe (rótulo Rede Externa/
+  // Infraestrutura/B2B). Sem lista carregada ainda, mostra tudo (evita esconder tudo à toa).
+  if (ROSTER_REDE_EXTERNA.length){
+    const nomesPermitidos = new Set(ROSTER_REDE_EXTERNA.map(r => normNome(r.nome)));
+    rows = rows.filter(r => nomesPermitidos.has(normNome(r.recurso)));
+  }
+  if (!rows.length){
+    if (hintEl) hintEl.textContent = 'Litoral Sul/Norte/Vale do Paraíba — dia vigente: ' + datasPorGrupo.join(' · ');
+    el.innerHTML = '<div class="panel muted">Nenhuma atividade de técnico cadastrado na lista de equipe (Rede Externa/Infraestrutura) nesse dia.</div>';
+    return;
+  }
+  if (hintEl) hintEl.textContent = 'Litoral Sul/Norte/Vale do Paraíba — dia vigente: ' + datasPorGrupo.join(' · ')
+    + (ROSTER_REDE_EXTERNA.length ? '' : ' · ⚠ sem lista de equipe carregada, mostrando tudo');
 
   let html = `<div class="panel">
     <div class="panel-head"><h3>Consolidado</h3><span class="desc">${datasPorGrupo.join(' · ')}</span></div>
@@ -2243,6 +2273,16 @@ function detectRegionalFromLabel(str){
   if (up.includes('SUL') || up === 'C10') return 'C10';
   return null;
 }
+// Rótulos tipo "REDE EXTERNA LITORAL NORTE"/"INFRAESTRUTURA LITORAL NORTE"/"REDE B2B" — checa
+// ANTES de detectRegionalFromLabel, porque eles também contêm "NORTE"/"SUL" e seriam
+// erroneamente classificados como C14/C10 se não forem interceptados aqui primeiro.
+function detectRedeExternaGrupoFromLabel(str){
+  const up = normNome(str);
+  if (up.includes('B2B')) return 'B2B';
+  if (up.includes('INFRAESTRUTURA')) return 'Infraestrutura POP';
+  if (up.includes('REDE')) return 'Rede Externa';
+  return null;
+}
 function parseRosterCSV(text){
   // Detecta o delimitador pela 1ª linha: Excel em PT-BR costuma exportar CSV com ";"
   // (já que "," é separador decimal), então não dá pra assumir vírgula sempre.
@@ -2250,6 +2290,7 @@ function parseRosterCSV(text){
   const delim = (primeiraLinha.split(';').length > primeiraLinha.split(',').length) ? ';' : ',';
   const objs = csvToObjects(text, delim);
   const out = { C10:[], C13:[], C14:[], JH:[], VIRTUS:[] };
+  const redeExterna = []; // [{nome, grupo}] — técnicos de Infraestrutura POP/Rede Externa/B2B
   objs.forEach(o => {
     const keys = Object.keys(o);
     const nomeKey = keys.find(k => /nome|t[eé]cnico|recurso/i.test(k)) || keys[0];
@@ -2257,9 +2298,14 @@ function parseRosterCSV(text){
     // remove anotações do tipo "NOME - afastado" que às vezes vêm coladas na célula do nome
     let nome = (o[nomeKey]||'').trim();
     nome = nome.split(/\s+-\s+/)[0].trim();
-    const categoria = detectRegionalFromLabel(o[regKey]||'');
-    if (nome && categoria) out[categoria].push(nome);
+    if (!nome) return;
+    const rotulo = o[regKey]||'';
+    const grupoRede = detectRedeExternaGrupoFromLabel(rotulo);
+    if (grupoRede){ redeExterna.push({ nome, grupo: grupoRede }); return; }
+    const categoria = detectRegionalFromLabel(rotulo);
+    if (categoria) out[categoria].push(nome);
   });
+  out.redeExterna = redeExterna;
   return out;
 }
 // Substitui no Supabase só os slots que vieram com gente no arquivo novo (apaga e reinsere cada um).
@@ -2277,6 +2323,17 @@ async function sincronizarEquipeComSupabase(slots){
     }
   }
 }
+async function sincronizarRedeExternaEquipeComSupabase(){
+  const { error: delErr } = await supabaseClient.from('rede_externa_equipe').delete().not('id','is', null);
+  if (delErr) throw delErr;
+  if (!ROSTER_REDE_EXTERNA.length) return;
+  const linhas = ROSTER_REDE_EXTERNA.map(r => ({ nome: r.nome, grupo: r.grupo }));
+  const LOTE = 500;
+  for (let i=0; i<linhas.length; i+=LOTE){
+    const { error: insErr } = await supabaseClient.from('rede_externa_equipe').insert(linhas.slice(i, i+LOTE));
+    if (insErr) throw insErr;
+  }
+}
 function handleRosterFile(file){
   const reader = new FileReader();
   reader.onload = async (e) => {
@@ -2284,14 +2341,21 @@ function handleRosterFile(file){
       const parsed = parseRosterCSV(e.target.result);
       // mescla por categoria: só substitui as listas que vieram com gente no arquivo novo,
       // preservando as demais (ex.: JH/Virtus já preenchidas por conversa) se o CSV não trouxer aquela categoria.
-      const slotsAlterados = Object.keys(parsed).filter(k => parsed[k].length);
+      const slotsAlterados = Object.keys(parsed).filter(k => k !== 'redeExterna' && parsed[k].length);
       slotsAlterados.forEach(k => { ROSTER[k] = parsed[k]; });
       updateRosterDzStatus(file.name);
       await sincronizarEquipeComSupabase(slotsAlterados);
+
+      if (parsed.redeExterna && parsed.redeExterna.length){
+        ROSTER_REDE_EXTERNA = parsed.redeExterna;
+        await sincronizarRedeExternaEquipeComSupabase();
+      }
+
       render();
+      if (currentModule === 'rede-externa') renderRedeExterna();
       const total = ROSTER.C10.length + ROSTER.C13.length + ROSTER.C14.length + ROSTER.JH.length + ROSTER.VIRTUS.length;
-      registrarAuditoria('atualizar_equipe', { slots: slotsAlterados, total, filename: file.name });
-      showToast('Equipe atualizada — ' + total + ' técnicos no total');
+      registrarAuditoria('atualizar_equipe', { slots: slotsAlterados, total, redeExterna: ROSTER_REDE_EXTERNA.length, filename: file.name });
+      showToast('Equipe atualizada — ' + total + ' técnicos' + (ROSTER_REDE_EXTERNA.length ? ' + ' + ROSTER_REDE_EXTERNA.length + ' de Rede Externa' : ''));
     }catch(err){
       console.error(err);
       showToast('Erro ao ler a lista de equipe. Verifique as colunas (Nome, Regional/Empresa).');
