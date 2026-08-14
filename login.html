@@ -10,11 +10,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabaseClient.js"></script>
 <style>
+  /* Tela de login é sempre clara — não segue o tema escolhido no painel (mesma paleta do
+     html[data-theme="light"] do index.html, pra ficar consistente com o resto do produto). */
   :root{
-    --bg: #0A1018; --bg-elev:#0F1826; --surface:#131F30; --surface-2:#1A2941;
-    --border:#24354D; --text:#E7EDF6; --text-dim:#93A3BD; --text-faint:#5C6E8A;
-    --accent:#3457A8; --red:#F0495A; --red-bg:rgba(240,73,90,0.12);
-    --green:#47D359; --on-accent:#FFFFFF;
+    --bg: #F3F5F1; --bg-elev:#FFFFFF; --surface:#FFFFFF; --surface-2:#F7F8FA;
+    --border:#E5E7EB; --text:#002060; --text-dim:#5B6B8C; --text-faint:#8C97A8;
+    --accent:#002060; --accent-dim:#001840; --accent-glow: rgba(0,32,96,0.10);
+    --red: #D63446; --red-bg: rgba(214,52,70,0.10);
+    --green: #1E9E37; --on-accent:#FFFFFF;
     --font-ui:"Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   *{box-sizing:border-box;}
@@ -24,7 +27,7 @@
   }
   .card{
     width:100%; max-width:380px; background:var(--surface); border:1px solid var(--border);
-    border-radius:14px; padding:28px 26px; box-shadow:0 8px 30px rgba(0,0,0,0.35);
+    border-radius:14px; padding:28px 26px; box-shadow:0 1px 3px rgba(0,32,96,0.06), 0 8px 30px rgba(0,32,96,0.06);
   }
   .eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;}
   h1{margin:4px 0 2px 0;font-size:20px;font-weight:750;}
@@ -48,14 +51,50 @@
   .toggle-mode button{background:none;border:none;color:var(--accent);font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px;padding:0;}
   .msg{margin-top:14px;padding:9px 12px;border-radius:8px;font-size:12px;display:none;}
   .msg.error{display:block;background:var(--red-bg);color:var(--red);}
-  .msg.ok{display:block;background:rgba(71,211,89,0.12);color:var(--green);}
+  .msg.ok{display:block;background:rgba(30,158,55,0.10);color:var(--green);}
   .field-signup{display:none;}
   .field-signup.show{display:block;}
+
+  /* ---------- Tela de boas-vindas (pós-login) ---------- */
+  #welcomeScreen{
+    position:fixed; inset:0; background:var(--bg); display:none; align-items:center; justify-content:center;
+    flex-direction:column; z-index:200;
+  }
+  #welcomeScreen.show{display:flex;}
+  .welcome-eyebrow{
+    font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-faint); font-weight:700;
+    opacity:0; animation:fadeUp .5s ease forwards;
+  }
+  .welcome-logo{
+    margin-top:8px; font-size:clamp(28px,6vw,44px); font-weight:800; letter-spacing:.01em;
+    background:linear-gradient(100deg, var(--accent) 0%, var(--accent) 40%, #6FA8FF 50%, var(--accent) 60%, var(--accent) 100%);
+    background-size:250% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    opacity:0; animation:fadeUp .6s ease .15s forwards, shimmer 2.6s linear .7s infinite;
+  }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes shimmer{ from{background-position:200% 0;} to{background-position:-50% 0;} }
+
+  .welcome-bar-wrap{
+    margin-top:34px; width:min(280px,70vw); opacity:0; animation:fadeUp .5s ease .3s forwards;
+  }
+  .welcome-bar-track{
+    height:4px; border-radius:4px; background:var(--border); overflow:hidden;
+  }
+  .welcome-bar-fill{
+    height:100%; width:0%; border-radius:4px;
+    background:linear-gradient(90deg, var(--accent), #4B7BDE);
+    transition:width .12s linear;
+  }
+  .welcome-pct{
+    margin-top:10px; text-align:center; font-size:11.5px; font-weight:700; color:var(--text-faint);
+    font-variant-numeric:tabular-nums;
+  }
 </style>
 </head>
 <body>
 
-<div class="card">
+<div class="card" id="loginCard">
   <span class="eyebrow">GIGA+ FIBRA · Grupo Alloha</span>
   <h1 id="formTitle">Entrar</h1>
   <div class="sub" id="formSub">Acesse o painel com seu e-mail e senha.</div>
@@ -79,6 +118,15 @@
   <div class="toggle-mode">
     <span id="toggleText">Ainda não tem conta?</span>
     <button type="button" id="btnToggleMode">Criar conta</button>
+  </div>
+</div>
+
+<div id="welcomeScreen">
+  <span class="welcome-eyebrow">Bem-vindo ao</span>
+  <span class="welcome-logo">GIGA+ ANALYTICS</span>
+  <div class="welcome-bar-wrap">
+    <div class="welcome-bar-track"><div class="welcome-bar-fill" id="welcomeBarFill"></div></div>
+    <div class="welcome-pct" id="welcomePct">0%</div>
   </div>
 </div>
 
@@ -110,6 +158,30 @@ function esconderMsg(){
   el.className = 'msg';
 }
 
+/* Tela de boas-vindas com barra de progresso 0-100% antes de entrar no painel. */
+function mostrarBoasVindasEIr(destino){
+  document.getElementById('loginCard').style.display = 'none';
+  const tela = document.getElementById('welcomeScreen');
+  const fill = document.getElementById('welcomeBarFill');
+  const pct = document.getElementById('welcomePct');
+  tela.classList.add('show');
+  const DURACAO = 1600;
+  const inicio = performance.now();
+  function passo(agora){
+    const t = Math.min(1, (agora - inicio) / DURACAO);
+    // easing suave no final (ease-out) pra não parecer travado
+    const valor = Math.round(100 * (1 - Math.pow(1 - t, 2)));
+    fill.style.width = valor + '%';
+    pct.textContent = valor + '%';
+    if (t < 1){
+      requestAnimationFrame(passo);
+    } else {
+      window.location.href = destino;
+    }
+  }
+  requestAnimationFrame(passo);
+}
+
 document.getElementById('btnToggleMode').addEventListener('click', () => setModo(modo === 'entrar' ? 'cadastrar' : 'entrar'));
 
 document.getElementById('authForm').addEventListener('submit', async (e) => {
@@ -129,7 +201,7 @@ document.getElementById('authForm').addEventListener('submit', async (e) => {
       });
       if (error) throw error;
       if (data.session){
-        window.location.href = 'index.html';
+        mostrarBoasVindasEIr('index.html');
       } else {
         mostrarMsg('Conta criada! Verifique seu e-mail para confirmar o cadastro antes de entrar.', 'ok');
         setModo('entrar');
@@ -137,11 +209,10 @@ document.getElementById('authForm').addEventListener('submit', async (e) => {
     } else {
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
       if (error) throw error;
-      window.location.href = 'index.html';
+      mostrarBoasVindasEIr('index.html');
     }
   } catch(err){
     mostrarMsg(traduzErro(err.message), 'error');
-  } finally {
     btn.disabled = false;
   }
 });
@@ -154,7 +225,7 @@ function traduzErro(msg){
   return msg;
 }
 
-// Se já tem sessão ativa, pula direto pro painel.
+// Se já tem sessão ativa, pula direto pro painel (sem repetir a tela de boas-vindas).
 (async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) window.location.href = 'index.html';
