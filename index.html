@@ -1993,6 +1993,16 @@ async function parseUploadedCsv(file, expectedSlot){
   if (!meta) return null;
   const text = await readFileAsText(file);
   const objs = csvToObjects(text);
+  // O export de Rede Externa/Infraestrutura usa quase as mesmas colunas do CSV de OS normal,
+  // mas não tem "Bairro" e tem "Horário de Criação/Acionamento" — se um arquivo assim cair
+  // aqui (dropzone errada), ele contaminaria C10/C13/C14/JH/Virtus com tipos que não são da
+  // operação normal (Almoço, Checklist, Manutenção...). O módulo de Rede Externa é
+  // independente dos demais: esse tipo de arquivo só pode alimentar ele, então a importação
+  // normal recusa e orienta a usar a dropzone certa.
+  if (objs.length && !('Bairro' in objs[0]) && ('Horário de Criação/Acionamento' in objs[0])){
+    showToast('"' + file.name + '" parece ser um CSV de Rede Externa/Infraestrutura — importe pelas dropzones de Rede Externa, não aqui.');
+    return null;
+  }
   const rows = normalizeRows(objs, meta.regional, meta.empresa);
   if (!rows.length) return null;
   const dateCounts = {};
@@ -2496,6 +2506,19 @@ const BACKLOG_FILA_TIPO = {
   'MUDANCA DE ENDERECO':'Mudança de Endereço',
   'MUDANCA DE COMODO':'Mudança de Cômodo'
 };
+// Tipos de serviço que contam pro módulo Backlog (tabela Consolidado/por regional em
+// renderBacklogReport) — os mesmos com ícone de caixa 📦 no relatório oficial de hoje, mais
+// Upgrade/Downgrade e Clean Up - Casa Cliente. Qualquer outro tipo que apareça nas OS (Almoço,
+// Apoio, Checklist, Manutenção..., Treinamento etc. — típicos de Rede Externa/Infra) fica de
+// fora do Backlog, mesmo que tenha entrado na base por engano.
+const BACKLOG_TIPOS_PERMITIDOS = [
+  'Ativação',
+  'Reparo Corretivo',
+  'Mudança de Endereço',
+  'Mudança de Cômodo',
+  'Upgrade/Downgrade',
+  'Clean Up - Casa Cliente'
+];
 function semAcento(s){ return (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 
 let BACKLOG_CHAMADOS = null; // { porRegionalTipo:{C10:{Ativação:N,...}}, totalConsiderado, ignoradasUnidade, totalLinhas, uploadedAt, filename }
@@ -4712,6 +4735,11 @@ function gerarDiagnostico(rows, capacityMap, regionalKey, escopoLabel){
 }
 
 function renderBacklogReport(rows){
+  // Backlog só conta os tipos de serviço em BACKLOG_TIPOS_PERMITIDOS (regra de negócio
+  // confirmada com o usuário) — qualquer outro tipo presente na base (Almoço, Apoio,
+  // Checklist, Manutenção..., Treinamento etc.) fica de fora do Backlog, mesmo que a
+  // importação em si esteja correta.
+  rows = rows.filter(r => BACKLOG_TIPOS_PERMITIDOS.includes(r.tipo));
   const container = document.getElementById('backlogReportContainer');
   const diagEl = document.getElementById('diagnosticoOperacao');
   let html = '';
