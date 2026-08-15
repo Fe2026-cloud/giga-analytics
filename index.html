@@ -3069,13 +3069,11 @@ function renderVisaoGeral(rows){
   const improdPct = (concluidas+naoConcluidas+abertas) ? (100*naoConcluidas/(concluidas+naoConcluidas+abertas)) : null;
 
   const efetividade = (concluidas+naoConcluidas) ? (100*concluidas/(concluidas+naoConcluidas)) : null;
+  // Indicador "Prazo" (Indicadores Estratégicos) = só Reparo Corretivo, mesma base do card
+  // "SLA 24h · Reparo Corretivo" e do gauge de Prazo — Ativação tem meta/prazo próprios
+  // (SLA 36h) e não entra mais nessa conta, pra não misturar os dois números.
   const reparoConcl = rows.filter(r => r.tipo==='Reparo Corretivo' && r.status==='concluído');
-  const ativConcl = rows.filter(r => r.tipo==='Ativação' && r.status==='concluído');
-  const slaReparo = calcSlaIdeal(reparoConcl);
-  const slaAtiv = calcSlaIdeal(ativConcl);
-  const totalPrazoComDado = slaReparo.comDado + slaAtiv.comDado;
-  const totalPrazoIdeal = slaReparo.ideal + slaAtiv.ideal;
-  const pctPrazo = totalPrazoComDado ? (100*totalPrazoIdeal/totalPrazoComDado) : null;
+  const pctPrazo = calcSlaIdeal(reparoConcl).pct;
   const pctProdutividade = (concluidas+abertas) ? (100*concluidas/(concluidas+abertas)) : null; // throughput: concluídas / (concluídas+em aberto)
   const pctPresenca = presencaHoje();
 
