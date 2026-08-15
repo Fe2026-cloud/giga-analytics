@@ -134,8 +134,10 @@
   }
   .dropzone.drag{border-color:var(--accent);background:#132A28;}
   .dropzone.filled{border-style:solid;border-color:var(--accent-dim);}
-  .dz-head{display:flex;align-items:center;justify-content:space-between;}
+  .dz-head{display:flex;align-items:center;justify-content:space-between;gap:6px;}
   .dz-regional{font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--accent);letter-spacing:.02em;}
+  .dz-clear-btn{background:transparent;border:none;color:var(--text-faint);font-size:13px;cursor:pointer;padding:2px 5px;border-radius:6px;flex-shrink:0;transition:background .15s,color .15s;}
+  .dz-clear-btn:hover{background:var(--red-bg);color:var(--red);}
   .dz-regional-name{font-size:11px;color:var(--text-faint);}
   .dz-status{font-size:11.5px;color:var(--text-dim);}
   .dz-status b{color:var(--text);}
@@ -656,27 +658,27 @@
     <div class="section-title" style="margin-top:20px;"><h2>Carregar bases (.csv)</h2><span class="hint">arraste vários arquivos de uma vez ou selecione em lote — o dia mais recente vira a base operacional, os dias anteriores vão direto pro histórico</span></div>
     <div class="upload-grid" style="grid-template-columns:repeat(5,1fr);">
       <div class="dropzone" data-regional="C10" id="dz-C10">
-        <div class="dz-head"><span class="dz-regional">C10 — LS - MOP</span></div>
+        <div class="dz-head"><span class="dz-regional">C10 — LS - MOP</span><button type="button" class="dz-clear-btn" data-clear-chave="C10" title="Limpar dados de C10">🗑</button></div>
         <span class="dz-status" id="dz-status-C10">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" data-regional="C10"></label>
       </div>
       <div class="dropzone" data-regional="C13" id="dz-C13">
-        <div class="dz-head"><span class="dz-regional">C13 — VP - MOP</span></div>
+        <div class="dz-head"><span class="dz-regional">C13 — VP - MOP</span><button type="button" class="dz-clear-btn" data-clear-chave="C13" title="Limpar dados de C13">🗑</button></div>
         <span class="dz-status" id="dz-status-C13">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" data-regional="C13"></label>
       </div>
       <div class="dropzone" data-regional="C14" id="dz-C14">
-        <div class="dz-head"><span class="dz-regional">C14 — LN - MOP</span></div>
+        <div class="dz-head"><span class="dz-regional">C14 — LN - MOP</span><button type="button" class="dz-clear-btn" data-clear-chave="C14" title="Limpar dados de C14">🗑</button></div>
         <span class="dz-status" id="dz-status-C14">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" data-regional="C14"></label>
       </div>
       <div class="dropzone" data-regional="JH" id="dz-JH">
-        <div class="dz-head"><span class="dz-regional">JH Telecom</span></div>
+        <div class="dz-head"><span class="dz-regional">JH Telecom</span><button type="button" class="dz-clear-btn" data-clear-chave="JH" title="Limpar dados de JH Telecom">🗑</button></div>
         <span class="dz-status" id="dz-status-JH">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" data-regional="JH"></label>
       </div>
       <div class="dropzone" data-regional="VIRTUS" id="dz-VIRTUS">
-        <div class="dz-head"><span class="dz-regional">Virtus</span></div>
+        <div class="dz-head"><span class="dz-regional">Virtus</span><button type="button" class="dz-clear-btn" data-clear-chave="VIRTUS" title="Limpar dados de Virtus">🗑</button></div>
         <span class="dz-status" id="dz-status-VIRTUS">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" data-regional="VIRTUS"></label>
       </div>
@@ -695,12 +697,12 @@
     </div>
     <div class="upload-grid" style="grid-template-columns:320px 320px;margin-top:12px;">
       <div class="dropzone" id="dz-REDEEXTERNAINFRA">
-        <div class="dz-head"><span class="dz-regional">🏗️ Infraestrutura POP (CSV diário)</span></div>
+        <div class="dz-head"><span class="dz-regional">🏗️ Infraestrutura POP (CSV diário)</span><button type="button" class="dz-clear-btn" data-clear-chave="Infraestrutura POP" title="Limpar dados de Infraestrutura POP">🗑</button></div>
         <span class="dz-status" id="dz-status-REDEEXTERNAINFRA">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-infra-file-input"></label>
       </div>
       <div class="dropzone" id="dz-REDEEXTERNAREDES">
-        <div class="dz-head"><span class="dz-regional">🌐 Rede Externa (CSV diário)</span></div>
+        <div class="dz-head"><span class="dz-regional">🌐 Rede Externa (CSV diário)</span><button type="button" class="dz-clear-btn" data-clear-chave="Rede Externa" title="Limpar dados de Rede Externa">🗑</button></div>
         <span class="dz-status" id="dz-status-REDEEXTERNAREDES">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-redes-file-input"></label>
       </div>
@@ -1799,6 +1801,45 @@ async function carregarRedeExternaDoSupabase(){
 async function limparOrdensServicoDoSupabase(){
   const { error } = await supabaseClient.from('importacoes_csv').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   if (error) throw error; // cascade apaga as ordens_servico ligadas
+}
+// Limpa só 1 regional/empresa (operacional + histórico) — bem menos destrutivo que "Limpar base".
+async function limparSlotDoSupabase(slot){
+  const { error } = await supabaseClient.from('importacoes_csv').delete().eq('slot', slot);
+  if (error) throw error;
+}
+async function limparRedeExternaGrupoDoSupabase(grupo){
+  const { error } = await supabaseClient.from('rede_externa_importacoes').delete().eq('grupo', grupo);
+  if (error) throw error;
+}
+// Botão 🗑 de cada dropzone — limpa só aquela regional/empresa/grupo (mesma trava de admin do
+// "Limpar base", já que apagar dados importados sempre afeta todo mundo que usa o painel).
+async function limparIndividual(chave){
+  if (!ehAdministrador()){ showToast('Só administrador pode limpar dados importados.'); return; }
+  const ehRede = REDE_EXT_GRUPOS.includes(chave);
+  const label = ehRede ? chave : (chave + ' — ' + (REGIONAL_LABEL[chave] || EMPRESA_LABEL[chave] || chave));
+  if (!confirm(`Isso vai apagar TODOS os dados (operacional + histórico) de "${label}" no banco compartilhado — afeta todo mundo. Continuar?`)) return;
+  try{
+    if (ehRede){
+      await limparRedeExternaGrupoDoSupabase(chave);
+      REDE_EXT_OPERACIONAL[chave] = null;
+      REDE_EXT_HIST[chave] = {};
+      updateDzStatusRedeExterna(chave);
+      if (currentModule === 'rede-externa') renderRedeExterna();
+    } else {
+      await limparSlotDoSupabase(chave);
+      OPERACIONAL[chave] = null;
+      BASE_HIST[chave] = {};
+      updateDzStatus(chave);
+      await updateHistory();
+      refreshFilters();
+      render();
+    }
+    registrarAuditoria('limpar_slot', { chave });
+    showToast('Dados de ' + label + ' apagados');
+  }catch(err){
+    console.error('Falha ao limpar', chave, err);
+    showToast('Erro ao limpar ' + label + ': ' + err.message);
+  }
 }
 async function loadPersisted(){
   try{
@@ -4815,6 +4856,7 @@ function aplicarRestricoesDePerfil(){
   // mesmo que operador normalmente possa importar/editar.
   const btnClear = document.getElementById('btnClear');
   if (btnClear) btnClear.style.display = ehAdmin ? '' : 'none';
+  document.querySelectorAll('.dz-clear-btn').forEach(btn => { btn.style.display = ehAdmin ? '' : 'none'; });
   const menuAdmin = document.querySelector('.sidebar-item[data-module="administracao"]');
   if (menuAdmin) menuAdmin.style.display = ehAdmin ? '' : 'none';
 }
@@ -5058,6 +5100,9 @@ async function init(){
     render();
     registrarAuditoria('limpar_base', {});
     showToast('Base limpa');
+  });
+  document.querySelectorAll('.dz-clear-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.preventDefault(); limparIndividual(btn.dataset.clearChave); });
   });
 
   setImportOpen(false);
