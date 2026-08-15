@@ -2510,11 +2510,13 @@ const BACKLOG_FILA_TIPO = {
   'MUDANCA DE ENDERECO':'Mudança de Endereço',
   'MUDANCA DE COMODO':'Mudança de Cômodo'
 };
-// Tipos de serviço que contam pro módulo Backlog (tabela Consolidado/por regional em
-// renderBacklogReport) — os mesmos com ícone de caixa 📦 no relatório oficial de hoje, mais
-// Upgrade/Downgrade e Clean Up - Casa Cliente. Qualquer outro tipo que apareça nas OS (Almoço,
-// Apoio, Checklist, Manutenção..., Treinamento etc. — típicos de Rede Externa/Infra) fica de
-// fora do Backlog, mesmo que tenha entrado na base por engano.
+// Lista oficial de tipos de serviço da operação normal (C10/C13/C14/JH/Virtus) — os mesmos
+// com ícone de caixa 📦 no relatório oficial de hoje, mais Upgrade/Downgrade e Clean Up -
+// Casa Cliente. Usada em todo lugar que mostra/soma por "tipo de serviço" nos módulos normais
+// (Backlog, Visão Geral, Produção por tipo, Produção por Recurso, Capacity): qualquer outro
+// valor que apareça em `tipo` nas OS (Almoço, Apoio, Checklist, Manutenção..., Treinamento
+// etc.) fica de fora dessas tabelas. NÃO se aplica ao módulo Rede Externa, que é independente
+// e tem sua própria lista de tipos.
 const BACKLOG_TIPOS_PERMITIDOS = [
   'Ativação',
   'Reparo Corretivo',
@@ -3111,8 +3113,9 @@ function renderVisaoGeral(rows){
 
   document.getElementById('vgRow5').innerHTML = cardsHTML + strategicHTML;
 
-  // Produção: Serviço vs Status
-  const tipos = [...new Set(rows.map(r=>r.tipo))].sort();
+  // Produção: Serviço vs Status — só os tipos de serviço reais da operação (mesma lista do
+  // Backlog/Produção por Recurso); qualquer outro tipo presente na base fica fora daqui.
+  const tipos = [...new Set(rows.map(r=>r.tipo))].filter(t => BACKLOG_TIPOS_PERMITIDOS.includes(t)).sort();
   let tblHtml = '<thead><tr><th>Serviço</th><th class="num col-green">Concluído</th><th class="num col-peach">Improdutivo</th><th class="num col-gray">Cancelado</th><th class="num col-total">Total</th></tr></thead><tbody>';
   if (!tipos.length) tblHtml += '<tr><td colspan="5" class="muted">Sem dados</td></tr>';
   tipos.forEach(t => {
@@ -3640,7 +3643,7 @@ function resumoMesGestor(gestorKey){
 }
 
 /* ============================= PRODUÇÃO POR RECURSO (planilha) ============================= */
-const TIPOS_PROD_RECURSO = ['Ativação','Reparo Corretivo','Mudança de Endereço','Mudança de Cômodo','Upgrade/Downgrade','Clean Up - Casa Cliente'];
+const TIPOS_PROD_RECURSO = BACKLOG_TIPOS_PERMITIDOS; // mesma lista oficial de tipos de serviço
 const STATUS_LABEL_PR = { 'concluído':'Concluídas', 'não concluído':'Não Concluídas', 'em rota':'Em Rota', 'iniciado':'Iniciadas', 'pendente':'Pendentes', 'suspenso':'Suspensas', 'cancelado':'Canceladas' };
 let prWeekOffset = 0;
 let prMonthOffset = 0; // 0 = mês vigente, -1 = mês anterior (usado só quando prViewMode==='mes')
@@ -4231,6 +4234,8 @@ function buildTipoPivotTable(rowsSubset){
 }
 
 function renderProducaoPorTipo(rows){
+  // Só os tipos de serviço reais da operação (mesma lista do Backlog/Produção por Recurso).
+  rows = rows.filter(r => BACKLOG_TIPOS_PERMITIDOS.includes(r.tipo));
   const container = document.getElementById('producaoTipoContainer');
   let html = '';
   if (currentFilterType === 'all'){
@@ -4784,12 +4789,8 @@ function renderBacklogReport(rows){
 
 /* ---------- modal de Capacity ---------- */
 function openCapacityModal(){
-  const tiposSet = new Set();
-  SLOT_KEYS.forEach(slot => {
-    if (OPERACIONAL[slot]) OPERACIONAL[slot].rows.forEach(r => tiposSet.add(r.tipo));
-    Object.values(BASE_HIST[slot]).forEach(entry => entry.rows.forEach(r => tiposSet.add(r.tipo)));
-  });
-  const tipos = [...tiposSet].sort();
+  // Capacity só faz sentido pros tipos de serviço reais da operação (é o que o Backlog usa).
+  const tipos = [...BACKLOG_TIPOS_PERMITIDOS].sort();
   let html = '<thead><tr><th>Tipo de serviço</th><th class="num">C10 · '+REGIONAL_LABEL.C10+'</th><th class="num">C14 · '+REGIONAL_LABEL.C14+'</th><th class="num">C13 · '+REGIONAL_LABEL.C13+'</th></tr></thead><tbody>';
   tipos.forEach(t => {
     html += `<tr><td>${t}</td>` + REGIONAIS_ORDEM.map(r => {
