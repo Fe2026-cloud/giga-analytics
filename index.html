@@ -2139,7 +2139,7 @@ function updateDzStatusRedeExterna(grupo){
 // Desativado temporariamente: a lista de técnicos (rede_externa_equipe) ainda não foi aplicada
 // no banco (instabilidade de login no meio do processo). O código de baixo já está pronto —
 // é só virar pra "true" quando a lista estiver no ar.
-const REDE_EXTERNA_MODULO_ATIVO = false;
+const REDE_EXTERNA_MODULO_ATIVO = true;
 function renderRedeExterna(){
   const el = document.getElementById('redeExternaContainer');
   if (!el) return;
