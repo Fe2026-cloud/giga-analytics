@@ -1053,6 +1053,17 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="limparArquivosModalBackdrop">
+  <div class="modal" style="max-width:640px;">
+    <h3 id="limparArquivosTitulo">Arquivos importados</h3>
+    <div class="desc">Apaga só o arquivo escolhido (operacional ou um dia específico do histórico) — não mexe no resto.</div>
+    <div class="table-scroll" style="max-height:50vh;"><table class="pivot compact-table" id="limparArquivosTable"></table></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="btnFecharLimparArquivos">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1727,7 +1738,7 @@ async function carregarOrdensServicoDoSupabase(){
     const ic = mapaImportacoes[row.importacao_id];
     if (!ic) return; // linha órfã (não deveria acontecer, FK garante)
     const key = ic.slot + '|' + ic.data_referencia;
-    if (!grupos[key]) grupos[key] = { slot: ic.slot, regional: ic.regional, empresa: ic.empresa, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
+    if (!grupos[key]) grupos[key] = { id: ic.id, slot: ic.slot, regional: ic.regional, empresa: ic.empresa, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
     grupos[key].rows.push({
       regional: ic.regional, empresa: ic.empresa,
       os: row.os || '', data: row.data || '', status: row.status || '',
@@ -1740,7 +1751,7 @@ async function carregarOrdensServicoDoSupabase(){
     });
   });
   Object.values(grupos).forEach(g => {
-    const entry = { rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
+    const entry = { id: g.id, rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
     if (g.vigente) OPERACIONAL[g.slot] = entry; else BASE_HIST[g.slot][g.data] = entry;
   });
 }
@@ -1779,7 +1790,7 @@ async function carregarRedeExternaDoSupabase(){
     const ic = mapaImportacoes[row.importacao_id];
     if (!ic || !REDE_EXT_OPERACIONAL.hasOwnProperty(ic.grupo)) return;
     const key = ic.grupo + '|' + ic.data_referencia;
-    if (!grupos[key]) grupos[key] = { grupo: ic.grupo, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
+    if (!grupos[key]) grupos[key] = { id: ic.id, grupo: ic.grupo, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
     grupos[key].rows.push({
       grupo: ic.grupo,
       os: row.os || '', data: row.data || '', status: row.status || '',
@@ -1792,7 +1803,7 @@ async function carregarRedeExternaDoSupabase(){
     });
   });
   Object.values(grupos).forEach(g => {
-    const entry = { rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
+    const entry = { id: g.id, rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
     if (g.vigente) REDE_EXT_OPERACIONAL[g.grupo] = entry; else REDE_EXT_HIST[g.grupo][g.data] = entry;
   });
 }
@@ -1811,34 +1822,81 @@ async function limparRedeExternaGrupoDoSupabase(grupo){
   const { error } = await supabaseClient.from('rede_externa_importacoes').delete().eq('grupo', grupo);
   if (error) throw error;
 }
-// Botão 🗑 de cada dropzone — limpa só aquela regional/empresa/grupo (mesma trava de admin do
-// "Limpar base", já que apagar dados importados sempre afeta todo mundo que usa o painel).
-async function limparIndividual(chave){
-  if (!ehAdministrador()){ showToast('Só administrador pode limpar dados importados.'); return; }
+// Botão 🗑 de cada dropzone — abre um modal listando os arquivos importados daquela regional/
+// grupo (vigente + cada dia do histórico), pra apagar só o arquivo escolhido, não tudo de uma vez.
+let limparArquivosContexto = null; // { chave, ehRede }
+function labelRegionalOuGrupo(chave){
   const ehRede = REDE_EXT_GRUPOS.includes(chave);
-  const label = ehRede ? chave : (chave + ' — ' + (REGIONAL_LABEL[chave] || EMPRESA_LABEL[chave] || chave));
-  if (!confirm(`Isso vai apagar TODOS os dados (operacional + histórico) de "${label}" no banco compartilhado — afeta todo mundo. Continuar?`)) return;
+  return ehRede ? chave : (chave + ' — ' + (REGIONAL_LABEL[chave] || EMPRESA_LABEL[chave] || chave));
+}
+function limparIndividual(chave){
+  if (!ehAdministrador()){ showToast('Só administrador pode apagar arquivos importados.'); return; }
+  limparArquivosContexto = { chave, ehRede: REDE_EXT_GRUPOS.includes(chave) };
+  document.getElementById('limparArquivosTitulo').textContent = 'Arquivos importados — ' + labelRegionalOuGrupo(chave);
+  renderListaArquivosParaLimpar();
+  document.getElementById('limparArquivosModalBackdrop').classList.add('open');
+}
+function fecharModalLimparArquivos(){
+  document.getElementById('limparArquivosModalBackdrop').classList.remove('open');
+  limparArquivosContexto = null;
+}
+function renderListaArquivosParaLimpar(){
+  if (!limparArquivosContexto) return;
+  const { chave, ehRede } = limparArquivosContexto;
+  const op = ehRede ? REDE_EXT_OPERACIONAL[chave] : OPERACIONAL[chave];
+  const hist = ehRede ? (REDE_EXT_HIST[chave]||{}) : (BASE_HIST[chave]||{});
+  const itens = [];
+  if (op) itens.push({ ...op, vigente: true });
+  Object.values(hist).forEach(h => itens.push({ ...h, vigente: false }));
+  itens.sort((a,b) => { const da=parseDDMMYY(a.data), db=parseDDMMYY(b.data); return (db?db.getTime():0)-(da?da.getTime():0); });
+
+  let html = '<thead><tr><th>Data</th><th>Arquivo</th><th class="num">Linhas</th><th>Status</th><th></th></tr></thead><tbody>';
+  if (!itens.length) html += '<tr><td colspan="5" class="muted">Nenhum arquivo importado ainda.</td></tr>';
+  itens.forEach(it => {
+    html += `<tr>
+      <td>${it.data}</td>
+      <td>${it.filename || '—'}</td>
+      <td class="num">${it.rows.length}</td>
+      <td>${it.vigente ? '<span class="pill green">Vigente</span>' : '<span class="pill dim">Histórico</span>'}</td>
+      <td class="num"><button type="button" class="btn ghost" style="padding:3px 8px;font-size:11px;" data-apagar-id="${it.id||''}" data-apagar-data="${it.data}">🗑 Apagar</button></td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  const tbl = document.getElementById('limparArquivosTable');
+  tbl.innerHTML = html;
+  tbl.querySelectorAll('[data-apagar-id]').forEach(btn => {
+    btn.addEventListener('click', () => apagarArquivoImportado(btn.dataset.apagarId, btn.dataset.apagarData));
+  });
+}
+async function apagarArquivoImportado(id, data){
+  if (!limparArquivosContexto) return;
+  const { chave, ehRede } = limparArquivosContexto;
+  if (!id){ showToast('Esse arquivo ainda não tem id salvo — recarregue a página e tente de novo.'); return; }
+  if (!confirm(`Apagar o arquivo de ${data} (${labelRegionalOuGrupo(chave)})? Essa ação não pode ser desfeita.`)) return;
   try{
     if (ehRede){
-      await limparRedeExternaGrupoDoSupabase(chave);
-      REDE_EXT_OPERACIONAL[chave] = null;
-      REDE_EXT_HIST[chave] = {};
+      const { error } = await supabaseClient.from('rede_externa_importacoes').delete().eq('id', id);
+      if (error) throw error;
+      if (REDE_EXT_OPERACIONAL[chave] && REDE_EXT_OPERACIONAL[chave].data === data) REDE_EXT_OPERACIONAL[chave] = null;
+      delete REDE_EXT_HIST[chave][data];
       updateDzStatusRedeExterna(chave);
       if (currentModule === 'rede-externa') renderRedeExterna();
     } else {
-      await limparSlotDoSupabase(chave);
-      OPERACIONAL[chave] = null;
-      BASE_HIST[chave] = {};
+      const { error } = await supabaseClient.from('importacoes_csv').delete().eq('id', id);
+      if (error) throw error;
+      if (OPERACIONAL[chave] && OPERACIONAL[chave].data === data) OPERACIONAL[chave] = null;
+      delete BASE_HIST[chave][data];
       updateDzStatus(chave);
       await updateHistory();
       refreshFilters();
       render();
     }
-    registrarAuditoria('limpar_slot', { chave });
-    showToast('Dados de ' + label + ' apagados');
+    registrarAuditoria('apagar_arquivo_importado', { chave, data });
+    showToast('Arquivo de ' + data + ' apagado.');
+    renderListaArquivosParaLimpar();
   }catch(err){
-    console.error('Falha ao limpar', chave, err);
-    showToast('Erro ao limpar ' + label + ': ' + err.message);
+    console.error('Falha ao apagar arquivo', chave, data, err);
+    showToast('Erro ao apagar: ' + err.message);
   }
 }
 async function loadPersisted(){
@@ -1988,7 +2046,7 @@ async function handleFilesBatchInterno(fileList, expectedSlot){
     const op = OPERACIONAL[slot];
     try{
       if (!op || data === op.data){
-        await upsertImportacao(slot, data, entry, true);
+        entry.id = await upsertImportacao(slot, data, entry, true);
         OPERACIONAL[slot] = entry; okCount++; continue;
       }
       const opDate = parseDDMMYY(op.data), newDate = parseDDMMYY(data);
@@ -1999,18 +2057,18 @@ async function handleFilesBatchInterno(fileList, expectedSlot){
         }
         if (!BASE_HIST[slot][op.data] || dupeChoice==='sub'){
           await marcarComoHistorico(slot, op.data);
-          BASE_HIST[slot][op.data] = { rows: op.rows, uploadedAt: op.uploadedAt, filename: op.filename, data: op.data };
+          BASE_HIST[slot][op.data] = { id: op.id, rows: op.rows, uploadedAt: op.uploadedAt, filename: op.filename, data: op.data };
         } else { dupeSkipped++; }
-        await upsertImportacao(slot, data, entry, true);
+        entry.id = await upsertImportacao(slot, data, entry, true);
         OPERACIONAL[slot] = entry; okCount++;
       } else {
         if (BASE_HIST[slot][data]){
           if (dupeChoice===null){
             dupeChoice = confirm(`O arquivo referente ao dia ${data} da regional ${slot} já existe no histórico.\n\nOK = Substituir todos os conflitos deste lote\nCancelar = Ignorar todos os conflitos deste lote`) ? 'sub' : 'ign';
           }
-          if (dupeChoice==='sub'){ await upsertImportacao(slot, data, entry, false); BASE_HIST[slot][data] = entry; okCount++; } else { dupeSkipped++; }
+          if (dupeChoice==='sub'){ entry.id = await upsertImportacao(slot, data, entry, false); BASE_HIST[slot][data] = entry; okCount++; } else { dupeSkipped++; }
         } else {
-          await upsertImportacao(slot, data, entry, false);
+          entry.id = await upsertImportacao(slot, data, entry, false);
           BASE_HIST[slot][data] = entry; okCount++;
         }
       }
@@ -2084,17 +2142,17 @@ async function handleRedeExternaCsv(file, grupo){
 
     const opAtual = REDE_EXT_OPERACIONAL[grupo];
     if (!opAtual || data === opAtual.data){
-      await upsertImportacaoRedeExterna(grupo, data, entry, true);
+      entry.id = await upsertImportacaoRedeExterna(grupo, data, entry, true);
       REDE_EXT_OPERACIONAL[grupo] = entry;
     } else {
       const opDate = parseDDMMYY(opAtual.data), newDate = parseDDMMYY(data);
       if (newDate.getTime() > opDate.getTime()){
         await marcarComoHistoricoRedeExterna(grupo, opAtual.data);
         REDE_EXT_HIST[grupo][opAtual.data] = opAtual;
-        await upsertImportacaoRedeExterna(grupo, data, entry, true);
+        entry.id = await upsertImportacaoRedeExterna(grupo, data, entry, true);
         REDE_EXT_OPERACIONAL[grupo] = entry;
       } else {
-        await upsertImportacaoRedeExterna(grupo, data, entry, false);
+        entry.id = await upsertImportacaoRedeExterna(grupo, data, entry, false);
         REDE_EXT_HIST[grupo][data] = entry;
       }
     }
@@ -5061,6 +5119,8 @@ async function init(){
   document.getElementById('btnCancelCapacity').addEventListener('click', closeCapacityModal);
   document.getElementById('btnSaveCapacity').addEventListener('click', saveCapacity);
   document.getElementById('capacityModalBackdrop').addEventListener('click', e => { if (e.target.id === 'capacityModalBackdrop') closeCapacityModal(); });
+  document.getElementById('btnFecharLimparArquivos').addEventListener('click', fecharModalLimparArquivos);
+  document.getElementById('limparArquivosModalBackdrop').addEventListener('click', e => { if (e.target.id === 'limparArquivosModalBackdrop') fecharModalLimparArquivos(); });
   document.getElementById('btnSidebarToggle').addEventListener('click', toggleSidebar);
   document.getElementById('roster-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRosterFile(e.target.files[0]); });
   document.getElementById('backlog-xlsx-input').addEventListener('change', e => { if (e.target.files[0]) handleBacklogXlsx(e.target.files[0]); });
