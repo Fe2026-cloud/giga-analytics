@@ -568,9 +568,13 @@
   .venc-card .value{font-size:24px;font-weight:750;font-family:var(--font-ui);}
   .venc-card .label{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;font-weight:700;}
 
-  .pareto-row{display:grid;grid-template-columns:170px 1fr 60px 70px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
-  .pareto-bar-track{background:var(--border-soft);border-radius:4px;height:10px;overflow:hidden;}
-  .pareto-bar-fill{height:100%;background:var(--accent);}
+  .pareto-row{display:grid;grid-template-columns:150px 1fr 34px 62px;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--border-soft);font-size:11.5px;}
+  .pareto-bar-track{background:var(--border-soft);border-radius:4px;height:8px;overflow:hidden;}
+  .pareto-bar-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .2s;}
+  .pareto-bar-fill.sev-red{background:var(--red);}
+  .pareto-bar-fill.sev-peach{background:var(--peach);}
+  .pareto-bar-fill.sev-yellow{background:var(--yellow);}
+  .pareto-bar-fill.sev-green{background:var(--green);}
   .pareto-row .num{text-align:right;font-family:var(--font-mono);}
 
   /* ---------- report de producao regional (backlog) ---------- */
@@ -4421,9 +4425,13 @@ function renderImprodutivas(rows){
       const pct = total ? (100*c/total) : 0;
       const pctAcum = total ? (100*acumulado/total) : 0;
       const barWidth = maxCount ? (100*c/maxCount) : 0;
+      // cor da barra segue o peso do motivo no total (não o tamanho relativo ao maior) —
+      // motivos que respondem por boa parte das não conclusões chamam mais atenção (vermelho),
+      // os de cauda longa ficam em verde.
+      const sev = pct >= 25 ? 'sev-red' : pct >= 12 ? 'sev-peach' : pct >= 5 ? 'sev-yellow' : 'sev-green';
       html += `<div class="pareto-row">
         <span>${motivo}</span>
-        <span class="pareto-bar-track"><span class="pareto-bar-fill" style="width:${barWidth}%"></span></span>
+        <span class="pareto-bar-track"><span class="pareto-bar-fill ${sev}" style="width:${barWidth}%"></span></span>
         <span class="num">${c}</span>
         <span class="num">${pct.toFixed(0)}% <span class="muted">(ac. ${pctAcum.toFixed(0)}%)</span></span>
       </div>`;
