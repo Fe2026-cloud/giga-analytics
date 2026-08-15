@@ -2876,6 +2876,17 @@ function slaTierConcluido(row){
   if (horas <= cfg.max) return 'max';
   return 'outlier';
 }
+// % de OS concluídas dentro do prazo ideal, contando só as que têm abertura/fechamento
+// válidos (mesma regra do gauge de Prazo e da tabela Prazos por cidade). OS concluídas sem
+// dado de horário ficam fora do numerador E do denominador — sem essa função, alguns cantos
+// do painel colocavam essas OS só no denominador (nunca no numerador), o que derrubava a %
+// artificialmente e fazia o mesmo recorte mostrar SLAs diferentes em telas diferentes.
+function calcSlaIdeal(rowsConcluidas){
+  const comDado = rowsConcluidas.filter(r => slaTierConcluido(r));
+  const ideal = comDado.filter(r => slaTierConcluido(r) === 'ideal').length;
+  const pct = comDado.length ? (100*ideal/comDado.length) : null;
+  return { pct, ideal, comDado: comDado.length, totalConcl: rowsConcluidas.length };
+}
 function slaAlertaAberto(row, now){
   // para OS em backlog de Reparo Corretivo / Ativacao: retorna {corHex, label, horasRestantes}
   const cfg = row.tipo === 'Reparo Corretivo' ? CONFIG.reparo : row.tipo === 'Ativação' ? CONFIG.ativacao : null;
@@ -2961,8 +2972,8 @@ function renderEmpresas(rows){
   const blocks = ['JH','VIRTUS'].map(empresa => {
     const rowsEmpresa = rows.filter(r => r.empresa === empresa);
     const reparoConcl = rowsEmpresa.filter(r => r.tipo === 'Reparo Corretivo' && r.status === 'concluído');
-    const reparoIdeal = reparoConcl.filter(r => slaTierConcluido(r) === 'ideal');
-    const pctSla = reparoConcl.length ? Math.round(100*reparoIdeal.length/reparoConcl.length) : null;
+    const slaReparo = calcSlaIdeal(reparoConcl);
+    const pctSla = slaReparo.pct===null ? null : Math.round(slaReparo.pct);
 
     const concluido = rowsEmpresa.filter(r => r.status === 'concluído').length;
     const naoConcluido = rowsEmpresa.filter(r => r.status === 'não concluído').length;
@@ -2975,7 +2986,7 @@ function renderEmpresas(rows){
           <div class="empresa-card">
             <div class="label">SLA 24h</div>
             <div class="value ${pctSla===null?'':pctColor(pctSla)}">${pctSla===null?'—':pctSla+'%'}</div>
-            <div class="sub">${reparoConcl.length} reparos concluídos</div>
+            <div class="sub">${slaReparo.comDado} reparos com prazo medido</div>
           </div>
           <div class="empresa-card">
             <div class="label">Produção</div>
@@ -3059,12 +3070,12 @@ function renderVisaoGeral(rows){
 
   const efetividade = (concluidas+naoConcluidas) ? (100*concluidas/(concluidas+naoConcluidas)) : null;
   const reparoConcl = rows.filter(r => r.tipo==='Reparo Corretivo' && r.status==='concluído');
-  const reparoIdeal = reparoConcl.filter(r => slaTierConcluido(r)==='ideal');
   const ativConcl = rows.filter(r => r.tipo==='Ativação' && r.status==='concluído');
-  const ativIdeal = ativConcl.filter(r => slaTierConcluido(r)==='ideal');
-  const totalPrazoConcl = reparoConcl.length + ativConcl.length;
-  const totalPrazoIdeal = reparoIdeal.length + ativIdeal.length;
-  const pctPrazo = totalPrazoConcl ? (100*totalPrazoIdeal/totalPrazoConcl) : null;
+  const slaReparo = calcSlaIdeal(reparoConcl);
+  const slaAtiv = calcSlaIdeal(ativConcl);
+  const totalPrazoComDado = slaReparo.comDado + slaAtiv.comDado;
+  const totalPrazoIdeal = slaReparo.ideal + slaAtiv.ideal;
+  const pctPrazo = totalPrazoComDado ? (100*totalPrazoIdeal/totalPrazoComDado) : null;
   const pctProdutividade = (concluidas+abertas) ? (100*concluidas/(concluidas+abertas)) : null; // throughput: concluídas / (concluídas+em aberto)
   const pctPresenca = presencaHoje();
 
@@ -3168,11 +3179,9 @@ function reportIndicadores(rows){
   const abertas = ordensAbertasCount(rows);
   const projecao = Math.round(concluidas + (abertas * efetividadeProjecaoAtual()));
   const reparoConcl = rows.filter(r=>r.tipo==='Reparo Corretivo' && r.status==='concluído');
-  const reparoIdeal = reparoConcl.filter(r=>slaTierConcluido(r)==='ideal');
-  const pctReparo = reparoConcl.length ? (100*reparoIdeal.length/reparoConcl.length) : null;
+  const pctReparo = calcSlaIdeal(reparoConcl).pct;
   const ativConcl = rows.filter(r=>r.tipo==='Ativação' && r.status==='concluído');
-  const ativIdeal = ativConcl.filter(r=>slaTierConcluido(r)==='ideal');
-  const pctAtiv = ativConcl.length ? (100*ativIdeal.length/ativConcl.length) : null;
+  const pctAtiv = calcSlaIdeal(ativConcl).pct;
   return { concluidas, naoConcluidas, efetividade, iniciadas, projecao, pctReparo, pctAtiv, abertas };
 }
 let currentReportTipo = 'GERAL';
@@ -3731,8 +3740,7 @@ function prComputeTable(){
     const falta = diasTrabalhados ? (meta-total) : null;
 
     const reparoConcl = rec.todasLinhas.filter(r=>r.tipo==='Reparo Corretivo' && r.status==='concluído');
-    const reparoIdeal = reparoConcl.filter(r=>slaTierConcluido(r)==='ideal');
-    const sla = reparoConcl.length ? (100*reparoIdeal.length/reparoConcl.length) : null;
+    const sla = calcSlaIdeal(reparoConcl).pct;
 
     const concluidas = rec.todasLinhas.filter(r=>r.status==='concluído').length;
     const despachadas = rec.todasLinhas.filter(r=>['concluído','não concluído','iniciado','em rota','pendente','suspenso'].includes(r.status)).length;
@@ -3973,19 +3981,19 @@ function renderKPIs(rows, now){
   });
 
   const reparoConcl = concluidas.filter(r => r.tipo === 'Reparo Corretivo');
-  const reparoIdeal = reparoConcl.filter(r => slaTierConcluido(r) === 'ideal');
-  const pctReparo = reparoConcl.length ? Math.round(100*reparoIdeal.length/reparoConcl.length) : null;
+  const slaReparo = calcSlaIdeal(reparoConcl);
+  const pctReparo = slaReparo.pct===null ? null : Math.round(slaReparo.pct);
 
   const ativConcl = concluidas.filter(r => r.tipo === 'Ativação');
-  const ativIdeal = ativConcl.filter(r => slaTierConcluido(r) === 'ideal');
-  const pctAtiv = ativConcl.length ? Math.round(100*ativIdeal.length/ativConcl.length) : null;
+  const slaAtiv = calcSlaIdeal(ativConcl);
+  const pctAtiv = slaAtiv.pct===null ? null : Math.round(slaAtiv.pct);
 
   const cards = [
     { label:'Total de OS', value: total, foot: 'no filtro atual' },
     { label:'Backlog em aberto', value: backlog.length, foot: 'pendente + iniciado + em rota + suspenso' },
     { label:'Concluídas', value: concluidas.length, foot: 'no filtro atual' },
-    { label:'SLA '+CONFIG.reparo.ideal+'h · Reparo Corretivo', value: pctReparo===null?'—':pctReparo+'%', foot: reparoConcl.length+' reparos concluídos', cls: pctReparo===null?'':'alert-'+pctColor(pctReparo) },
-    { label:'SLA '+CONFIG.ativacao.ideal+'h · Ativação', value: pctAtiv===null?'—':pctAtiv+'%', foot: ativConcl.length+' ativações concluídas', cls: pctAtiv===null?'':'alert-'+pctColor(pctAtiv) },
+    { label:'SLA '+CONFIG.reparo.ideal+'h · Reparo Corretivo', value: pctReparo===null?'—':pctReparo+'%', foot: slaReparo.comDado+' reparos com prazo medido', cls: pctReparo===null?'':'alert-'+pctColor(pctReparo) },
+    { label:'SLA '+CONFIG.ativacao.ideal+'h · Ativação', value: pctAtiv===null?'—':pctAtiv+'%', foot: slaAtiv.comDado+' ativações com prazo medido', cls: pctAtiv===null?'':'alert-'+pctColor(pctAtiv) },
     { label:'OS vencendo (≤ '+CONFIG.alertaVermelho+'h)', value: alertaVermelho.length, foot: 'reparo/ativação em backlog', cls: alertaVermelho.length>0?'alert-red':'alert-green' },
   ];
   document.getElementById('kpiGrid').innerHTML = cards.map(c => `
