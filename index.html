@@ -4541,15 +4541,22 @@ function renderImprodutivas(rows){
 // Detalhamento genérico de um recorte de OS (clique num motivo, numa célula de tipo/status,
 // ou num card de KPI). Cliente vem da coluna "Nome", Contrato de "Número do contrato" e
 // Endereço de "Endereço" no CSV (ver normalizeRows). detalheOSAtual guarda o recorte aberto
-// pro botão de exportar.
+// pro botão de exportar. Abertura/Encerramento/Tempo decorrido valem pra qualquer recorte —
+// úteis principalmente nos cliques que vêm do módulo Prazo (vencimento, SLA por regional).
 let detalheOSAtual = null; // { titulo, linhas }
+function tempoDecorridoOS(r){
+  if (!r.aberturaDate) return '—';
+  const fim = r.fimDate || new Date();
+  const horas = (fim - r.aberturaDate) / 3600000;
+  return fmtHoras(horas) + (r.fimDate ? '' : ' (em aberto)');
+}
 function abrirDetalheOS(titulo, linhas){
   detalheOSAtual = { titulo, linhas };
   document.getElementById('detalheMotivoTitulo').textContent = titulo;
   document.getElementById('detalheMotivoDesc').textContent = linhas.length + ' ordem(ns) no recorte atual';
-  let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Contrato</th><th>Cliente</th><th>Motivo de Encerramento das atividades</th><th>Endereço</th></tr></thead><tbody>';
+  let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Contrato</th><th>Cliente</th><th>Motivo de Encerramento das atividades</th><th>Endereço</th><th>Data/Hora de Criação</th><th>Data/Hora de Encerramento</th><th>Tempo decorrido</th></tr></thead><tbody>';
   if (!linhas.length){
-    html += '<tr><td colspan="8" class="muted">Sem ordens</td></tr>';
+    html += '<tr><td colspan="11" class="muted">Sem ordens</td></tr>';
   } else {
     linhas.forEach(r => {
       html += `<tr>
@@ -4561,6 +4568,9 @@ function abrirDetalheOS(titulo, linhas){
         <td>${r.cliente || '<span class="muted">—</span>'}</td>
         <td>${r.motivo || '<span class="muted">—</span>'}</td>
         <td>${r.endereco || '<span class="muted">—</span>'}</td>
+        <td class="num">${fmtDate(r.aberturaDate)}</td>
+        <td class="num">${fmtDate(r.fimDate)}</td>
+        <td class="num">${tempoDecorridoOS(r)}</td>
       </tr>`;
     });
   }
@@ -4588,7 +4598,10 @@ async function exportarDetalheMotivoExcel(){
     'Contrato': r.contrato || '',
     'Cliente': r.cliente || '',
     'Motivo de Encerramento das atividades': r.motivo || '',
-    'Endereço': r.endereco || ''
+    'Endereço': r.endereco || '',
+    'Data/Hora de Criação': fmtDate(r.aberturaDate),
+    'Data/Hora de Encerramento': fmtDate(r.fimDate),
+    'Tempo decorrido': tempoDecorridoOS(r)
   }));
   const ws = XLSX.utils.json_to_sheet(dados);
   const wb = XLSX.utils.book_new();
