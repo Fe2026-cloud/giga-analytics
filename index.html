@@ -1370,6 +1370,8 @@ function normalizeRows(objs, regional, empresa){
       tipo,
       motivo: (o['Motivo de Encerramento das atividades']||'').trim() || '(sem motivo informado)',
       recurso: (o['Recurso']||'').trim() || '(sem recurso)',
+      cliente: (o['Nome']||'').trim(),
+      contrato: (o['Número do contrato']||'').trim(),
       aberturaDate, inicioDate, fimDate
     };
   });
@@ -1693,6 +1695,7 @@ async function upsertImportacao(slot, data, entry, vigente){
   const linhas = entry.rows.map(r => ({
     importacao_id: imp.id, os: r.os, data: r.data, status: r.status, bairro: r.bairro,
     cidade: r.cidade, tipo: r.tipo, motivo: r.motivo, recurso: r.recurso,
+    cliente: r.cliente || null, contrato: r.contrato || null,
     abertura_at: r.aberturaDate ? r.aberturaDate.toISOString() : null,
     inicio_at: r.inicioDate ? r.inicioDate.toISOString() : null,
     fim_at: r.fimDate ? r.fimDate.toISOString() : null
@@ -1734,7 +1737,7 @@ async function carregarOrdensServicoDoSupabase(){
   // páginas em paralelo (sabendo o total já na primeira resposta) em vez de
   // uma de cada vez.
   const PAGE = 1000;
-  const COLUNAS = 'os, data, status, bairro, cidade, tipo, motivo, recurso, abertura_at, inicio_at, fim_at, importacao_id';
+  const COLUNAS = 'os, data, status, bairro, cidade, tipo, motivo, recurso, cliente, contrato, abertura_at, inicio_at, fim_at, importacao_id';
   const primeira = await supabaseClient.from('ordens_servico').select(COLUNAS, { count: 'exact' }).range(0, PAGE - 1);
   if (primeira.error){ console.error('Falha ao carregar ordens de serviço', primeira.error); return; }
   const todasLinhas = [...(primeira.data || [])];
@@ -1761,6 +1764,7 @@ async function carregarOrdensServicoDoSupabase(){
       bairro: row.bairro || '(sem bairro)', cidade: row.cidade || '(sem cidade)',
       tipo: row.tipo || '', motivo: row.motivo || '(sem motivo informado)',
       recurso: row.recurso || '(sem recurso)',
+      cliente: row.cliente || '', contrato: row.contrato || '',
       aberturaDate: row.abertura_at ? new Date(row.abertura_at) : null,
       inicioDate: row.inicio_at ? new Date(row.inicio_at) : null,
       fimDate: row.fim_at ? new Date(row.fim_at) : null
@@ -4487,8 +4491,7 @@ function renderImprodutivas(rows){
 }
 
 // Detalhamento das ordens de um motivo específico (clique numa linha do Ranking de Motivos).
-// Contrato/Cliente ainda não são capturados na importação do CSV — mostram "—" até a gente
-// confirmar o nome exato dessas colunas no export e adicionar no parsing (normalizeRows).
+// Cliente vem da coluna "Nome" e Contrato de "Número do contrato" no CSV (ver normalizeRows).
 function abrirDetalheMotivo(motivo, linhas){
   document.getElementById('detalheMotivoTitulo').textContent = 'Motivo: ' + motivo;
   document.getElementById('detalheMotivoDesc').textContent = linhas.length + ' ordem(ns) não concluída(s) por esse motivo, no filtro atual';
@@ -4502,8 +4505,8 @@ function abrirDetalheMotivo(motivo, linhas){
         <td>${r.recurso || '—'}</td>
         <td>${r.regional}${REGIONAL_LABEL[r.regional] ? ' — '+REGIONAL_LABEL[r.regional] : ''}</td>
         <td>${EMPRESA_LABEL[r.empresa] || r.empresa}</td>
-        <td class="muted">—</td>
-        <td class="muted">—</td>
+        <td>${r.contrato || '<span class="muted">—</span>'}</td>
+        <td>${r.cliente || '<span class="muted">—</span>'}</td>
       </tr>`;
     });
   }
