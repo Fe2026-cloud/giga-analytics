@@ -4041,14 +4041,18 @@ function renderKPIs(rows, now){
     { label:'Concluídas', value: concluidas.length, foot: 'no filtro atual' },
     { label:'SLA '+CONFIG.reparo.ideal+'h · Reparo Corretivo', value: pctReparo===null?'—':pctReparo+'%', foot: slaReparo.comDado+' reparos com prazo medido', cls: pctReparo===null?'':'alert-'+pctColor(pctReparo) },
     { label:'SLA '+CONFIG.ativacao.ideal+'h · Ativação', value: pctAtiv===null?'—':pctAtiv+'%', foot: slaAtiv.comDado+' ativações com prazo medido', cls: pctAtiv===null?'':'alert-'+pctColor(pctAtiv) },
-    { label:'OS vencendo (≤ '+CONFIG.alertaVermelho+'h)', value: alertaVermelho.length, foot: 'reparo/ativação em backlog', cls: alertaVermelho.length>0?'alert-red':'alert-green' },
+    { label:'OS vencendo (≤ '+CONFIG.alertaVermelho+'h)', value: alertaVermelho.length, foot: 'reparo/ativação em backlog', cls: alertaVermelho.length>0?'alert-red':'alert-green', linhas: alertaVermelho },
   ];
-  document.getElementById('kpiGrid').innerHTML = cards.map(c => `
-    <div class="kpi-card ${c.cls||''}">
+  document.getElementById('kpiGrid').innerHTML = cards.map((c,i) => `
+    <div class="kpi-card ${c.cls||''}${c.linhas&&c.linhas.length?' kpi-card-clickable':''}" ${c.linhas&&c.linhas.length?'data-kpi2-idx="'+i+'"':''}>
       <div class="label">${c.label}</div>
       <div class="value">${c.value}</div>
       <div class="foot">${c.foot}</div>
     </div>`).join('');
+  document.querySelectorAll('#kpiGrid [data-kpi2-idx]').forEach(el => {
+    const c = cards[+el.dataset.kpi2Idx];
+    el.addEventListener('click', () => abrirDetalheOS(c.label, c.linhas));
+  });
 }
 
 function buildGaugeHTML(pctIdeal, dentro, total){
