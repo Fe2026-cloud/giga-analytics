@@ -458,6 +458,19 @@
   .tipo-filter-btn.active[data-tipo="Upgrade/Downgrade"]{background:rgba(236,72,153,0.28);color:#BE185D;border-color:rgba(236,72,153,0.5);}
   .tipo-filter-btn.active[data-tipo="Clean Up - Casa Cliente"]{background:rgba(6,182,212,0.28);color:#0E7490;border-color:rgba(6,182,212,0.5);}
 
+  /* ---------- filtro de tipo (Detalhamento de prazos) — mesmo visual do de cima, classe
+     separada pra não cair no listener global de .tipo-filter-btn (Report Executivo) ---------- */
+  .dp-tipo-bar{display:flex;gap:6px;flex-wrap:wrap;}
+  .dp-tipo-btn{
+    background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
+    padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .dp-tipo-btn:hover{border-color:var(--accent-dim);color:var(--text);}
+  .dp-tipo-btn.active[data-tipo="GERAL"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent);}
+  .dp-tipo-btn.active[data-tipo="Ativação"]{background:rgba(59,130,246,0.28);color:#2563EB;border-color:rgba(59,130,246,0.5);}
+  .dp-tipo-btn.active[data-tipo="Reparo Corretivo"]{background:rgba(34,197,94,0.28);color:#15803D;border-color:rgba(34,197,94,0.5);}
+
   .report-title-bar{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px 2px;}
   .report-title-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text);}
   .report-title-bar #reportClock{font-size:12px;color:var(--text-faint);font-family:var(--font-mono);}
@@ -873,6 +886,14 @@
 
       <div class="section-title"><h2>Detalhamento de prazos</h2><span class="hint" id="detalhamentoPrazosHint">reparo corretivo e ativação concluídos · abertura, fechamento e prazo calculado — pra conferência</span></div>
       <div class="panel">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px 0;">
+          <input type="text" id="detPrazosBusca" placeholder="🔎 Buscar OS ou técnico..." class="pr-busca">
+          <div class="dp-tipo-bar">
+            <button type="button" class="dp-tipo-btn active" data-tipo="GERAL">Todos</button>
+            <button type="button" class="dp-tipo-btn" data-tipo="Reparo Corretivo">Reparo Corretivo</button>
+            <button type="button" class="dp-tipo-btn" data-tipo="Ativação">Ativação</button>
+          </div>
+        </div>
         <div class="table-scroll" style="max-height:460px;overflow-y:auto;"><table class="pivot compact-table" id="detalhamentoPrazosTable"></table></div>
       </div>
 
@@ -4192,15 +4213,23 @@ function renderPrazosPorCidade(rows){
 }
 
 const DETALHAMENTO_PRAZOS_LIMITE = 500;
+let detPrazosBuscaTxt = '';
+let detPrazosFiltroTipo = 'GERAL'; // GERAL | Reparo Corretivo | Ativação
+let detPrazosUltimasRows = null; // guarda o `rows` do último render pra reaplicar o filtro sem re-renderizar o painel inteiro
 /* Linha a linha (Reparo Corretivo + Ativação concluídos): abertura, fechamento e prazo calculado —
-   pra conferir manualmente contra qualquer relatório externo. Mesma regra de tier do resto do painel. */
+   pra conferir manualmente contra qualquer relatório externo. Mesma regra de tier do resto do painel.
+   Busca (OS/técnico) e filtro de tipo são só desse quadro — não mexem no resto da tela. */
 function renderDetalhamentoPrazos(rows){
   const el = document.getElementById('detalhamentoPrazosTable');
   if (!el) return;
-  const itens = rows
+  detPrazosUltimasRows = rows;
+  const buscaNorm = semAcento(detPrazosBuscaTxt);
+  let itens = rows
     .filter(r => (r.tipo === 'Reparo Corretivo' || r.tipo === 'Ativação') && r.status === 'concluído' && r.aberturaDate && r.fimDate)
     .map(r => ({ r, tier: slaTierConcluido(r), horas: (r.fimDate - r.aberturaDate)/3600000 }))
     .sort((a,b) => b.r.fimDate - a.r.fimDate);
+  if (detPrazosFiltroTipo !== 'GERAL') itens = itens.filter(x => x.r.tipo === detPrazosFiltroTipo);
+  if (buscaNorm) itens = itens.filter(x => semAcento(x.r.os).includes(buscaNorm) || semAcento(x.r.recurso).includes(buscaNorm));
 
   const hintEl = document.getElementById('detalhamentoPrazosHint');
   if (hintEl){
@@ -5298,6 +5327,17 @@ async function init(){
     });
   });
   document.getElementById('prBusca').addEventListener('input', (e) => { prBuscaTxt = e.target.value; prRenderTable(); });
+  document.getElementById('detPrazosBusca').addEventListener('input', (e) => {
+    detPrazosBuscaTxt = e.target.value;
+    if (detPrazosUltimasRows) renderDetalhamentoPrazos(detPrazosUltimasRows);
+  });
+  document.querySelectorAll('.dp-tipo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      detPrazosFiltroTipo = btn.dataset.tipo;
+      document.querySelectorAll('.dp-tipo-btn').forEach(b => b.classList.toggle('active', b === btn));
+      if (detPrazosUltimasRows) renderDetalhamentoPrazos(detPrazosUltimasRows);
+    });
+  });
   document.getElementById('producaoRecursoCidadeFiltro').addEventListener('change', (e) => {
     prodRecursoCidadeFiltro = e.target.value;
     renderProducaoPorRecurso(getFilteredRows());
