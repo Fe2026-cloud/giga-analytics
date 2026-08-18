@@ -188,10 +188,10 @@
   @media (max-width:1300px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
   @media (max-width:640px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
   .kpi-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;padding:13px 15px;position:relative;overflow:hidden;box-shadow:var(--shadow-card);}
-  .kpi-card-clickable{cursor:pointer;transition:box-shadow .15s,transform .15s;}
-  .kpi-card-clickable:hover{box-shadow:0 4px 14px rgba(0,0,0,0.1);transform:translateY(-1px);}
-  td.clickable-cell{cursor:pointer;border-radius:4px;transition:background .12s;}
-  td.clickable-cell:hover{background:var(--surface-2);}
+  .kpi-card-clickable{cursor:pointer;transition:box-shadow .15s,transform .15s,background .15s;}
+  .kpi-card-clickable:hover{background:var(--accent-glow);box-shadow:0 0 0 1.5px var(--accent),0 4px 14px rgba(0,0,0,0.1);transform:translateY(-1px);}
+  td.clickable-cell{cursor:pointer;border-radius:4px;transition:background .12s,box-shadow .12s;}
+  td.clickable-cell:hover{background:var(--accent-glow);box-shadow:inset 0 0 0 1px var(--accent);}
   .kpi-card .label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:5px;font-weight:700;line-height:1.3;}
   .kpi-card .value{font-family:var(--font-ui);font-size:24px;font-weight:750;letter-spacing:-0.01em;line-height:1;}
   .kpi-card .foot{font-size:10.5px;color:var(--text-dim);margin-top:4px;}
@@ -496,8 +496,9 @@
 
   .vg-bottom-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:24px;}
   @media (max-width:1000px){.vg-bottom-grid{grid-template-columns:1fr;}}
-  .vg-improd-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+  .vg-improd-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;border-radius:4px;transition:background .12s,box-shadow .12s;}
   .vg-improd-row:last-child{border-bottom:none;}
+  .vg-improd-row:hover{background:var(--accent-glow);box-shadow:inset 2px 0 0 var(--accent);}
   .vg-improd-bar-track{flex:1;height:6px;background:var(--border-soft);border-radius:3px;margin:0 10px;overflow:hidden;}
   .vg-improd-bar-fill{display:block;height:100%;background:var(--accent);}
 
@@ -571,9 +572,11 @@
   .venc-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;padding:14px;text-align:center;box-shadow:var(--shadow-card);}
   .venc-card .value{font-size:24px;font-weight:750;font-family:var(--font-ui);}
   .venc-card .label{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;font-weight:700;}
+  .venc-card.clickable-card{cursor:pointer;transition:box-shadow .15s,transform .15s,background .15s;}
+  .venc-card.clickable-card:hover{background:var(--accent-glow);box-shadow:0 0 0 1.5px var(--accent),0 4px 14px rgba(0,0,0,0.1);transform:translateY(-1px);}
 
   .pareto-row{display:grid;grid-template-columns:150px 1fr 34px 62px;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--border-soft);font-size:11.5px;cursor:pointer;border-radius:4px;transition:background .12s;}
-  .pareto-row:hover{background:var(--surface-2);}
+  .pareto-row:hover{background:var(--accent-glow);box-shadow:inset 2px 0 0 var(--accent);}
   .pareto-bar-track{display:block;background:var(--border-soft);border-radius:4px;height:8px;overflow:hidden;}
   .pareto-bar-fill{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .2s;}
   .pareto-bar-fill.sev-red{background:var(--red);}
@@ -4082,24 +4085,35 @@ function renderSLAPanel(rows, tipo, cfg, bucketElId, tableElId, descElId){
   const pctIdealValue = totalTier ? (100*counts.ideal/totalTier) : 0;
   document.getElementById(bucketElId).innerHTML = buildGaugeHTML(pctIdealValue, counts.ideal, totalTier);
 
-  // por regional
+  // por regional — cada célula abre as OS daquele regional+faixa de prazo (clique)
   const byRegional = {};
   withTier.forEach(x => {
     const r = x.row.regional;
-    byRegional[r] = byRegional[r] || {ideal:0,max:0,outlier:0,total:0};
-    byRegional[r][x.tier]++; byRegional[r].total++;
+    byRegional[r] = byRegional[r] || {ideal:[],max:[],outlier:[]};
+    byRegional[r][x.tier].push(x.row);
   });
   const regs = Object.keys(byRegional).sort();
   let html = '<thead><tr><th>Regional</th><th class="num">Até '+cfg.ideal+'h</th><th class="num">Até '+cfg.max+'h</th><th class="num">Outliers</th><th class="num">Total</th></tr></thead><tbody>';
   if (!regs.length){
     html += '<tr><td colspan="5" class="muted">Sem ordens concluídas de '+tipo+' no filtro atual</td></tr>';
   }
+  const slaCliques = [];
+  const slaCell = (titulo, linhas) => {
+    slaCliques.push({ titulo, linhas });
+    return `<td class="num${linhas.length?' clickable-cell':''}" data-click-idx="${slaCliques.length-1}">${linhas.length}</td>`;
+  };
   regs.forEach(r => {
     const d = byRegional[r];
-    html += `<tr><td>${r} — ${REGIONAL_LABEL[r]}</td><td class="num">${d.ideal}</td><td class="num">${d.max}</td><td class="num">${d.outlier}</td><td class="num">${d.total}</td></tr>`;
+    const totalLinhas = [...d.ideal, ...d.max, ...d.outlier];
+    html += `<tr><td>${r} — ${REGIONAL_LABEL[r]}</td>${slaCell(tipo+' — '+r+' — Até '+cfg.ideal+'h', d.ideal)}${slaCell(tipo+' — '+r+' — Até '+cfg.max+'h', d.max)}${slaCell(tipo+' — '+r+' — Outliers', d.outlier)}${slaCell(tipo+' — '+r+' — Total', totalLinhas)}</tr>`;
   });
   html += '</tbody>';
   document.getElementById(tableElId).innerHTML = html;
+  document.querySelectorAll('#'+tableElId+' [data-click-idx]').forEach(td => {
+    const item = slaCliques[+td.dataset.clickIdx];
+    if (!item) return;
+    td.addEventListener('click', () => abrirDetalheOS(item.titulo, item.linhas));
+  });
 }
 
 const PRAZO_CIDADE_GRUPOS = [
@@ -4204,22 +4218,22 @@ function renderDetalhamentoPrazos(rows){
 
 function renderVencimento(rows, now){
   const aplicavel = rows.filter(r => BACKLOG_STATUSES.includes(r.status) && (r.tipo === 'Reparo Corretivo' || r.tipo === 'Ativação'));
-  const comAlerta = aplicavel.map(r => slaAlertaAberto(r, now)).filter(Boolean);
-  const vencidas = comAlerta.filter(a => a.restante < 0).length;
-  const ate30 = comAlerta.filter(a => a.restante >= 0 && a.restante <= 0.5).length;
-  const ate1h = comAlerta.filter(a => a.restante >= 0 && a.restante <= 1).length;
-  const ate2h = comAlerta.filter(a => a.restante >= 0 && a.restante <= 2).length;
-  const ate4h = comAlerta.filter(a => a.restante >= 0 && a.restante <= 4).length;
+  const comAlerta = aplicavel.map(r => ({ r, a: slaAlertaAberto(r, now) })).filter(x => x.a);
   const cards = [
-    { label:'Vencidas', value:vencidas, color:'red' },
-    { label:'Até 30 min', value:ate30, color:'red' },
-    { label:'Até 1 hora', value:ate1h, color:'yellow' },
-    { label:'Até 2 horas', value:ate2h, color:'yellow' },
-    { label:'Até 4 horas', value:ate4h, color:'green' },
+    { label:'Vencidas', color:'red', linhas: comAlerta.filter(x => x.a.restante < 0).map(x=>x.r) },
+    { label:'Até 30 min', color:'red', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 0.5).map(x=>x.r) },
+    { label:'Até 1 hora', color:'yellow', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 1).map(x=>x.r) },
+    { label:'Até 2 horas', color:'yellow', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 2).map(x=>x.r) },
+    { label:'Até 4 horas', color:'green', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 4).map(x=>x.r) },
   ];
-  document.getElementById('vencGrid').innerHTML = cards.map(c => `
-    <div class="venc-card"><div class="value" style="color:var(--${c.color})">${c.value}</div><div class="label">${c.label}</div></div>
+  document.getElementById('vencGrid').innerHTML = cards.map((c,i) => `
+    <div class="venc-card${c.linhas.length?' clickable-card':''}" data-venc-idx="${i}"><div class="value" style="color:var(--${c.color})">${c.linhas.length}</div><div class="label">${c.label}</div></div>
   `).join('');
+  document.querySelectorAll('#vencGrid [data-venc-idx]').forEach(el => {
+    const c = cards[+el.dataset.vencIdx];
+    if (!c.linhas.length) return;
+    el.addEventListener('click', () => abrirDetalheOS('Prazo — ' + c.label, c.linhas));
+  });
 }
 
 function renderExecucao(rows, now){
