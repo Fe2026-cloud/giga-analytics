@@ -188,6 +188,10 @@
   @media (max-width:1300px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
   @media (max-width:640px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
   .kpi-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;padding:13px 15px;position:relative;overflow:hidden;box-shadow:var(--shadow-card);}
+  .kpi-card-clickable{cursor:pointer;transition:box-shadow .15s,transform .15s;}
+  .kpi-card-clickable:hover{box-shadow:0 4px 14px rgba(0,0,0,0.1);transform:translateY(-1px);}
+  td.clickable-cell{cursor:pointer;border-radius:4px;transition:background .12s;}
+  td.clickable-cell:hover{background:var(--surface-2);}
   .kpi-card .label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:5px;font-weight:700;line-height:1.3;}
   .kpi-card .value{font-family:var(--font-ui);font-size:24px;font-weight:750;letter-spacing:-0.01em;line-height:1;}
   .kpi-card .foot{font-size:10.5px;color:var(--text-dim);margin-top:4px;}
@@ -3117,8 +3121,9 @@ function renderVisaoGeral(rows){
       const backlogParcela = Math.round(abertas * efetProjecao);
       footHtml = `<span class="muted" style="font-size:10.5px;">${concluidas} concluídas + ${(efetProjecao*100).toFixed(0)}% do backlog (${backlogParcela} OS)</span>`;
     }
+    const clicavel = c.label==='TOTAL OS FECHADAS' || c.label==='IMPRODUTIVAS';
     return `
-    <div class="kpi-card">
+    <div class="kpi-card${clicavel?' kpi-card-clickable':''}" ${clicavel?'data-kpi-click="'+c.label+'"':''}>
       <div class="label-row"><span class="label">${c.label}</span><span class="label-ic">${c.icon}</span></div>
       <div>
         <div class="value">${c.value}</div>
@@ -3139,21 +3144,38 @@ function renderVisaoGeral(rows){
     </div>`;
 
   document.getElementById('vgRow5').innerHTML = cardsHTML + strategicHTML;
+  document.querySelectorAll('#vgRow5 [data-kpi-click]').forEach(el => {
+    el.addEventListener('click', () => {
+      const status = el.dataset.kpiClick==='TOTAL OS FECHADAS' ? 'concluído' : 'não concluído';
+      abrirDetalheOS(el.dataset.kpiClick==='TOTAL OS FECHADAS' ? 'Total OS Fechadas' : 'Improdutivas', rows.filter(r=>r.status===status));
+    });
+  });
 
   // Produção: Serviço vs Status — só os tipos de serviço reais da operação (mesma lista do
-  // Backlog/Produção por Recurso); qualquer outro tipo presente na base fica fora daqui.
+  // Backlog/Produção por Recurso); qualquer outro tipo presente na base fica fora daqui. Cada
+  // célula de status abre o detalhamento das OS daquele tipo+status (clique).
   const tipos = [...new Set(rows.map(r=>r.tipo))].filter(t => BACKLOG_TIPOS_PERMITIDOS.includes(t)).sort();
   let tblHtml = '<thead><tr><th>Serviço</th><th class="num col-green">Concluído</th><th class="num col-peach">Improdutivo</th><th class="num col-gray">Cancelado</th><th class="num col-total">Total</th></tr></thead><tbody>';
+  const vgCliques = [];
   if (!tipos.length) tblHtml += '<tr><td colspan="5" class="muted">Sem dados</td></tr>';
+  const vgCell = (titulo, linhas, cls) => {
+    vgCliques.push({ titulo, linhas });
+    return `<td class="num ${cls}${linhas.length?' clickable-cell':''}" data-click-idx="${vgCliques.length-1}">${linhas.length}</td>`;
+  };
   tipos.forEach(t => {
     const sub = rows.filter(r=>r.tipo===t);
-    const c = sub.filter(r=>r.status==='concluído').length;
-    const imp = sub.filter(r=>r.status==='não concluído').length;
-    const canc = sub.filter(r=>r.status==='cancelado').length;
-    tblHtml += `<tr><td>${t}</td><td class="num col-green">${c}</td><td class="num col-peach">${imp}</td><td class="num col-gray">${canc}</td><td class="num col-total">${sub.length}</td></tr>`;
+    const concl = sub.filter(r=>r.status==='concluído');
+    const imp = sub.filter(r=>r.status==='não concluído');
+    const canc = sub.filter(r=>r.status==='cancelado');
+    tblHtml += `<tr><td>${t}</td>${vgCell(t+' — Concluído',concl,'col-green')}${vgCell(t+' — Improdutivo',imp,'col-peach')}${vgCell(t+' — Cancelado',canc,'col-gray')}<td class="num col-total">${sub.length}</td></tr>`;
   });
   tblHtml += '</tbody>';
   document.getElementById('vgServicoStatusTable').innerHTML = tblHtml;
+  document.querySelectorAll('#vgServicoStatusTable [data-click-idx]').forEach(td => {
+    const item = vgCliques[+td.dataset.clickIdx];
+    if (!item) return;
+    td.addEventListener('click', () => abrirDetalheOS(item.titulo, item.linhas));
+  });
 
   // Top Improdutivas (ranking de motivos, top 5)
   const naoConclRows = rows.filter(r=>r.status==='não concluído');
@@ -3167,7 +3189,7 @@ function renderVisaoGeral(rows){
   } else {
     top5.forEach(([motivo,c]) => {
       const pct = totalMotivos ? (100*c/totalMotivos) : 0;
-      improdHtml += `<div class="vg-improd-row">
+      improdHtml += `<div class="vg-improd-row" style="cursor:pointer;">
         <span>${motivo}</span>
         <span class="vg-improd-bar-track"><span class="vg-improd-bar-fill" style="width:${pct}%"></span></span>
         <span class="muted">${c} (${pct.toFixed(0)}%)</span>
@@ -3175,6 +3197,12 @@ function renderVisaoGeral(rows){
     });
   }
   document.getElementById('vgTopImprodutivas').innerHTML = improdHtml;
+  document.querySelectorAll('#vgTopImprodutivas .vg-improd-row').forEach((el, i) => {
+    const par = top5[i];
+    if (!par) return;
+    const motivo = par[0];
+    el.addEventListener('click', () => abrirDetalheMotivo(motivo, naoConclRows.filter(r => r.motivo === motivo)));
+  });
 }
 
 /* ============================= PESSOAS · absenteísmo ============================= */
@@ -4492,14 +4520,15 @@ function renderImprodutivas(rows){
   document.getElementById('improdCidadeTable').innerHTML = cidadeHtml;
 }
 
-// Detalhamento das ordens de um motivo específico (clique numa linha do Ranking de Motivos).
-// Cliente vem da coluna "Nome", Contrato de "Número do contrato" e Endereço de "Endereço" no
-// CSV (ver normalizeRows). detalheMotivoAtual guarda o recorte aberto pro botão de exportar.
-let detalheMotivoAtual = null; // { motivo, linhas }
-function abrirDetalheMotivo(motivo, linhas){
-  detalheMotivoAtual = { motivo, linhas };
-  document.getElementById('detalheMotivoTitulo').textContent = 'Motivo: ' + motivo;
-  document.getElementById('detalheMotivoDesc').textContent = linhas.length + ' ordem(ns) não concluída(s) por esse motivo, no filtro atual';
+// Detalhamento genérico de um recorte de OS (clique num motivo, numa célula de tipo/status,
+// ou num card de KPI). Cliente vem da coluna "Nome", Contrato de "Número do contrato" e
+// Endereço de "Endereço" no CSV (ver normalizeRows). detalheOSAtual guarda o recorte aberto
+// pro botão de exportar.
+let detalheOSAtual = null; // { titulo, linhas }
+function abrirDetalheOS(titulo, linhas){
+  detalheOSAtual = { titulo, linhas };
+  document.getElementById('detalheMotivoTitulo').textContent = titulo;
+  document.getElementById('detalheMotivoDesc').textContent = linhas.length + ' ordem(ns) no recorte atual';
   let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Contrato</th><th>Cliente</th><th>Motivo de Encerramento das atividades</th><th>Endereço</th></tr></thead><tbody>';
   if (!linhas.length){
     html += '<tr><td colspan="8" class="muted">Sem ordens</td></tr>';
@@ -4521,14 +4550,18 @@ function abrirDetalheMotivo(motivo, linhas){
   document.getElementById('detalheMotivoTable').innerHTML = html;
   document.getElementById('detalheMotivoBackdrop').classList.add('open');
 }
+// Ranking de Motivos (Improdutivas) chama assim há mais tempo — mantém a mesma assinatura.
+function abrirDetalheMotivo(motivo, linhas){
+  abrirDetalheOS('Motivo: ' + motivo, linhas);
+}
 function fecharDetalheMotivo(){
   document.getElementById('detalheMotivoBackdrop').classList.remove('open');
 }
 async function exportarDetalheMotivoExcel(){
-  if (!detalheMotivoAtual || !detalheMotivoAtual.linhas.length){ showToast('Nada pra exportar.'); return; }
+  if (!detalheOSAtual || !detalheOSAtual.linhas.length){ showToast('Nada pra exportar.'); return; }
   const ok = await loadSheetJS();
   if (!ok){ showToast('Não consegui carregar o gerador de Excel — verifique a internet e tente de novo.'); return; }
-  const { motivo, linhas } = detalheMotivoAtual;
+  const { titulo, linhas } = detalheOSAtual;
   const dados = linhas.map(r => ({
     'OS': r.os || '',
     'Técnico': r.recurso || '',
@@ -4542,9 +4575,9 @@ async function exportarDetalheMotivoExcel(){
   const ws = XLSX.utils.json_to_sheet(dados);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Detalhamento');
-  const nomeArquivo = 'improdutivas_' + semAcento(motivo).replace(/\s+/g,'_') + '_' + fmtDDMMYY2(new Date()).replace(/\//g,'-') + '.xlsx';
+  const nomeArquivo = semAcento(titulo).replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'') + '_' + fmtDDMMYY2(new Date()).replace(/\//g,'-') + '.xlsx';
   XLSX.writeFile(wb, nomeArquivo);
-  registrarAuditoria('exportar_detalhe_motivo', { motivo, linhas: linhas.length });
+  registrarAuditoria('exportar_detalhe_os', { titulo, linhas: linhas.length });
 }
 
 /* ============================= BACKLOG · report de produção regional ============================= */
