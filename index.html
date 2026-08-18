@@ -1070,11 +1070,12 @@
 </div>
 
 <div class="modal-backdrop" id="detalheMotivoBackdrop">
-  <div class="modal" style="max-width:820px;">
+  <div class="modal" style="max-width:1040px;">
     <h3 id="detalheMotivoTitulo">Motivo</h3>
     <div class="desc" id="detalheMotivoDesc"></div>
     <div class="table-scroll" style="max-height:60vh;"><table class="pivot compact-table" id="detalheMotivoTable"></table></div>
     <div class="modal-actions">
+      <button type="button" class="btn ghost" id="btnExportarDetalheMotivo">⬇ Exportar Excel</button>
       <button type="button" class="btn ghost" id="btnFecharDetalheMotivo">Fechar</button>
     </div>
   </div>
@@ -1372,6 +1373,7 @@ function normalizeRows(objs, regional, empresa){
       recurso: (o['Recurso']||'').trim() || '(sem recurso)',
       cliente: (o['Nome']||'').trim(),
       contrato: (o['Número do contrato']||'').trim(),
+      endereco: (o['Endereço']||'').trim(),
       aberturaDate, inicioDate, fimDate
     };
   });
@@ -1695,7 +1697,7 @@ async function upsertImportacao(slot, data, entry, vigente){
   const linhas = entry.rows.map(r => ({
     importacao_id: imp.id, os: r.os, data: r.data, status: r.status, bairro: r.bairro,
     cidade: r.cidade, tipo: r.tipo, motivo: r.motivo, recurso: r.recurso,
-    cliente: r.cliente || null, contrato: r.contrato || null,
+    cliente: r.cliente || null, contrato: r.contrato || null, endereco: r.endereco || null,
     abertura_at: r.aberturaDate ? r.aberturaDate.toISOString() : null,
     inicio_at: r.inicioDate ? r.inicioDate.toISOString() : null,
     fim_at: r.fimDate ? r.fimDate.toISOString() : null
@@ -1737,7 +1739,7 @@ async function carregarOrdensServicoDoSupabase(){
   // páginas em paralelo (sabendo o total já na primeira resposta) em vez de
   // uma de cada vez.
   const PAGE = 1000;
-  const COLUNAS = 'os, data, status, bairro, cidade, tipo, motivo, recurso, cliente, contrato, abertura_at, inicio_at, fim_at, importacao_id';
+  const COLUNAS = 'os, data, status, bairro, cidade, tipo, motivo, recurso, cliente, contrato, endereco, abertura_at, inicio_at, fim_at, importacao_id';
   const primeira = await supabaseClient.from('ordens_servico').select(COLUNAS, { count: 'exact' }).range(0, PAGE - 1);
   if (primeira.error){ console.error('Falha ao carregar ordens de serviço', primeira.error); return; }
   const todasLinhas = [...(primeira.data || [])];
@@ -1764,7 +1766,7 @@ async function carregarOrdensServicoDoSupabase(){
       bairro: row.bairro || '(sem bairro)', cidade: row.cidade || '(sem cidade)',
       tipo: row.tipo || '', motivo: row.motivo || '(sem motivo informado)',
       recurso: row.recurso || '(sem recurso)',
-      cliente: row.cliente || '', contrato: row.contrato || '',
+      cliente: row.cliente || '', contrato: row.contrato || '', endereco: row.endereco || '',
       aberturaDate: row.abertura_at ? new Date(row.abertura_at) : null,
       inicioDate: row.inicio_at ? new Date(row.inicio_at) : null,
       fimDate: row.fim_at ? new Date(row.fim_at) : null
@@ -4491,13 +4493,16 @@ function renderImprodutivas(rows){
 }
 
 // Detalhamento das ordens de um motivo específico (clique numa linha do Ranking de Motivos).
-// Cliente vem da coluna "Nome" e Contrato de "Número do contrato" no CSV (ver normalizeRows).
+// Cliente vem da coluna "Nome", Contrato de "Número do contrato" e Endereço de "Endereço" no
+// CSV (ver normalizeRows). detalheMotivoAtual guarda o recorte aberto pro botão de exportar.
+let detalheMotivoAtual = null; // { motivo, linhas }
 function abrirDetalheMotivo(motivo, linhas){
+  detalheMotivoAtual = { motivo, linhas };
   document.getElementById('detalheMotivoTitulo').textContent = 'Motivo: ' + motivo;
   document.getElementById('detalheMotivoDesc').textContent = linhas.length + ' ordem(ns) não concluída(s) por esse motivo, no filtro atual';
-  let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Contrato</th><th>Cliente</th></tr></thead><tbody>';
+  let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Contrato</th><th>Cliente</th><th>Motivo de Encerramento das atividades</th><th>Endereço</th></tr></thead><tbody>';
   if (!linhas.length){
-    html += '<tr><td colspan="6" class="muted">Sem ordens</td></tr>';
+    html += '<tr><td colspan="8" class="muted">Sem ordens</td></tr>';
   } else {
     linhas.forEach(r => {
       html += `<tr>
@@ -4507,6 +4512,8 @@ function abrirDetalheMotivo(motivo, linhas){
         <td>${EMPRESA_LABEL[r.empresa] || r.empresa}</td>
         <td>${r.contrato || '<span class="muted">—</span>'}</td>
         <td>${r.cliente || '<span class="muted">—</span>'}</td>
+        <td>${r.motivo || '<span class="muted">—</span>'}</td>
+        <td>${r.endereco || '<span class="muted">—</span>'}</td>
       </tr>`;
     });
   }
@@ -4516,6 +4523,28 @@ function abrirDetalheMotivo(motivo, linhas){
 }
 function fecharDetalheMotivo(){
   document.getElementById('detalheMotivoBackdrop').classList.remove('open');
+}
+async function exportarDetalheMotivoExcel(){
+  if (!detalheMotivoAtual || !detalheMotivoAtual.linhas.length){ showToast('Nada pra exportar.'); return; }
+  const ok = await loadSheetJS();
+  if (!ok){ showToast('Não consegui carregar o gerador de Excel — verifique a internet e tente de novo.'); return; }
+  const { motivo, linhas } = detalheMotivoAtual;
+  const dados = linhas.map(r => ({
+    'OS': r.os || '',
+    'Técnico': r.recurso || '',
+    'Regional': r.regional + (REGIONAL_LABEL[r.regional] ? ' — '+REGIONAL_LABEL[r.regional] : ''),
+    'Empresa': EMPRESA_LABEL[r.empresa] || r.empresa,
+    'Contrato': r.contrato || '',
+    'Cliente': r.cliente || '',
+    'Motivo de Encerramento das atividades': r.motivo || '',
+    'Endereço': r.endereco || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Detalhamento');
+  const nomeArquivo = 'improdutivas_' + semAcento(motivo).replace(/\s+/g,'_') + '_' + fmtDDMMYY2(new Date()).replace(/\//g,'-') + '.xlsx';
+  XLSX.writeFile(wb, nomeArquivo);
+  registrarAuditoria('exportar_detalhe_motivo', { motivo, linhas: linhas.length });
 }
 
 /* ============================= BACKLOG · report de produção regional ============================= */
@@ -5218,6 +5247,7 @@ async function init(){
   document.getElementById('limparArquivosModalBackdrop').addEventListener('click', e => { if (e.target.id === 'limparArquivosModalBackdrop') fecharModalLimparArquivos(); });
   document.getElementById('btnFecharDetalheMotivo').addEventListener('click', fecharDetalheMotivo);
   document.getElementById('detalheMotivoBackdrop').addEventListener('click', e => { if (e.target.id === 'detalheMotivoBackdrop') fecharDetalheMotivo(); });
+  document.getElementById('btnExportarDetalheMotivo').addEventListener('click', exportarDetalheMotivoExcel);
   document.getElementById('btnSidebarToggle').addEventListener('click', toggleSidebar);
   document.getElementById('roster-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRosterFile(e.target.files[0]); });
   document.getElementById('backlog-xlsx-input').addEventListener('change', e => { if (e.target.files[0]) handleBacklogXlsx(e.target.files[0]); });
