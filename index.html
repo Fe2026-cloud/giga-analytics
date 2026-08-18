@@ -568,7 +568,8 @@
   .venc-card .value{font-size:24px;font-weight:750;font-family:var(--font-ui);}
   .venc-card .label{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;font-weight:700;}
 
-  .pareto-row{display:grid;grid-template-columns:150px 1fr 34px 62px;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--border-soft);font-size:11.5px;}
+  .pareto-row{display:grid;grid-template-columns:150px 1fr 34px 62px;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--border-soft);font-size:11.5px;cursor:pointer;border-radius:4px;transition:background .12s;}
+  .pareto-row:hover{background:var(--surface-2);}
   .pareto-bar-track{display:block;background:var(--border-soft);border-radius:4px;height:8px;overflow:hidden;}
   .pareto-bar-fill{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .2s;}
   .pareto-bar-fill.sev-red{background:var(--red);}
@@ -1064,6 +1065,17 @@
     <div class="table-scroll" style="max-height:50vh;"><table class="pivot compact-table" id="limparArquivosTable"></table></div>
     <div class="modal-actions">
       <button type="button" class="btn ghost" id="btnFecharLimparArquivos">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="detalheMotivoBackdrop">
+  <div class="modal" style="max-width:820px;">
+    <h3 id="detalheMotivoTitulo">Motivo</h3>
+    <div class="desc" id="detalheMotivoDesc"></div>
+    <div class="table-scroll" style="max-height:60vh;"><table class="pivot compact-table" id="detalheMotivoTable"></table></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="btnFecharDetalheMotivo">Fechar</button>
     </div>
   </div>
 </div>
@@ -4449,6 +4461,14 @@ function renderImprodutivas(rows){
     });
   }
   document.getElementById('improdutivasRanking').innerHTML = html;
+  // cada linha do ranking abre o detalhamento (OS/técnico/regional/etc.) das ordens daquele
+  // motivo — usa a mesma ordem de `entries` que gerou o HTML acima pra casar linha com motivo.
+  document.querySelectorAll('#improdutivasRanking .pareto-row').forEach((el, i) => {
+    const par = entries[i];
+    if (!par) return;
+    const motivo = par[0];
+    el.addEventListener('click', () => abrirDetalheMotivo(motivo, naoConcl.filter(r => r.motivo === motivo)));
+  });
 
   document.getElementById('improdRegionalTable').innerHTML = simpleCountTable(
     naoConcl.map(r => ({...r, regionalLabel: r.regional+' — '+REGIONAL_LABEL[r.regional]})), 'regionalLabel', 'Regional');
@@ -4464,6 +4484,35 @@ function renderImprodutivas(rows){
   topCidades.forEach(([c,n]) => cidadeHtml += `<tr><td>${c}</td><td class="num">${n}</td></tr>`);
   cidadeHtml += '</tbody>';
   document.getElementById('improdCidadeTable').innerHTML = cidadeHtml;
+}
+
+// Detalhamento das ordens de um motivo específico (clique numa linha do Ranking de Motivos).
+// Contrato/Cliente ainda não são capturados na importação do CSV — mostram "—" até a gente
+// confirmar o nome exato dessas colunas no export e adicionar no parsing (normalizeRows).
+function abrirDetalheMotivo(motivo, linhas){
+  document.getElementById('detalheMotivoTitulo').textContent = 'Motivo: ' + motivo;
+  document.getElementById('detalheMotivoDesc').textContent = linhas.length + ' ordem(ns) não concluída(s) por esse motivo, no filtro atual';
+  let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Contrato</th><th>Cliente</th></tr></thead><tbody>';
+  if (!linhas.length){
+    html += '<tr><td colspan="6" class="muted">Sem ordens</td></tr>';
+  } else {
+    linhas.forEach(r => {
+      html += `<tr>
+        <td class="num">${r.os || '—'}</td>
+        <td>${r.recurso || '—'}</td>
+        <td>${r.regional}${REGIONAL_LABEL[r.regional] ? ' — '+REGIONAL_LABEL[r.regional] : ''}</td>
+        <td>${EMPRESA_LABEL[r.empresa] || r.empresa}</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+      </tr>`;
+    });
+  }
+  html += '</tbody>';
+  document.getElementById('detalheMotivoTable').innerHTML = html;
+  document.getElementById('detalheMotivoBackdrop').classList.add('open');
+}
+function fecharDetalheMotivo(){
+  document.getElementById('detalheMotivoBackdrop').classList.remove('open');
 }
 
 /* ============================= BACKLOG · report de produção regional ============================= */
@@ -5164,6 +5213,8 @@ async function init(){
   document.getElementById('capacityModalBackdrop').addEventListener('click', e => { if (e.target.id === 'capacityModalBackdrop') closeCapacityModal(); });
   document.getElementById('btnFecharLimparArquivos').addEventListener('click', fecharModalLimparArquivos);
   document.getElementById('limparArquivosModalBackdrop').addEventListener('click', e => { if (e.target.id === 'limparArquivosModalBackdrop') fecharModalLimparArquivos(); });
+  document.getElementById('btnFecharDetalheMotivo').addEventListener('click', fecharDetalheMotivo);
+  document.getElementById('detalheMotivoBackdrop').addEventListener('click', e => { if (e.target.id === 'detalheMotivoBackdrop') fecharDetalheMotivo(); });
   document.getElementById('btnSidebarToggle').addEventListener('click', toggleSidebar);
   document.getElementById('roster-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRosterFile(e.target.files[0]); });
   document.getElementById('backlog-xlsx-input').addEventListener('change', e => { if (e.target.files[0]) handleBacklogXlsx(e.target.files[0]); });
