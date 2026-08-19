@@ -2470,12 +2470,21 @@ function parseRosterCSV(text){
     // remove anotações do tipo "NOME - afastado" que às vezes vêm coladas na célula do nome
     let nome = (o[nomeKey]||'').trim();
     nome = nome.split(/\s+-\s+/)[0].trim();
+    // célula mesclada no Excel de origem às vezes "vaza" o texto do cabeçalho de seção pro
+    // nome do técnico de baixo (ex.: "FULANO LITORAL SUL") — sem isso, o mesmo técnico vira
+    // duas entradas diferentes no roster (uma com o sufixo, outra sem).
+    nome = nome.replace(/\s+(LITORAL\s+(SUL|NORTE)|VALE\s+DO\s+PARA[IÍ]BA|REDE\s+EXTERNA|INFRAESTRUTURA(\s+POP)?|REDE\s+B2B)\s*$/i, '').trim();
     if (!nome) return;
     const rotulo = o[regKey]||'';
     const grupoRede = detectRedeExternaGrupoFromLabel(rotulo);
-    if (grupoRede){ redeExterna.push({ nome, grupo: grupoRede }); return; }
+    if (grupoRede){
+      if (!redeExterna.some(r => semAcento(r.nome) === semAcento(nome))) redeExterna.push({ nome, grupo: grupoRede });
+      return;
+    }
     const categoria = detectRegionalFromLabel(rotulo);
-    if (categoria) out[categoria].push(nome);
+    // evita duplicar o mesmo técnico na mesma lista (ex.: linha repetida no CSV, ou o mesmo
+    // nome sobrando de uma célula mesclada mesmo depois de tirar o sufixo de seção acima)
+    if (categoria && !out[categoria].some(n => semAcento(n) === semAcento(nome))) out[categoria].push(nome);
   });
   out.redeExterna = redeExterna;
   return out;
