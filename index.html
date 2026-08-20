@@ -4425,7 +4425,7 @@ function calcularLinhaPrazo(r, now, cfg){
   const aberta = BACKLOG_STATUSES.includes(r.status);
   const concluida = r.status === 'concluído';
   const out = { limiteIdeal:null, vencimentoTexto:null, vencimentoHoras:null, vencimentoPerdido:false,
-    encerramento:null, acompanhamento:null, periodo:null, statusPrazo:null, sinalizar:null };
+    chegouVencida:null, encerramento:null, acompanhamento:null, periodo:null, statusPrazo:null, sinalizar:null };
   if (!r.aberturaDate) return out;
   out.limiteIdeal = new Date(r.aberturaDate.getTime() + cfg.ideal*3600000);
 
@@ -4433,7 +4433,14 @@ function calcularLinhaPrazo(r, now, cfg){
     const horasDecorridas = (now - r.aberturaDate) / 3600000;
     const horasRestantes = cfg.ideal - horasDecorridas;
     out.vencimentoHoras = horasRestantes;
-    if (horasRestantes < 0){ out.vencimentoTexto = 'PRAZO PERDIDO'; out.vencimentoPerdido = true; }
+    if (horasRestantes < 0){
+      out.vencimentoTexto = 'PRAZO PERDIDO';
+      out.vencimentoPerdido = true;
+      // "chegou vencida" = já estava fora do prazo antes do técnico começar a atender (usa o
+      // horário de Início real, se já começou); se ainda nem começou e já venceu, também conta
+      // como "chegou vencida" — quando começar, já vai estar fora do prazo de qualquer jeito.
+      out.chegouVencida = r.inicioDate ? (r.inicioDate.getTime() > out.limiteIdeal.getTime()) : true;
+    }
     else out.vencimentoTexto = fmtHoras(horasRestantes);
 
     const hojeSemHora = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -4512,6 +4519,10 @@ function cpSinalizarHtml(r, c){
   if (c.sinalizar === 'ate24h') return `<span class="cp-pill cp-pill-green${podeClicar?' cp-sinalizar-btn':''}" data-os="${r.os}" data-nivel="ate24h" data-acao="marcar">Sinalizar até 24h</span>`;
   return '';
 }
+function cpChegouVencidaTexto(c){
+  if (!c.vencimentoPerdido) return '';
+  return c.chegouVencida ? 'Chegou vencida' : 'Venceu com o técnico';
+}
 function cpSinalizarTexto(r, c){
   if (PRAZO_SINALIZACOES[r.os]) return 'Sinalizado';
   if (c.sinalizar === '48h') return 'Sinalizar 48h';
@@ -4537,9 +4548,14 @@ function cpRowHtml({r,c}){
   const acompCls = c.acompanhamento==='NO PRAZO' ? 'col-concluido' : c.acompanhamento==='FORA DO PRAZO' ? 'col-ausente' : '';
   const statusPrazoCls = c.statusPrazo==='ATÉ 24H' ? 'col-concluido' : c.statusPrazo==='OUTLIERS' ? 'col-ausente' : c.statusPrazo ? 'col-pendente' : '';
   const sinalizarHtml = cpSinalizarHtml(r, c);
+  // quando já passou do prazo, indica se já chegou vencida pro técnico (não teve chance) ou se
+  // venceu enquanto estava com ele (demora na execução) — usa o horário de Início real.
+  const vencSub = c.vencimentoPerdido
+    ? `<br><span class="muted" style="font-size:10px;">${c.chegouVencida ? 'chegou vencida' : 'venceu c/ técnico'}</span>`
+    : '';
   return `<tr>
     <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
-    <td class="num ${vencCls}">${c.vencimentoTexto || '<span class="muted">—</span>'}</td>
+    <td class="num ${vencCls}">${(c.vencimentoTexto || '<span class="muted">—</span>') + vencSub}</td>
     <td class="num">${r.data}</td>
     <td class="num">${r.os}</td>
     <td>${r.cliente || '<span class="muted">—</span>'}</td>
@@ -4579,6 +4595,7 @@ async function exportarCpDetalheExcel(){
   const dados = itens.map(({r,c}) => ({
     'Sinalizar': cpSinalizarTexto(r, c),
     'Vencimento': c.vencimentoTexto || '',
+    'Vencido (detalhe)': cpChegouVencidaTexto(c),
     'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
     'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
     'Abertura': fmtDate(r.aberturaDate), 'Limite': fmtDate(c.limiteIdeal),
@@ -4700,33 +4717,38 @@ function renderCalculadoraPrazo(rows, now){
   // sem querer no balde "Até 24h" por eliminação
   itensSemTecnico.filter(x => BACKLOG_STATUSES.includes(x.r.status) && x.r.aberturaDate).forEach(x => {
     const nome = x.r.recurso;
-    const d = abertasPorTecnico[nome] = abertasPorTecnico[nome] || { ate24h:[], sinalizar48h:[], prazoPerdido:[] };
-    if (x.c.vencimentoPerdido) d.prazoPerdido.push(x);
+    const d = abertasPorTecnico[nome] = abertasPorTecnico[nome] || { ate24h:[], sinalizar48h:[], chegouVencida:[], venceuComTecnico:[] };
+    if (x.c.vencimentoPerdido){
+      if (x.c.chegouVencida) d.chegouVencida.push(x); else d.venceuComTecnico.push(x);
+    }
     else if (x.c.sinalizar === '48h') d.sinalizar48h.push(x);
     else d.ate24h.push(x);
   });
   const tecnicosOrdenados = Object.entries(abertasPorTecnico).sort((a,b) => {
-    if (b[1].prazoPerdido.length !== a[1].prazoPerdido.length) return b[1].prazoPerdido.length - a[1].prazoPerdido.length;
+    const perdidasA = a[1].chegouVencida.length+a[1].venceuComTecnico.length, perdidasB = b[1].chegouVencida.length+b[1].venceuComTecnico.length;
+    if (perdidasB !== perdidasA) return perdidasB - perdidasA;
     if (b[1].sinalizar48h.length !== a[1].sinalizar48h.length) return b[1].sinalizar48h.length - a[1].sinalizar48h.length;
-    const totalA = a[1].ate24h.length+a[1].sinalizar48h.length+a[1].prazoPerdido.length;
-    const totalB = b[1].ate24h.length+b[1].sinalizar48h.length+b[1].prazoPerdido.length;
+    const totalA = a[1].ate24h.length+a[1].sinalizar48h.length+perdidasA;
+    const totalB = b[1].ate24h.length+b[1].sinalizar48h.length+perdidasB;
     return totalB - totalA;
   });
-  let tecnicoHtml = '<thead><tr><th>Técnico</th><th class="num">Até 24h</th><th class="num">Sinalizar 48h</th><th class="num">Prazo perdido</th><th class="num">Total em aberto</th></tr></thead><tbody>';
+  let tecnicoHtml = '<thead><tr><th>Técnico</th><th class="num">Até 24h</th><th class="num">Sinalizar 48h</th>'
+    + '<th class="num">Chegou vencida</th><th class="num">Venceu c/ técnico</th><th class="num">Total em aberto</th></tr></thead><tbody>';
   const cpTecnicoCliques = [];
   const cpTecnicoCell = (titulo, arr, cls) => {
     cpTecnicoCliques.push({ titulo, itens: arr });
     return `<td class="num ${arr.length?cls:''}${arr.length?' clickable-cell':''}" data-click-idx="${cpTecnicoCliques.length-1}">${arr.length}</td>`;
   };
   if (!tecnicosOrdenados.length){
-    tecnicoHtml += '<tr><td colspan="5" class="muted">Nenhuma ordem em aberto no filtro atual</td></tr>';
+    tecnicoHtml += '<tr><td colspan="6" class="muted">Nenhuma ordem em aberto no filtro atual</td></tr>';
   } else {
     tecnicosOrdenados.forEach(([nome, d]) => {
-      const total = d.ate24h.length + d.sinalizar48h.length + d.prazoPerdido.length;
+      const total = d.ate24h.length + d.sinalizar48h.length + d.chegouVencida.length + d.venceuComTecnico.length;
       tecnicoHtml += `<tr><td class="recurso-name">${nome}</td>`
         + cpTecnicoCell(nome+' — Até 24h', d.ate24h, 'col-concluido')
         + cpTecnicoCell(nome+' — Sinalizar 48h', d.sinalizar48h, 'col-pendente')
-        + cpTecnicoCell(nome+' — Prazo perdido', d.prazoPerdido, 'col-ausente')
+        + cpTecnicoCell(nome+' — Chegou vencida', d.chegouVencida, 'col-ausente')
+        + cpTecnicoCell(nome+' — Venceu com o técnico', d.venceuComTecnico, 'col-ausente')
         + `<td class="num">${total}</td></tr>`;
     });
   }
@@ -4772,6 +4794,7 @@ async function exportarCalculadoraPrazoExcel(){
     return {
       'Sinalizar': cpSinalizarTexto(r, c),
       'Vencimento': c.vencimentoTexto || '',
+    'Vencido (detalhe)': cpChegouVencidaTexto(c),
       'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
       'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
       'Abertura': fmtDate(r.aberturaDate), 'Limite': fmtDate(c.limiteIdeal),
