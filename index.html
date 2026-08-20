@@ -4459,19 +4459,27 @@ function renderCalculadoraPrazo(rows, now){
 
   document.getElementById('cpTableHint').textContent = itens.length + ' ordem(ns) no filtro atual (de ' + base.length + ' no total)';
 
-  let html = '<thead><tr><th>Sinalizar</th><th>Data</th><th class="num">OS</th><th>Cliente</th><th>Técnico</th><th>Cidade</th><th>Status O.S</th>'
-    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Vencimento</th><th class="num">Encerramento</th>'
+  let html = '<thead><tr><th>Sinalizar</th><th class="num">Vencimento</th><th>Data</th><th class="num">OS</th><th>Cliente</th><th>Técnico</th><th>Cidade</th><th>Status O.S</th>'
+    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Encerramento</th>'
     + '<th>Acompanhamento</th><th>Período</th><th>Status Prazo</th></tr></thead><tbody>';
   if (!itens.length){
     html += '<tr><td colspan="14" class="muted">Nenhuma ordem de Reparo Corretivo no filtro atual</td></tr>';
   } else {
     itens.forEach(({r,c}) => {
-      const vencCls = c.vencimentoPerdido ? 'col-ausente' : '';
+      // cor só no texto da célula (não a linha toda): vermelho <=2h (ou já perdido), amarelo
+      // entre 2h e 4h, verde acima de 4h — pra dar destaque visual de urgência no Vencimento.
+      let vencCls = '';
+      if (c.vencimentoPerdido || c.vencimentoHoras !== null){
+        if (c.vencimentoPerdido || c.vencimentoHoras <= 2) vencCls = 'col-ausente';
+        else if (c.vencimentoHoras <= 4) vencCls = 'col-pendente';
+        else vencCls = 'col-concluido';
+      }
       const acompCls = c.acompanhamento==='NO PRAZO' ? 'col-concluido' : c.acompanhamento==='FORA DO PRAZO' ? 'col-ausente' : '';
       const statusPrazoCls = c.statusPrazo==='ATÉ 24H' ? 'col-concluido' : c.statusPrazo==='OUTLIERS' ? 'col-ausente' : c.statusPrazo ? 'col-pendente' : '';
       const sinalizarHtml = c.sinalizar==='48h' ? cpPill('Sinalizar 48h','red') : c.sinalizar==='ate24h' ? cpPill('Sinalizar até 24h','green') : '';
       html += `<tr>
         <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
+        <td class="num ${vencCls}">${c.vencimentoTexto || '<span class="muted">—</span>'}</td>
         <td class="num">${r.data}</td>
         <td class="num">${r.os}</td>
         <td>${r.cliente || '<span class="muted">—</span>'}</td>
@@ -4480,7 +4488,6 @@ function renderCalculadoraPrazo(rows, now){
         <td class="${statusColClass(r.status)}">${STATUS_COL_LABEL[r.status] || r.status}</td>
         <td class="num">${fmtDate(r.aberturaDate)}</td>
         <td class="num">${fmtDate(c.limiteIdeal)}</td>
-        <td class="num ${vencCls}">${c.vencimentoTexto || '<span class="muted">—</span>'}</td>
         <td class="num">${c.encerramento || '<span class="muted">—</span>'}</td>
         <td class="${acompCls}">${c.acompanhamento || '<span class="muted">—</span>'}</td>
         <td>${c.periodo || '<span class="muted">—</span>'}</td>
@@ -4502,10 +4509,11 @@ async function exportarCalculadoraPrazoExcel(){
     const c = calcularLinhaPrazo(r, now, cfg);
     return {
       'Sinalizar': c.sinalizar==='48h' ? 'Sinalizar 48h' : c.sinalizar==='ate24h' ? 'Sinalizar até 24h' : '',
+      'Vencimento': c.vencimentoTexto || '',
       'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
       'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
       'Abertura': fmtDate(r.aberturaDate), 'Limite': fmtDate(c.limiteIdeal),
-      'Vencimento': c.vencimentoTexto || '', 'Encerramento': c.encerramento || '',
+      'Encerramento': c.encerramento || '',
       'Acompanhamento': c.acompanhamento || '', 'Período': c.periodo || '',
       'Status Prazo': c.statusPrazo || ''
     };
