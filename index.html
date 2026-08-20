@@ -252,6 +252,11 @@
   .modal-backdrop{position:fixed;inset:0;background:rgba(6,10,16,0.7);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
   .modal-backdrop.open{display:flex;}
   .modal{background:var(--bg-elev);border:1px solid var(--border);border-radius:12px;padding:22px;max-width:520px;width:100%;max-height:88vh;overflow:auto;}
+  /* durante a geração da imagem do ticket de técnico, tira o limite de altura/rolagem do modal
+     e da tabela — html2canvas só captura o que está "visível" dentro de uma área com scroll, e
+     sem isso a imagem saía cortada. Volta ao normal (rolável) assim que a captura termina. */
+  #cpTecnicoModalBackdrop.capturing .modal{max-height:none;overflow:visible;}
+  #cpTecnicoModalBackdrop.capturing .table-scroll{max-height:none;overflow:visible;}
   .modal h3{margin:0 0 4px 0;font-size:15px;}
   .modal .desc{font-size:12px;color:var(--text-faint);margin-bottom:18px;}
   .cfg-row{display:grid;grid-template-columns:1fr 90px;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-soft);}
@@ -4658,7 +4663,6 @@ function cpTecnicoTicketRowHtml({r,c}){
     <td class="num">${fmtDate(r.aberturaDate)}</td>
     <td class="num">${fmtDate(c.limiteIdeal)}</td>
     <td class="num ${vencCls}">${(c.vencimentoTexto || '—') + vencSub}</td>
-    <td>${c.periodo || '<span class="muted">—</span>'}</td>
     <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
   </tr>`;
 }
@@ -4670,8 +4674,8 @@ function abrirSinalizacaoTecnico(nome, itens){
   document.getElementById('cpTecnicoCaptureTitle').textContent = 'Sinalização de Prazo — ' + nome;
   document.getElementById('cpTecnicoCaptureMeta').textContent = 'Gerado em ' + new Date().toLocaleString('pt-BR');
   let html = '<thead><tr><th>Data</th><th class="num">OS</th><th>Contrato</th><th>Cliente</th><th>Endereço</th>'
-    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Vencimento</th><th>Período</th><th>Sinalizar</th></tr></thead><tbody>';
-  if (!itens.length) html += '<tr><td colspan="10" class="muted">Sem ordens em aberto</td></tr>';
+    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Vencimento</th><th>Sinalizar</th></tr></thead><tbody>';
+  if (!itens.length) html += '<tr><td colspan="9" class="muted">Sem ordens em aberto</td></tr>';
   else itens.forEach(item => { html += cpTecnicoTicketRowHtml(item); });
   html += '</tbody>';
   document.getElementById('cpTecnicoModalTable').innerHTML = html;
@@ -4682,7 +4686,21 @@ function fecharCpTecnicoModal(){
 }
 async function gerarImagemSinalizacaoTecnico(){
   const nomeArquivo = 'sinalizacao_' + semAcento(cpTecnicoTicketAtual ? cpTecnicoTicketAtual.nome : 'tecnico').replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
-  return gerarImagemDeArea('cpTecnicoCaptureArea', 'cpTecnicoCaptureHeader', nomeArquivo, 'btnGerarImagemTecnico');
+  const backdrop = document.getElementById('cpTecnicoModalBackdrop');
+  // tira o limite de altura/rolagem só durante a captura — senão o html2canvas só pega o
+  // trechinho que estava visível dentro da área com scroll, cortando a tabela na imagem. O
+  // max-height:55vh é inline no HTML (maior prioridade que a regra de CSS), então precisa
+  // mexer nele direto — a classe .capturing sozinha não bastava.
+  const tableScrollEl = backdrop.querySelector('.table-scroll');
+  const maxHeightOriginal = tableScrollEl ? tableScrollEl.style.maxHeight : null;
+  backdrop.classList.add('capturing');
+  if (tableScrollEl) tableScrollEl.style.maxHeight = 'none';
+  try{
+    await gerarImagemDeArea('cpTecnicoCaptureArea', 'cpTecnicoCaptureHeader', nomeArquivo, 'btnGerarImagemTecnico');
+  } finally {
+    backdrop.classList.remove('capturing');
+    if (tableScrollEl) tableScrollEl.style.maxHeight = maxHeightOriginal;
+  }
 }
 
 function renderCalculadoraPrazo(rows, now){
