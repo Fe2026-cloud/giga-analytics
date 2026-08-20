@@ -4385,7 +4385,13 @@ function renderCalculadoraPrazo(rows, now){
   const calc = base.map(r => ({ r, c: calcularLinhaPrazo(r, now, cfg) }));
 
   // ---------- Prazo geral do dia + Prazos por cidade (só ordens concluídas) ----------
+  // totalConcluidasBruto conta TODA OS concluída, mesmo sem horário de Fim válido no CSV — usado
+  // só pra mensagem, pra não dizer "sem ordens concluídas" quando na verdade existem, só não dá
+  // pra calcular a duração delas (mesma limitação do Detalhamento de Prazos, que também exige
+  // abertura + fim válidos).
+  const totalConcluidasBruto = calc.filter(x => x.r.status === 'concluído').length;
   const concluidasCalc = calc.filter(x => x.r.status === 'concluído' && x.c.statusPrazo);
+  const semHorarioValido = totalConcluidasBruto - concluidasCalc.length;
   const cidadesConcluidas = [...new Set(concluidasCalc.map(x => x.r.cidade))].sort();
   const porCidade = {};
   cidadesConcluidas.forEach(c => { porCidade[c] = { 'ATÉ 24H':0, 'ATÉ 48H':0, 'MAIOR QUE 48H':0, 'OUTLIERS':0 }; });
@@ -4397,13 +4403,18 @@ function renderCalculadoraPrazo(rows, now){
   const geralValorEl = document.getElementById('cpGeralValor');
   geralValorEl.textContent = pctGeral===null ? '—' : pctGeral.toFixed(0)+'%';
   geralValorEl.style.color = pctGeral===null ? 'var(--text-faint)' : 'var(--'+pctColor(pctGeral)+')';
-  document.getElementById('cpGeralFoot').textContent = totalConcl
-    ? (totalDentroPrazo+' de '+totalConcl+' dentro do prazo ideal ('+cfg.ideal+'h)')
-    : 'sem ordens concluídas no filtro atual';
+  let geralFootTxt;
+  if (totalConcl) geralFootTxt = totalDentroPrazo+' de '+totalConcl+' dentro do prazo ideal ('+cfg.ideal+'h)';
+  else if (totalConcluidasBruto) geralFootTxt = totalConcluidasBruto+' concluída(s), mas sem horário de encerramento válido pra calcular';
+  else geralFootTxt = 'sem ordens concluídas no filtro atual';
+  if (semHorarioValido && totalConcl) geralFootTxt += ' · +' + semHorarioValido + ' sem horário válido';
+  document.getElementById('cpGeralFoot').textContent = geralFootTxt;
 
   let cidadeHtml = '<thead><tr><th>Prazo</th>' + cidadesConcluidas.map(c=>`<th class="num">${c}</th>`).join('') + '</tr></thead><tbody>';
   if (!cidadesConcluidas.length){
-    cidadeHtml += '<tr><td class="muted">Sem ordens concluídas no filtro atual</td></tr>';
+    cidadeHtml += totalConcluidasBruto
+      ? `<tr><td class="muted">${totalConcluidasBruto} ordem(ns) concluída(s), mas sem horário de encerramento válido no CSV pra calcular a faixa</td></tr>`
+      : '<tr><td class="muted">Sem ordens concluídas no filtro atual</td></tr>';
   } else {
     CALC_PRAZO_STATUS_BUCKETS.forEach(b => {
       cidadeHtml += `<tr><td>${b}</td>` + cidadesConcluidas.map(c => `<td class="num">${porCidade[c][b]}</td>`).join('') + '</tr>';
