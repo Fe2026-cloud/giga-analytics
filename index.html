@@ -1161,6 +1161,18 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="cpDetalheBackdrop">
+  <div class="modal" style="max-width:1100px;">
+    <h3 id="cpDetalheTitulo">Detalhe</h3>
+    <div class="desc" id="cpDetalheDesc"></div>
+    <div class="table-scroll" style="max-height:60vh;"><table class="pivot compact-table" id="cpDetalheTable"></table></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="btnExportarCpDetalhe">⬇ Exportar Excel</button>
+      <button type="button" class="btn ghost" id="btnFecharCpDetalhe">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -4380,6 +4392,80 @@ function cpBaseRows(rows){
 function cpPill(texto, cor){
   return `<span class="cp-pill cp-pill-${cor}">${texto}</span>`;
 }
+// Cabeçalho e linha da tabela principal — reusados também no modal de detalhe (clique na
+// grade "Prazos por cidade"), pra sempre mostrar exatamente as mesmas colunas.
+function cpTableHeadHtml(){
+  return '<thead><tr><th>Sinalizar</th><th class="num">Vencimento</th><th>Data</th><th class="num">OS</th><th>Cliente</th><th>Técnico</th><th>Cidade</th><th>Status O.S</th>'
+    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Encerramento</th>'
+    + '<th>Acompanhamento</th><th>Período</th><th>Status Prazo</th></tr></thead>';
+}
+function cpRowHtml({r,c}){
+  // cor só no texto da célula (não a linha toda): vermelho <=2h (ou já perdido), amarelo
+  // entre 2h e 4h, verde acima de 4h — pra dar destaque visual de urgência no Vencimento.
+  let vencCls = '';
+  if (c.vencimentoPerdido || c.vencimentoHoras !== null){
+    if (c.vencimentoPerdido || c.vencimentoHoras <= 2) vencCls = 'col-ausente';
+    else if (c.vencimentoHoras <= 4) vencCls = 'col-pendente';
+    else vencCls = 'col-concluido';
+  }
+  const acompCls = c.acompanhamento==='NO PRAZO' ? 'col-concluido' : c.acompanhamento==='FORA DO PRAZO' ? 'col-ausente' : '';
+  const statusPrazoCls = c.statusPrazo==='ATÉ 24H' ? 'col-concluido' : c.statusPrazo==='OUTLIERS' ? 'col-ausente' : c.statusPrazo ? 'col-pendente' : '';
+  const sinalizarHtml = c.sinalizar==='48h' ? cpPill('Sinalizar 48h','red') : c.sinalizar==='ate24h' ? cpPill('Sinalizar até 24h','green') : '';
+  return `<tr>
+    <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
+    <td class="num ${vencCls}">${c.vencimentoTexto || '<span class="muted">—</span>'}</td>
+    <td class="num">${r.data}</td>
+    <td class="num">${r.os}</td>
+    <td>${r.cliente || '<span class="muted">—</span>'}</td>
+    <td class="recurso-name">${r.recurso}</td>
+    <td>${r.cidade}</td>
+    <td class="${statusColClass(r.status)}">${STATUS_COL_LABEL[r.status] || r.status}</td>
+    <td class="num">${fmtDate(r.aberturaDate)}</td>
+    <td class="num">${fmtDate(c.limiteIdeal)}</td>
+    <td class="num">${c.encerramento || '<span class="muted">—</span>'}</td>
+    <td class="${acompCls}">${c.acompanhamento || '<span class="muted">—</span>'}</td>
+    <td>${c.periodo || '<span class="muted">—</span>'}</td>
+    <td class="${statusPrazoCls}">${c.statusPrazo || '<span class="muted">—</span>'}</td>
+  </tr>`;
+}
+// Modal de detalhe da grade "Prazos por cidade" — clique numa célula (cidade x faixa de prazo)
+// abre as OS que compõem aquele número, com as mesmas colunas da tabela principal.
+let cpDetalheAtual = null; // { titulo, itens }
+function abrirCpDetalhe(titulo, itens){
+  cpDetalheAtual = { titulo, itens };
+  document.getElementById('cpDetalheTitulo').textContent = titulo;
+  document.getElementById('cpDetalheDesc').textContent = itens.length + ' ordem(ns) no recorte atual';
+  let html = cpTableHeadHtml() + '<tbody>';
+  if (!itens.length) html += '<tr><td colspan="14" class="muted">Sem ordens</td></tr>';
+  else itens.forEach(item => { html += cpRowHtml(item); });
+  html += '</tbody>';
+  document.getElementById('cpDetalheTable').innerHTML = html;
+  document.getElementById('cpDetalheBackdrop').classList.add('open');
+}
+function fecharCpDetalhe(){
+  document.getElementById('cpDetalheBackdrop').classList.remove('open');
+}
+async function exportarCpDetalheExcel(){
+  if (!cpDetalheAtual || !cpDetalheAtual.itens.length){ showToast('Nada pra exportar.'); return; }
+  const ok = await loadSheetJS();
+  if (!ok){ showToast('Não consegui carregar o gerador de Excel — verifique a internet e tente de novo.'); return; }
+  const { titulo, itens } = cpDetalheAtual;
+  const dados = itens.map(({r,c}) => ({
+    'Sinalizar': c.sinalizar==='48h' ? 'Sinalizar 48h' : c.sinalizar==='ate24h' ? 'Sinalizar até 24h' : '',
+    'Vencimento': c.vencimentoTexto || '',
+    'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
+    'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
+    'Abertura': fmtDate(r.aberturaDate), 'Limite': fmtDate(c.limiteIdeal),
+    'Encerramento': c.encerramento || '',
+    'Acompanhamento': c.acompanhamento || '', 'Período': c.periodo || '',
+    'Status Prazo': c.statusPrazo || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Detalhe');
+  XLSX.writeFile(wb, semAcento(titulo).replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'') + '_' + fmtDDMMYY2(new Date()).replace(/\//g,'-') + '.xlsx');
+  registrarAuditoria('exportar_calculadora_prazo_detalhe', { titulo, linhas: itens.length });
+}
 function renderCalculadoraPrazo(rows, now){
   const tbl = document.getElementById('cpTable');
   if (!tbl) return;
@@ -4398,9 +4484,9 @@ function renderCalculadoraPrazo(rows, now){
   const concluidasCalc = calc.filter(x => x.r.status === 'concluído' && x.c.statusPrazo);
   const semHorarioValido = totalConcluidasBruto - concluidasCalc.length;
   const cidadesConcluidas = [...new Set(concluidasCalc.map(x => x.r.cidade))].sort();
-  const porCidade = {};
-  cidadesConcluidas.forEach(c => { porCidade[c] = { 'ATÉ 24H':0, 'ATÉ 48H':0, 'MAIOR QUE 48H':0, 'OUTLIERS':0 }; });
-  concluidasCalc.forEach(x => { porCidade[x.r.cidade][x.c.statusPrazo]++; });
+  const porCidade = {}; // porCidade[cidade][faixa] = [ {r,c}, ... ] — guarda os itens, não só a contagem, pro clique abrir o detalhe
+  cidadesConcluidas.forEach(c => { porCidade[c] = { 'ATÉ 24H':[], 'ATÉ 48H':[], 'MAIOR QUE 48H':[], 'OUTLIERS':[] }; });
+  concluidasCalc.forEach(x => { porCidade[x.r.cidade][x.c.statusPrazo].push(x); });
 
   const totalConcl = concluidasCalc.length;
   const totalDentroPrazo = concluidasCalc.filter(x => x.c.statusPrazo === 'ATÉ 24H').length;
@@ -4416,22 +4502,32 @@ function renderCalculadoraPrazo(rows, now){
   document.getElementById('cpGeralFoot').textContent = geralFootTxt;
 
   let cidadeHtml = '<thead><tr><th>Prazo</th>' + cidadesConcluidas.map(c=>`<th class="num">${c}</th>`).join('') + '</tr></thead><tbody>';
+  const cpCidadeCliques = []; // { titulo, itens } — indexado por data-click-idx nas células
+  const cpCidadeCell = (titulo, itens) => {
+    cpCidadeCliques.push({ titulo, itens });
+    return `<td class="num${itens.length?' clickable-cell':''}" data-click-idx="${cpCidadeCliques.length-1}">${itens.length}</td>`;
+  };
   if (!cidadesConcluidas.length){
     cidadeHtml += totalConcluidasBruto
       ? `<tr><td class="muted">${totalConcluidasBruto} ordem(ns) concluída(s), mas sem horário de encerramento válido no CSV pra calcular a faixa</td></tr>`
       : '<tr><td class="muted">Sem ordens concluídas no filtro atual</td></tr>';
   } else {
     CALC_PRAZO_STATUS_BUCKETS.forEach(b => {
-      cidadeHtml += `<tr><td>${b}</td>` + cidadesConcluidas.map(c => `<td class="num">${porCidade[c][b]}</td>`).join('') + '</tr>';
+      cidadeHtml += `<tr><td>${b}</td>` + cidadesConcluidas.map(c => cpCidadeCell(b+' — '+c, porCidade[c][b])).join('') + '</tr>';
     });
     cidadeHtml += '<tr class="total-row"><td>% dentro do prazo</td>' + cidadesConcluidas.map(c => {
-      const totalCidade = CALC_PRAZO_STATUS_BUCKETS.reduce((s,b)=>s+porCidade[c][b],0);
-      const pct = totalCidade ? (100*porCidade[c]['ATÉ 24H']/totalCidade) : 0;
+      const totalCidade = CALC_PRAZO_STATUS_BUCKETS.reduce((s,b)=>s+porCidade[c][b].length,0);
+      const pct = totalCidade ? (100*porCidade[c]['ATÉ 24H'].length/totalCidade) : 0;
       return `<td class="num">${pct.toFixed(0)}%</td>`;
     }).join('') + '</tr>';
   }
   cidadeHtml += '</tbody>';
   document.getElementById('cpCidadeTable').innerHTML = cidadeHtml;
+  document.querySelectorAll('#cpCidadeTable [data-click-idx]').forEach(td => {
+    const item = cpCidadeCliques[+td.dataset.clickIdx];
+    if (!item) return;
+    td.addEventListener('click', () => abrirCpDetalhe(item.titulo, item.itens));
+  });
 
   // ---------- filtro de cidade (dropdown) — reconstrói as opções a partir da base atual, sem
   // perder a seleção do usuário se a cidade escolhida ainda existir no recorte ----------
@@ -4459,41 +4555,11 @@ function renderCalculadoraPrazo(rows, now){
 
   document.getElementById('cpTableHint').textContent = itens.length + ' ordem(ns) no filtro atual (de ' + base.length + ' no total)';
 
-  let html = '<thead><tr><th>Sinalizar</th><th class="num">Vencimento</th><th>Data</th><th class="num">OS</th><th>Cliente</th><th>Técnico</th><th>Cidade</th><th>Status O.S</th>'
-    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Encerramento</th>'
-    + '<th>Acompanhamento</th><th>Período</th><th>Status Prazo</th></tr></thead><tbody>';
+  let html = cpTableHeadHtml() + '<tbody>';
   if (!itens.length){
     html += '<tr><td colspan="14" class="muted">Nenhuma ordem de Reparo Corretivo no filtro atual</td></tr>';
   } else {
-    itens.forEach(({r,c}) => {
-      // cor só no texto da célula (não a linha toda): vermelho <=2h (ou já perdido), amarelo
-      // entre 2h e 4h, verde acima de 4h — pra dar destaque visual de urgência no Vencimento.
-      let vencCls = '';
-      if (c.vencimentoPerdido || c.vencimentoHoras !== null){
-        if (c.vencimentoPerdido || c.vencimentoHoras <= 2) vencCls = 'col-ausente';
-        else if (c.vencimentoHoras <= 4) vencCls = 'col-pendente';
-        else vencCls = 'col-concluido';
-      }
-      const acompCls = c.acompanhamento==='NO PRAZO' ? 'col-concluido' : c.acompanhamento==='FORA DO PRAZO' ? 'col-ausente' : '';
-      const statusPrazoCls = c.statusPrazo==='ATÉ 24H' ? 'col-concluido' : c.statusPrazo==='OUTLIERS' ? 'col-ausente' : c.statusPrazo ? 'col-pendente' : '';
-      const sinalizarHtml = c.sinalizar==='48h' ? cpPill('Sinalizar 48h','red') : c.sinalizar==='ate24h' ? cpPill('Sinalizar até 24h','green') : '';
-      html += `<tr>
-        <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
-        <td class="num ${vencCls}">${c.vencimentoTexto || '<span class="muted">—</span>'}</td>
-        <td class="num">${r.data}</td>
-        <td class="num">${r.os}</td>
-        <td>${r.cliente || '<span class="muted">—</span>'}</td>
-        <td class="recurso-name">${r.recurso}</td>
-        <td>${r.cidade}</td>
-        <td class="${statusColClass(r.status)}">${STATUS_COL_LABEL[r.status] || r.status}</td>
-        <td class="num">${fmtDate(r.aberturaDate)}</td>
-        <td class="num">${fmtDate(c.limiteIdeal)}</td>
-        <td class="num">${c.encerramento || '<span class="muted">—</span>'}</td>
-        <td class="${acompCls}">${c.acompanhamento || '<span class="muted">—</span>'}</td>
-        <td>${c.periodo || '<span class="muted">—</span>'}</td>
-        <td class="${statusPrazoCls}">${c.statusPrazo || '<span class="muted">—</span>'}</td>
-      </tr>`;
-    });
+    itens.forEach(item => { html += cpRowHtml(item); });
   }
   html += '</tbody>';
   tbl.innerHTML = html;
@@ -5630,6 +5696,9 @@ async function init(){
     });
   });
   document.getElementById('btnExportarCalcPrazo').addEventListener('click', exportarCalculadoraPrazoExcel);
+  document.getElementById('btnFecharCpDetalhe').addEventListener('click', fecharCpDetalhe);
+  document.getElementById('cpDetalheBackdrop').addEventListener('click', e => { if (e.target.id === 'cpDetalheBackdrop') fecharCpDetalhe(); });
+  document.getElementById('btnExportarCpDetalhe').addEventListener('click', exportarCpDetalheExcel);
   document.getElementById('producaoRecursoCidadeFiltro').addEventListener('change', (e) => {
     prodRecursoCidadeFiltro = e.target.value;
     renderProducaoPorRecurso(getFilteredRows());
