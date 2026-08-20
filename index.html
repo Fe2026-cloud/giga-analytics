@@ -307,17 +307,13 @@
   .collapsible.open{max-height:900px;opacity:1;}
   .btn.active-toggle{border-color:var(--accent);color:var(--accent);}
 
-  /* ---------- gauge (velocímetro) ---------- */
+  /* ---------- gauge (velocímetro) — arco preenchido + marcador de meta ---------- */
   .gauge-wrap{display:flex;flex-direction:column;align-items:center;padding:6px 0 2px 0;}
-  .gauge{position:relative;width:180px;height:92px;overflow:hidden;}
-  .gauge-arc{position:absolute;top:0;left:0;width:180px;height:180px;border-radius:50%;}
-  .gauge-hole{position:absolute;top:20px;left:20px;width:140px;height:140px;border-radius:50%;background:var(--surface);}
-  .gauge-needle{position:absolute;left:88px;bottom:0;width:4px;height:78px;background:var(--text);border-radius:2px;transform-origin:bottom center;}
-  .gauge-pivot{position:absolute;left:84px;bottom:-6px;width:12px;height:12px;border-radius:50%;background:var(--text);}
-  .gauge-value{font-family:var(--font-ui);font-size:26px;font-weight:750;margin-top:4px;}
+  .gauge-meta-label{font-size:12.5px;font-weight:700;color:var(--accent);margin-bottom:2px;}
+  .gauge2{display:block;}
+  .gauge-value{font-family:var(--font-ui);font-size:26px;font-weight:750;margin-top:2px;}
   .gauge-meta{font-size:11px;color:var(--text-faint);margin-top:2px;}
   .gauge-counts{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
-  .gauge-zone-labels{display:flex;justify-content:space-between;width:180px;font-size:9.5px;color:var(--text-faint);margin-top:-4px;}
 
   /* ---------- status das ordens ---------- */
   .status-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
@@ -4209,21 +4205,28 @@ function buildGaugeHTML(pctIdeal, dentro, total){
   const pct = total ? Math.round(pctIdeal) : null;
   const pctClamped = Math.max(0, Math.min(100, pct===null?0:pct));
   const color = pctColor(pct===null?0:pct);
-  // zonas fixas: vermelho 0-75 | amarelo 75-85 | verde 85-100, mapeadas para metade do círculo (0-50% do conic-gradient)
-  const redEnd = (GAUGE_YELLOW_MIN/100)*50;
-  const yellowEnd = (GAUGE_META/100)*50;
-  const needleDeg = -90 + (pctClamped/100)*180;
+  // arco semicircular via SVG: trilho cinza fixo + traço colorido preenchendo de 0% até o valor
+  // atual (pathLength=100 deixa o stroke-dasharray direto em "% do arco"), com um marcador
+  // (linha curta) cravado na posição da meta.
+  const cx=100, cy=100, r=80, sw=16;
+  const startX = cx - r, endX = cx + r;
+  const metaTheta = (180 - (GAUGE_META/100)*180) * Math.PI/180;
+  const innerR = r - sw/2 - 5, outerR = r + sw/2 + 5;
+  const tickX1 = (cx + innerR*Math.cos(metaTheta)).toFixed(1), tickY1 = (cy - innerR*Math.sin(metaTheta)).toFixed(1);
+  const tickX2 = (cx + outerR*Math.cos(metaTheta)).toFixed(1), tickY2 = (cy - outerR*Math.sin(metaTheta)).toFixed(1);
+  const arcPath = `M ${startX} ${cy} A ${r} ${r} 0 1 1 ${endX} ${cy}`;
   return `
     <div class="gauge-wrap">
-      <div class="gauge">
-        <div class="gauge-arc" style="background:conic-gradient(from -90deg, var(--red) 0% ${redEnd}%, var(--yellow) ${redEnd}% ${yellowEnd}%, var(--green) ${yellowEnd}% 50%, transparent 50% 100%)"></div>
-        <div class="gauge-hole"></div>
-        <div class="gauge-needle" style="transform:rotate(${needleDeg}deg)"></div>
-        <div class="gauge-pivot"></div>
-      </div>
-      <div class="gauge-zone-labels"><span>0%</span><span>100%</span></div>
+      <div class="gauge-meta-label">Meta ${GAUGE_META}%</div>
+      <svg class="gauge2" viewBox="0 0 200 112" width="180" height="101">
+        <path d="${arcPath}" fill="none" stroke="var(--border-soft)" stroke-width="${sw}" stroke-linecap="round" pathLength="100"/>
+        <path d="${arcPath}" fill="none" stroke="${pct===null?'var(--text-faint)':'var(--'+color+')'}" stroke-width="${sw}" stroke-linecap="round" pathLength="100" stroke-dasharray="${pctClamped} ${100-pctClamped}"/>
+        <line x1="${tickX1}" y1="${tickY1}" x2="${tickX2}" y2="${tickY2}" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+        <text x="${startX}" y="${cy+18}" font-size="11" fill="var(--text-faint)" text-anchor="start">0%</text>
+        <text x="${endX}" y="${cy+18}" font-size="11" fill="var(--text-faint)" text-anchor="end">100%</text>
+      </svg>
       <div class="gauge-value" style="color:${pct===null?'var(--text-faint)':'var(--'+color+')'}">${pct===null?'—':pct+'%'}</div>
-      <div class="gauge-meta">Meta: ${GAUGE_META}%</div>
+      <div class="gauge-meta">meta: até ${GAUGE_META}%</div>
       <div class="gauge-counts">${dentro} de ${total} dentro da meta</div>
     </div>`;
 }
