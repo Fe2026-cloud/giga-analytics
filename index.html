@@ -86,7 +86,10 @@
   .topbar-search input:disabled{cursor:not-allowed;}
   .icon-btn{width:32px;height:32px;border-radius:50%;background:transparent;border:none;color:var(--text-dim);font-size:15px;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
   .icon-btn:hover{color:var(--accent);}
-  .notif-dot{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface-2);}
+  .notif-dot{display:none;position:absolute;top:1px;right:0px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--red);border:1.5px solid var(--surface-2);color:#fff;font-size:9.5px;font-weight:800;line-height:15px;text-align:center;box-sizing:border-box;}
+  .notif-dot.show{display:block;}
+  @keyframes notifPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.25);}}
+  .notif-dot.pulse{animation:notifPulse .5s ease-in-out 2;}
   .avatar-chip{width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
   @media (max-width:900px){.topbar-search{display:none;}}
   .fiber-line{height:2px;position:relative;overflow:hidden;background:var(--border-soft);}
@@ -478,6 +481,7 @@
   .cp-geral-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);margin-bottom:8px;}
   .cp-geral-value{font-size:42px;font-weight:800;font-family:var(--font-ui);line-height:1;}
   .cp-geral-foot{font-size:11.5px;color:var(--text-dim);margin-top:8px;}
+  .cp-geral-tendencia{font-size:11px;margin-top:6px;}
   .cp-select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text);}
   .cp-status-bar{display:flex;gap:6px;flex-wrap:wrap;}
   .cp-status-btn{
@@ -490,6 +494,9 @@
   .cp-pill{display:inline-block;padding:3px 9px;border-radius:12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
   .cp-pill-red{background:var(--red-bg);color:var(--red);}
   .cp-pill-green{background:var(--green-bg);color:var(--green);}
+  .cp-pill-done{background:var(--gray-bg);color:var(--text-dim);}
+  .cp-sinalizar-btn{cursor:pointer;transition:filter .12s;}
+  .cp-sinalizar-btn:hover{filter:brightness(0.92);}
 
   .report-title-bar{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px 2px;}
   .report-title-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text);}
@@ -933,6 +940,7 @@
           <div class="cp-geral-label">Prazo geral do dia</div>
           <div class="cp-geral-value" id="cpGeralValor">—</div>
           <div class="cp-geral-foot" id="cpGeralFoot"></div>
+          <div class="cp-geral-tendencia" id="cpGeralTendencia"></div>
         </div>
         <div class="panel">
           <div class="panel-head"><h3>Prazos por cidade</h3><span class="desc">ordens concluídas, agrupadas por cidade</span></div>
@@ -940,10 +948,16 @@
         </div>
       </div>
 
+      <div class="section-title"><h2>Por técnico</h2><span class="hint">ordens em aberto, agrupadas por técnico — pra saber quem precisa ser avisado</span></div>
+      <div class="panel">
+        <div class="table-scroll"><table class="pivot compact-table" id="cpTecnicoTable"></table></div>
+      </div>
+
       <div class="panel">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px 0;">
           <input type="text" id="cpBusca" placeholder="🔎 Buscar OS, técnico ou cliente..." class="pr-busca">
           <select id="cpCidadeFiltro" class="cp-select"><option value="TODAS">Todas as cidades</option></select>
+          <select id="cpTecnicoFiltro" class="cp-select"><option value="TODOS">Todos os técnicos</option></select>
           <div class="cp-status-bar" id="cpStatusFiltro">
             <button type="button" class="cp-status-btn active" data-status="TODAS">Todas</button>
             <button type="button" class="cp-status-btn" data-status="ABERTAS">Em aberto</button>
@@ -1770,6 +1784,7 @@ function iniciarRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_importacoes' }, recarregarRedeExternaRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_atividades' }, recarregarRedeExternaRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_equipe' }, recarregarRedeExternaEquipeRealtime)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'prazo_sinalizacoes' }, recarregarSinalizacoesRealtime)
     .subscribe();
 }
 
@@ -2084,6 +2099,9 @@ async function loadPersisted(){
       });
     });
   }catch(e){ console.error('Falha ao carregar snapshots de backlog do Supabase', e); }
+  try{
+    await carregarSinalizacoesDoSupabase();
+  }catch(e){ console.error('Falha ao carregar sinalizações de prazo do Supabase', e); }
   // O painel sempre abre no tema claro — não guarda/lê preferência entre sessões
   // (dá pra alternar durante o uso, mas volta pro claro no próximo carregamento).
   await applyTheme('light');
@@ -3068,6 +3086,7 @@ function render(){
   rc(() => renderPrazosPorCidade(rows), 'Prazos por cidade');
   rc(() => renderDetalhamentoPrazos(rows), 'Detalhamento de prazos');
   rc(() => renderCalculadoraPrazo(rows, now), 'Calculadora de Prazo');
+  rc(() => atualizarSinoUrgentes(), 'Sino de OS urgentes');
   rc(() => renderVencimento(rows, now), 'Vencimento');
   rc(() => renderExecucao(rows, now), 'Execução');
   rc(() => renderProducaoPorTipo(rows), 'Produção por tipo');
@@ -4335,6 +4354,46 @@ function renderDetalhamentoPrazos(rows){
   el.innerHTML = html;
 }
 
+/* ============================= SINALIZAÇÕES DE PRAZO (Supabase) =============================
+   "Já avisei o técnico dessa OS" — marcado na coluna Sinalizar da Calculadora de Prazo. Chave é
+   só o número da OS (não o dia): sobrevive a reimportação, já que a mesma OS em aberto volta a
+   aparecer em CSVs de dias seguintes até ser concluída. */
+let PRAZO_SINALIZACOES = {}; // { [os]: { nivel, sinalizado_por, sinalizado_em } }
+async function carregarSinalizacoesDoSupabase(){
+  const { data, error } = await supabaseClient.from('prazo_sinalizacoes').select('os, nivel, sinalizado_por, sinalizado_em');
+  if (error) throw error;
+  const novo = {};
+  (data||[]).forEach(row => { novo[row.os] = { nivel: row.nivel, sinalizadoPor: row.sinalizado_por, sinalizadoEm: row.sinalizado_em }; });
+  PRAZO_SINALIZACOES = novo;
+}
+async function recarregarSinalizacoesRealtime(){
+  try{ await carregarSinalizacoesDoSupabase(); render(); }
+  catch(e){ console.error('Falha ao recarregar sinalizações de prazo em tempo real', e); }
+}
+async function marcarSinalizado(os, nivel){
+  if (!podeEditarDados()) return;
+  try{
+    const { error } = await supabaseClient.from('prazo_sinalizacoes')
+      .upsert({ os, nivel, sinalizado_por: CURRENT_USER.id, sinalizado_em: new Date().toISOString() }, { onConflict: 'os' });
+    if (error) throw error;
+    PRAZO_SINALIZACOES[os] = { nivel, sinalizadoPor: CURRENT_USER.id, sinalizadoEm: new Date().toISOString() };
+    render();
+    registrarAuditoria('sinalizar_prazo', { os, nivel });
+    showToast('OS ' + os + ' marcada como sinalizada.');
+  }catch(e){ console.error('Falha ao marcar sinalização', e); showToast('Não consegui marcar — tenta de novo.'); }
+}
+async function desmarcarSinalizado(os){
+  if (!podeEditarDados()) return;
+  try{
+    const { error } = await supabaseClient.from('prazo_sinalizacoes').delete().eq('os', os);
+    if (error) throw error;
+    delete PRAZO_SINALIZACOES[os];
+    render();
+    registrarAuditoria('desmarcar_sinalizacao_prazo', { os });
+    showToast('Sinalização da OS ' + os + ' desfeita.');
+  }catch(e){ console.error('Falha ao desmarcar sinalização', e); showToast('Não consegui desmarcar — tenta de novo.'); }
+}
+
 /* ============================= CALCULADORA DE PRAZO (Reparo Corretivo) =============================
    Reconstrói, com os dados já importados (C10/C13/C14, Reparo Corretivo), a mesma lógica da
    planilha "Acompanhamento de Prazo" que o time já usa: VENCIMENTO/PERÍODO/SINALIZAR pra quem
@@ -4344,9 +4403,23 @@ const CALC_PRAZO_REGIONAIS = ['C10','C13','C14'];
 const CALC_PRAZO_STATUS_BUCKETS = ['ATÉ 24H','ATÉ 48H','MAIOR QUE 48H','OUTLIERS'];
 let cpBuscaTxt = '';
 let cpCidadeFiltroVal = 'TODAS';
+let cpTecnicoFiltroVal = 'TODOS';
 let cpStatusFiltroVal = 'TODAS'; // TODAS | ABERTAS | CONCLUIDAS
 let cpUltimasRows = null;
 let cpUltimoNow = null;
+
+// % dentro do prazo ideal (Reparo Corretivo, C10/C13/C14) de UM dia específico — usado pro
+// comparativo "vs ontem" do card Prazo geral do dia. Sempre olha a base inteira (não respeita
+// o filtro de regional/período atual), porque é uma comparação entre dois dias fixos.
+function cpMetricaDoDia(dataStr){
+  if (!dataStr) return null;
+  const cfg = CONFIG.reparo;
+  const rowsDoDia = getAllRows().filter(r => r.data === dataStr);
+  const concl = cpBaseRows(rowsDoDia).filter(r => r.status === 'concluído' && r.aberturaDate && r.fimDate);
+  if (!concl.length) return null;
+  const dentro = concl.filter(r => (r.fimDate - r.aberturaDate)/3600000 < cfg.ideal).length;
+  return 100*dentro/concl.length;
+}
 
 function calcularLinhaPrazo(r, now, cfg){
   const aberta = BACKLOG_STATUSES.includes(r.status);
@@ -4389,8 +4462,61 @@ function cpBaseRows(rows){
     && CALC_PRAZO_REGIONAIS.includes(r.regional)
     && (BACKLOG_STATUSES.includes(r.status) || r.status === 'concluído'));
 }
+// OS de Reparo Corretivo (C10/C13/C14, MOP) em aberto com vencimento <= 2h (olhando a coluna
+// Vencimento — inclui as já com prazo perdido). Sempre olha a base inteira, sem depender do
+// filtro de regional/período selecionado — é um alerta global, igual o sino do topo.
+function cpUrgentesAgora(){
+  const cfg = CONFIG.reparo;
+  const now = new Date();
+  const abertas = cpBaseRows(getAllRows()).filter(r => BACKLOG_STATUSES.includes(r.status) && r.aberturaDate);
+  return abertas.filter(r => (cfg.ideal - (now - r.aberturaDate)/3600000) <= 2);
+}
+// null até o 1º cálculo — evita disparar um alerta gigante com tudo que já estava urgente no
+// momento em que a página foi aberta; só alerta quem ENTRA na faixa depois disso.
+let cpUrgentesAnteriores = null;
+function atualizarSinoUrgentes(){
+  const urgentes = cpUrgentesAgora();
+  const dot = document.querySelector('#btnNotif .notif-dot');
+  if (dot){
+    if (urgentes.length){
+      dot.textContent = urgentes.length > 99 ? '99+' : String(urgentes.length);
+      dot.classList.add('show');
+    } else {
+      dot.classList.remove('show');
+    }
+  }
+  const atuaisSet = new Set(urgentes.map(r => r.os));
+  if (cpUrgentesAnteriores !== null){
+    const novos = urgentes.filter(r => !cpUrgentesAnteriores.has(r.os));
+    if (novos.length){
+      showToast('⚠️ ' + novos.length + ' OS de Reparo Corretivo entrando em até 2h do vencimento!');
+      if (dot){ dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); }
+    }
+  }
+  cpUrgentesAnteriores = atuaisSet;
+}
 function cpPill(texto, cor){
   return `<span class="cp-pill cp-pill-${cor}">${texto}</span>`;
+}
+// Sinalizar vira um botão de verdade: marca/desmarca "já avisei o técnico" (prazo_sinalizacoes,
+// sobrevive a reimportação porque a chave é só o número da OS). Sem permissão de editar, mostra
+// só o texto (sem cursor de clique) — mas todo mundo vê o estado.
+function cpSinalizarHtml(r, c){
+  const marcado = PRAZO_SINALIZACOES[r.os];
+  const podeClicar = podeEditarDados();
+  if (marcado){
+    const titulo = marcado.sinalizadoEm ? ('Sinalizado em ' + fmtDate(new Date(marcado.sinalizadoEm)) + (podeClicar ? ' — clique pra desfazer' : '')) : '';
+    return `<span class="cp-pill cp-pill-done${podeClicar?' cp-sinalizar-btn':''}" data-os="${r.os}" data-acao="desmarcar" title="${titulo}">✓ Sinalizado</span>`;
+  }
+  if (c.sinalizar === '48h') return `<span class="cp-pill cp-pill-red${podeClicar?' cp-sinalizar-btn':''}" data-os="${r.os}" data-nivel="48h" data-acao="marcar">Sinalizar 48h</span>`;
+  if (c.sinalizar === 'ate24h') return `<span class="cp-pill cp-pill-green${podeClicar?' cp-sinalizar-btn':''}" data-os="${r.os}" data-nivel="ate24h" data-acao="marcar">Sinalizar até 24h</span>`;
+  return '';
+}
+function cpSinalizarTexto(r, c){
+  if (PRAZO_SINALIZACOES[r.os]) return 'Sinalizado';
+  if (c.sinalizar === '48h') return 'Sinalizar 48h';
+  if (c.sinalizar === 'ate24h') return 'Sinalizar até 24h';
+  return '';
 }
 // Cabeçalho e linha da tabela principal — reusados também no modal de detalhe (clique na
 // grade "Prazos por cidade"), pra sempre mostrar exatamente as mesmas colunas.
@@ -4410,7 +4536,7 @@ function cpRowHtml({r,c}){
   }
   const acompCls = c.acompanhamento==='NO PRAZO' ? 'col-concluido' : c.acompanhamento==='FORA DO PRAZO' ? 'col-ausente' : '';
   const statusPrazoCls = c.statusPrazo==='ATÉ 24H' ? 'col-concluido' : c.statusPrazo==='OUTLIERS' ? 'col-ausente' : c.statusPrazo ? 'col-pendente' : '';
-  const sinalizarHtml = c.sinalizar==='48h' ? cpPill('Sinalizar 48h','red') : c.sinalizar==='ate24h' ? cpPill('Sinalizar até 24h','green') : '';
+  const sinalizarHtml = cpSinalizarHtml(r, c);
   return `<tr>
     <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
     <td class="num ${vencCls}">${c.vencimentoTexto || '<span class="muted">—</span>'}</td>
@@ -4451,7 +4577,7 @@ async function exportarCpDetalheExcel(){
   if (!ok){ showToast('Não consegui carregar o gerador de Excel — verifique a internet e tente de novo.'); return; }
   const { titulo, itens } = cpDetalheAtual;
   const dados = itens.map(({r,c}) => ({
-    'Sinalizar': c.sinalizar==='48h' ? 'Sinalizar 48h' : c.sinalizar==='ate24h' ? 'Sinalizar até 24h' : '',
+    'Sinalizar': cpSinalizarTexto(r, c),
     'Vencimento': c.vencimentoTexto || '',
     'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
     'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
@@ -4501,6 +4627,21 @@ function renderCalculadoraPrazo(rows, now){
   if (semHorarioValido && totalConcl) geralFootTxt += ' · +' + semHorarioValido + ' sem horário válido';
   document.getElementById('cpGeralFoot').textContent = geralFootTxt;
 
+  // comparativo com ontem — reusa o "dia vigente" que o resto do painel já usa
+  const cpHoje = diaVigente();
+  const cpOntem = cpHoje ? diaAnterior(cpHoje) : null;
+  const pctOntem = cpOntem ? cpMetricaDoDia(cpOntem) : null;
+  const tendEl = document.getElementById('cpGeralTendencia');
+  if (pctGeral !== null && pctOntem !== null){
+    const diff = pctGeral - pctOntem;
+    const subiu = diff >= 0;
+    tendEl.innerHTML = `<span style="color:var(--${subiu?'green':'red'})">${subiu?'▲':'▼'} ${Math.abs(diff).toFixed(0)} p.p. vs ontem</span>`;
+  } else if (pctGeral === null){
+    tendEl.innerHTML = '<span class="muted">sem concluídas hoje ainda</span>';
+  } else {
+    tendEl.innerHTML = '<span class="muted">sem dado de ontem pra comparar</span>';
+  }
+
   let cidadeHtml = '<thead><tr><th>Prazo</th>' + cidadesConcluidas.map(c=>`<th class="num">${c}</th>`).join('') + '</tr></thead><tbody>';
   const cpCidadeCliques = []; // { titulo, itens } — indexado por data-click-idx nas células
   const cpCidadeCell = (titulo, itens) => {
@@ -4538,13 +4679,68 @@ function renderCalculadoraPrazo(rows, now){
   cidadeSel.value = todasCidades.includes(valorAtual) ? valorAtual : 'TODAS';
   cpCidadeFiltroVal = cidadeSel.value;
 
+  // ---------- filtro de técnico (dropdown) — mesma lógica do de cidade ----------
+  const tecnicoSel = document.getElementById('cpTecnicoFiltro');
+  const todosTecnicos = [...new Set(base.map(r => r.recurso))].sort();
+  const tecnicoAtual = tecnicoSel.value || 'TODOS';
+  tecnicoSel.innerHTML = '<option value="TODOS">Todos os técnicos</option>' + todosTecnicos.map(t => `<option value="${t}">${t}</option>`).join('');
+  tecnicoSel.value = todosTecnicos.includes(tecnicoAtual) ? tecnicoAtual : 'TODOS';
+  cpTecnicoFiltroVal = tecnicoSel.value;
+
+  // ---------- Por técnico — usa os filtros de cidade/status/busca (mas NÃO o de técnico, senão
+  // vira redundante), só ordens em aberto (é pra saber quem avisar, concluída não precisa) ----------
+  let itensSemTecnico = calc;
+  if (cpStatusFiltroVal === 'ABERTAS') itensSemTecnico = itensSemTecnico.filter(x => BACKLOG_STATUSES.includes(x.r.status));
+  else if (cpStatusFiltroVal === 'CONCLUIDAS') itensSemTecnico = itensSemTecnico.filter(x => x.r.status === 'concluído');
+  if (cpCidadeFiltroVal !== 'TODAS') itensSemTecnico = itensSemTecnico.filter(x => x.r.cidade === cpCidadeFiltroVal);
+  const buscaNormTec = semAcento(cpBuscaTxt);
+  if (buscaNormTec) itensSemTecnico = itensSemTecnico.filter(x => semAcento(x.r.os).includes(buscaNormTec) || semAcento(x.r.recurso).includes(buscaNormTec) || semAcento(x.r.cliente||'').includes(buscaNormTec));
+  const abertasPorTecnico = {};
+  // só entra quem tem vencimento calculável (precisa de abertura válida) — senão a OS cairia
+  // sem querer no balde "Até 24h" por eliminação
+  itensSemTecnico.filter(x => BACKLOG_STATUSES.includes(x.r.status) && x.r.aberturaDate).forEach(x => {
+    const nome = x.r.recurso;
+    const d = abertasPorTecnico[nome] = abertasPorTecnico[nome] || { ate24h:[], sinalizar48h:[], prazoPerdido:[] };
+    if (x.c.vencimentoPerdido) d.prazoPerdido.push(x);
+    else if (x.c.sinalizar === '48h') d.sinalizar48h.push(x);
+    else d.ate24h.push(x);
+  });
+  const tecnicosOrdenados = Object.entries(abertasPorTecnico).sort((a,b) => {
+    if (b[1].prazoPerdido.length !== a[1].prazoPerdido.length) return b[1].prazoPerdido.length - a[1].prazoPerdido.length;
+    if (b[1].sinalizar48h.length !== a[1].sinalizar48h.length) return b[1].sinalizar48h.length - a[1].sinalizar48h.length;
+    const totalA = a[1].ate24h.length+a[1].sinalizar48h.length+a[1].prazoPerdido.length;
+    const totalB = b[1].ate24h.length+b[1].sinalizar48h.length+b[1].prazoPerdido.length;
+    return totalB - totalA;
+  });
+  let tecnicoHtml = '<thead><tr><th>Técnico</th><th class="num">Até 24h</th><th class="num">Sinalizar 48h</th><th class="num">Prazo perdido</th><th class="num">Total em aberto</th></tr></thead><tbody>';
+  const cpTecnicoCliques = [];
+  const cpTecnicoCell = (titulo, arr, cls) => {
+    cpTecnicoCliques.push({ titulo, itens: arr });
+    return `<td class="num ${arr.length?cls:''}${arr.length?' clickable-cell':''}" data-click-idx="${cpTecnicoCliques.length-1}">${arr.length}</td>`;
+  };
+  if (!tecnicosOrdenados.length){
+    tecnicoHtml += '<tr><td colspan="5" class="muted">Nenhuma ordem em aberto no filtro atual</td></tr>';
+  } else {
+    tecnicosOrdenados.forEach(([nome, d]) => {
+      const total = d.ate24h.length + d.sinalizar48h.length + d.prazoPerdido.length;
+      tecnicoHtml += `<tr><td class="recurso-name">${nome}</td>`
+        + cpTecnicoCell(nome+' — Até 24h', d.ate24h, 'col-concluido')
+        + cpTecnicoCell(nome+' — Sinalizar 48h', d.sinalizar48h, 'col-pendente')
+        + cpTecnicoCell(nome+' — Prazo perdido', d.prazoPerdido, 'col-ausente')
+        + `<td class="num">${total}</td></tr>`;
+    });
+  }
+  tecnicoHtml += '</tbody>';
+  document.getElementById('cpTecnicoTable').innerHTML = tecnicoHtml;
+  document.querySelectorAll('#cpTecnicoTable [data-click-idx]').forEach(td => {
+    const item = cpTecnicoCliques[+td.dataset.clickIdx];
+    if (!item) return;
+    td.addEventListener('click', () => abrirCpDetalhe(item.titulo, item.itens));
+  });
+
   // ---------- tabela principal, linha a linha ----------
-  let itens = calc;
-  if (cpStatusFiltroVal === 'ABERTAS') itens = itens.filter(x => BACKLOG_STATUSES.includes(x.r.status));
-  else if (cpStatusFiltroVal === 'CONCLUIDAS') itens = itens.filter(x => x.r.status === 'concluído');
-  if (cpCidadeFiltroVal !== 'TODAS') itens = itens.filter(x => x.r.cidade === cpCidadeFiltroVal);
-  const buscaNorm = semAcento(cpBuscaTxt);
-  if (buscaNorm) itens = itens.filter(x => semAcento(x.r.os).includes(buscaNorm) || semAcento(x.r.recurso).includes(buscaNorm) || semAcento(x.r.cliente||'').includes(buscaNorm));
+  let itens = itensSemTecnico;
+  if (cpTecnicoFiltroVal !== 'TODOS') itens = itens.filter(x => x.r.recurso === cpTecnicoFiltroVal);
 
   itens = itens.slice().sort((a,b) => {
     const aAberta = BACKLOG_STATUSES.includes(a.r.status), bAberta = BACKLOG_STATUSES.includes(b.r.status);
@@ -4574,7 +4770,7 @@ async function exportarCalculadoraPrazoExcel(){
   const dados = base.map(r => {
     const c = calcularLinhaPrazo(r, now, cfg);
     return {
-      'Sinalizar': c.sinalizar==='48h' ? 'Sinalizar 48h' : c.sinalizar==='ate24h' ? 'Sinalizar até 24h' : '',
+      'Sinalizar': cpSinalizarTexto(r, c),
       'Vencimento': c.vencimentoTexto || '',
       'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
       'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
@@ -5637,7 +5833,13 @@ async function init(){
   document.getElementById('btnSaveConfig').addEventListener('click', saveConfig);
   document.getElementById('modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeConfigModal(); });
   document.getElementById('btnTheme').addEventListener('click', toggleTheme);
-  document.getElementById('btnNotif').addEventListener('click', () => showToast('Central de notificações — estrutura preparada, sem alertas configurados ainda.'));
+  document.getElementById('btnNotif').addEventListener('click', () => {
+    const urgentes = cpUrgentesAgora();
+    if (!urgentes.length){ showToast('Nenhuma OS de Reparo Corretivo vencendo em até 2h agora.'); return; }
+    setModule('calc-prazo');
+    document.querySelector('#cpStatusFiltro [data-status="ABERTAS"]')?.click();
+    showToast('⚠️ ' + urgentes.length + ' OS de Reparo Corretivo vencendo em até 2h.');
+  });
   document.getElementById('sidebarConfig').addEventListener('click', openConfigModal);
   document.getElementById('sidebarSuporte').addEventListener('click', () => showToast('Suporte: fale com o time de Operações — estrutura preparada.'));
   document.getElementById('btnImportToggle').addEventListener('click', toggleImportPanel);
@@ -5688,6 +5890,10 @@ async function init(){
     cpCidadeFiltroVal = e.target.value;
     if (cpUltimasRows) renderCalculadoraPrazo(cpUltimasRows, cpUltimoNow || new Date());
   });
+  document.getElementById('cpTecnicoFiltro').addEventListener('change', (e) => {
+    cpTecnicoFiltroVal = e.target.value;
+    if (cpUltimasRows) renderCalculadoraPrazo(cpUltimasRows, cpUltimoNow || new Date());
+  });
   document.querySelectorAll('#cpStatusFiltro .cp-status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       cpStatusFiltroVal = btn.dataset.status;
@@ -5699,6 +5905,15 @@ async function init(){
   document.getElementById('btnFecharCpDetalhe').addEventListener('click', fecharCpDetalhe);
   document.getElementById('cpDetalheBackdrop').addEventListener('click', e => { if (e.target.id === 'cpDetalheBackdrop') fecharCpDetalhe(); });
   document.getElementById('btnExportarCpDetalhe').addEventListener('click', exportarCpDetalheExcel);
+  // delegação: cobre linhas geradas depois (tabela é redesenhada a cada 30s e a cada filtro)
+  const cpSinalizarClick = (e) => {
+    const el = e.target.closest('.cp-sinalizar-btn');
+    if (!el) return;
+    if (el.dataset.acao === 'desmarcar') desmarcarSinalizado(el.dataset.os);
+    else marcarSinalizado(el.dataset.os, el.dataset.nivel);
+  };
+  document.getElementById('cpTable').addEventListener('click', cpSinalizarClick);
+  document.getElementById('cpDetalheTable').addEventListener('click', cpSinalizarClick);
   document.getElementById('producaoRecursoCidadeFiltro').addEventListener('change', (e) => {
     prodRecursoCidadeFiltro = e.target.value;
     renderProducaoPorRecurso(getFilteredRows());
