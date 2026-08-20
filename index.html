@@ -4443,9 +4443,9 @@ function renderCalculadoraPrazo(rows, now){
 
   document.getElementById('cpTableHint').textContent = itens.length + ' ordem(ns) no filtro atual (de ' + base.length + ' no total)';
 
-  let html = '<thead><tr><th>Data</th><th class="num">OS</th><th>Cliente</th><th>Técnico</th><th>Cidade</th><th>Status O.S</th>'
+  let html = '<thead><tr><th>Sinalizar</th><th>Data</th><th class="num">OS</th><th>Cliente</th><th>Técnico</th><th>Cidade</th><th>Status O.S</th>'
     + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Vencimento</th><th class="num">Encerramento</th>'
-    + '<th>Acompanhamento</th><th>Período</th><th>Status Prazo</th><th>Sinalizar</th></tr></thead><tbody>';
+    + '<th>Acompanhamento</th><th>Período</th><th>Status Prazo</th></tr></thead><tbody>';
   if (!itens.length){
     html += '<tr><td colspan="14" class="muted">Nenhuma ordem de Reparo Corretivo no filtro atual</td></tr>';
   } else {
@@ -4455,6 +4455,7 @@ function renderCalculadoraPrazo(rows, now){
       const statusPrazoCls = c.statusPrazo==='ATÉ 24H' ? 'col-concluido' : c.statusPrazo==='OUTLIERS' ? 'col-ausente' : c.statusPrazo ? 'col-pendente' : '';
       const sinalizarHtml = c.sinalizar==='48h' ? cpPill('Sinalizar 48h','red') : c.sinalizar==='ate24h' ? cpPill('Sinalizar até 24h','green') : '';
       html += `<tr>
+        <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
         <td class="num">${r.data}</td>
         <td class="num">${r.os}</td>
         <td>${r.cliente || '<span class="muted">—</span>'}</td>
@@ -4468,7 +4469,6 @@ function renderCalculadoraPrazo(rows, now){
         <td class="${acompCls}">${c.acompanhamento || '<span class="muted">—</span>'}</td>
         <td>${c.periodo || '<span class="muted">—</span>'}</td>
         <td class="${statusPrazoCls}">${c.statusPrazo || '<span class="muted">—</span>'}</td>
-        <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
       </tr>`;
     });
   }
@@ -4485,13 +4485,13 @@ async function exportarCalculadoraPrazoExcel(){
   const dados = base.map(r => {
     const c = calcularLinhaPrazo(r, now, cfg);
     return {
+      'Sinalizar': c.sinalizar==='48h' ? 'Sinalizar 48h' : c.sinalizar==='ate24h' ? 'Sinalizar até 24h' : '',
       'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
       'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
       'Abertura': fmtDate(r.aberturaDate), 'Limite': fmtDate(c.limiteIdeal),
       'Vencimento': c.vencimentoTexto || '', 'Encerramento': c.encerramento || '',
       'Acompanhamento': c.acompanhamento || '', 'Período': c.periodo || '',
-      'Status Prazo': c.statusPrazo || '',
-      'Sinalizar': c.sinalizar==='48h' ? 'Sinalizar 48h' : c.sinalizar==='ate24h' ? 'Sinalizar até 24h' : ''
+      'Status Prazo': c.statusPrazo || ''
     };
   });
   const ws = XLSX.utils.json_to_sheet(dados);
