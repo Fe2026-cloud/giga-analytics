@@ -1175,6 +1175,25 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="cpTecnicoModalBackdrop">
+  <div class="modal" style="max-width:900px;">
+    <div id="cpTecnicoCaptureArea">
+      <div class="report-capture-header" id="cpTecnicoCaptureHeader">
+        <span class="report-capture-brand">GIGA+ FIBRA · Grupo Alloha</span>
+        <span class="report-capture-title" id="cpTecnicoCaptureTitle">Sinalização de Prazo</span>
+        <span class="report-capture-meta" id="cpTecnicoCaptureMeta"></span>
+      </div>
+      <h3 id="cpTecnicoModalTitulo">Técnico</h3>
+      <div class="desc" id="cpTecnicoModalDesc"></div>
+      <div class="table-scroll" style="max-height:55vh;"><table class="pivot compact-table" id="cpTecnicoModalTable"></table></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn primary" id="btnGerarImagemTecnico">🖼 Gerar imagem</button>
+      <button type="button" class="btn ghost" id="btnFecharCpTecnicoModal">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="cpDetalheBackdrop">
   <div class="modal" style="max-width:1100px;">
     <h3 id="cpDetalheTitulo">Detalhe</h3>
@@ -4406,6 +4425,7 @@ let cpCidadeFiltroVal = 'TODAS';
 let cpTecnicoFiltroVal = 'TODOS';
 let cpStatusFiltroVal = 'TODAS'; // TODAS | ABERTAS | CONCLUIDAS
 let cpUltimasRows = null;
+let cpTecnicoNomeCliques = []; // preenchido a cada render do painel "Por técnico" — { nome, itens }[]
 let cpUltimoNow = null;
 
 // % dentro do prazo ideal (Reparo Corretivo, C10/C13/C14) de UM dia específico — usado pro
@@ -4615,6 +4635,56 @@ async function exportarCpDetalheExcel(){
   XLSX.writeFile(wb, semAcento(titulo).replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'') + '_' + fmtDDMMYY2(new Date()).replace(/\//g,'-') + '.xlsx');
   registrarAuditoria('exportar_calculadora_prazo_detalhe', { titulo, linhas: itens.length });
 }
+
+// "Ticket" de sinalização por técnico — clique no nome dele no painel "Por técnico". Mostra as
+// ordens em aberto com o que o técnico precisa saber (OS, contrato, endereço, prazo) e tem botão
+// de gerar imagem (reusa o mesmo html2canvas do Report Executivo/Visão Geral) pra mandar direto
+// pro técnico por WhatsApp/etc.
+function cpTecnicoTicketRowHtml({r,c}){
+  let vencCls = '';
+  if (c.vencimentoPerdido || c.vencimentoHoras !== null){
+    if (c.vencimentoPerdido || c.vencimentoHoras <= 2) vencCls = 'col-ausente';
+    else if (c.vencimentoHoras <= 4) vencCls = 'col-pendente';
+    else vencCls = 'col-concluido';
+  }
+  const vencSub = c.vencimentoPerdido ? (c.chegouVencida ? ' (chegou vencida)' : ' (venceu c/ técnico)') : '';
+  const sinalizarHtml = cpSinalizarHtml(r, c);
+  return `<tr>
+    <td class="num">${r.data}</td>
+    <td class="num">${r.os}</td>
+    <td>${r.contrato || '<span class="muted">—</span>'}</td>
+    <td>${r.cliente || '<span class="muted">—</span>'}</td>
+    <td>${r.endereco || '<span class="muted">—</span>'}</td>
+    <td class="num">${fmtDate(r.aberturaDate)}</td>
+    <td class="num">${fmtDate(c.limiteIdeal)}</td>
+    <td class="num ${vencCls}">${(c.vencimentoTexto || '—') + vencSub}</td>
+    <td>${c.periodo || '<span class="muted">—</span>'}</td>
+    <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
+  </tr>`;
+}
+let cpTecnicoTicketAtual = null; // { nome, itens }
+function abrirSinalizacaoTecnico(nome, itens){
+  cpTecnicoTicketAtual = { nome, itens };
+  document.getElementById('cpTecnicoModalTitulo').textContent = nome;
+  document.getElementById('cpTecnicoModalDesc').textContent = itens.length + ' ordem(ns) em aberto';
+  document.getElementById('cpTecnicoCaptureTitle').textContent = 'Sinalização de Prazo — ' + nome;
+  document.getElementById('cpTecnicoCaptureMeta').textContent = 'Gerado em ' + new Date().toLocaleString('pt-BR');
+  let html = '<thead><tr><th>Data</th><th class="num">OS</th><th>Contrato</th><th>Cliente</th><th>Endereço</th>'
+    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Vencimento</th><th>Período</th><th>Sinalizar</th></tr></thead><tbody>';
+  if (!itens.length) html += '<tr><td colspan="10" class="muted">Sem ordens em aberto</td></tr>';
+  else itens.forEach(item => { html += cpTecnicoTicketRowHtml(item); });
+  html += '</tbody>';
+  document.getElementById('cpTecnicoModalTable').innerHTML = html;
+  document.getElementById('cpTecnicoModalBackdrop').classList.add('open');
+}
+function fecharCpTecnicoModal(){
+  document.getElementById('cpTecnicoModalBackdrop').classList.remove('open');
+}
+async function gerarImagemSinalizacaoTecnico(){
+  const nomeArquivo = 'sinalizacao_' + semAcento(cpTecnicoTicketAtual ? cpTecnicoTicketAtual.nome : 'tecnico').replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
+  return gerarImagemDeArea('cpTecnicoCaptureArea', 'cpTecnicoCaptureHeader', nomeArquivo, 'btnGerarImagemTecnico');
+}
+
 function renderCalculadoraPrazo(rows, now){
   const tbl = document.getElementById('cpTable');
   if (!tbl) return;
@@ -4748,9 +4818,12 @@ function renderCalculadoraPrazo(rows, now){
   if (!tecnicosOrdenados.length){
     tecnicoHtml += '<tr><td colspan="6" class="muted">Nenhuma ordem em aberto no filtro atual</td></tr>';
   } else {
+    cpTecnicoNomeCliques = []; // { nome, itens } — indexado por data-nome-idx na célula do nome
     tecnicosOrdenados.forEach(([nome, d]) => {
-      const total = d.ate24h.length + d.sinalizar48h.length + d.chegouVencida.length + d.venceuComTecnico.length;
-      tecnicoHtml += `<tr><td class="recurso-name">${nome}</td>`
+      const todosItens = [...d.ate24h, ...d.sinalizar48h, ...d.chegouVencida, ...d.venceuComTecnico];
+      cpTecnicoNomeCliques.push({ nome, itens: todosItens });
+      const total = todosItens.length;
+      tecnicoHtml += `<tr><td class="recurso-name clickable-cell" data-nome-idx="${cpTecnicoNomeCliques.length-1}" title="Clique pra ver/gerar a sinalização desse técnico">${nome}</td>`
         + cpTecnicoCell(nome+' — Até 24h', d.ate24h, 'col-concluido')
         + cpTecnicoCell(nome+' — Sinalizar 48h', d.sinalizar48h, 'col-pendente')
         + cpTecnicoCell(nome+' — Chegou vencida', d.chegouVencida, 'col-ausente')
@@ -4764,6 +4837,11 @@ function renderCalculadoraPrazo(rows, now){
     const item = cpTecnicoCliques[+td.dataset.clickIdx];
     if (!item) return;
     td.addEventListener('click', () => abrirCpDetalhe(item.titulo, item.itens));
+  });
+  document.querySelectorAll('#cpTecnicoTable [data-nome-idx]').forEach(td => {
+    const item = cpTecnicoNomeCliques[+td.dataset.nomeIdx];
+    if (!item) return;
+    td.addEventListener('click', () => abrirSinalizacaoTecnico(item.nome, item.itens));
   });
 
   // ---------- tabela principal, linha a linha ----------
@@ -5943,6 +6021,10 @@ async function init(){
   };
   document.getElementById('cpTable').addEventListener('click', cpSinalizarClick);
   document.getElementById('cpDetalheTable').addEventListener('click', cpSinalizarClick);
+  document.getElementById('cpTecnicoModalTable').addEventListener('click', cpSinalizarClick);
+  document.getElementById('btnFecharCpTecnicoModal').addEventListener('click', fecharCpTecnicoModal);
+  document.getElementById('cpTecnicoModalBackdrop').addEventListener('click', e => { if (e.target.id === 'cpTecnicoModalBackdrop') fecharCpTecnicoModal(); });
+  document.getElementById('btnGerarImagemTecnico').addEventListener('click', gerarImagemSinalizacaoTecnico);
   document.getElementById('producaoRecursoCidadeFiltro').addEventListener('change', (e) => {
     prodRecursoCidadeFiltro = e.target.value;
     renderProducaoPorRecurso(getFilteredRows());
