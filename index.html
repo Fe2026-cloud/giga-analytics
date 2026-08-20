@@ -4687,19 +4687,30 @@ function fecharCpTecnicoModal(){
 async function gerarImagemSinalizacaoTecnico(){
   const nomeArquivo = 'sinalizacao_' + semAcento(cpTecnicoTicketAtual ? cpTecnicoTicketAtual.nome : 'tecnico').replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
   const backdrop = document.getElementById('cpTecnicoModalBackdrop');
-  // tira o limite de altura/rolagem só durante a captura — senão o html2canvas só pega o
-  // trechinho que estava visível dentro da área com scroll, cortando a tabela na imagem. O
-  // max-height:55vh é inline no HTML (maior prioridade que a regra de CSS), então precisa
-  // mexer nele direto — a classe .capturing sozinha não bastava.
+  // tira o limite de altura/largura/rolagem só durante a captura — senão o html2canvas só pega
+  // o trechinho que estava visível dentro da área com scroll, cortando a tabela na imagem (em
+  // altura E em largura, já que a tabela é mais larga que o modal). max-height/overflow são
+  // inline no HTML (maior prioridade que a regra de CSS), então precisa mexer neles direto — a
+  // classe .capturing sozinha não bastava. width:max-content faz a caixa crescer de verdade pro
+  // tamanho da tabela, em vez de só "não cortar visualmente" (overflow:visible sozinho não
+  // resolve porque o html2canvas captura o tamanho da caixa, não o conteúdo que transborda dela).
+  const modalEl = backdrop.querySelector('.modal');
   const tableScrollEl = backdrop.querySelector('.table-scroll');
-  const maxHeightOriginal = tableScrollEl ? tableScrollEl.style.maxHeight : null;
+  const estiloOriginal = {
+    modalWidth: modalEl ? modalEl.style.width : null,
+    modalMaxWidth: modalEl ? modalEl.style.maxWidth : null,
+    scrollMaxHeight: tableScrollEl ? tableScrollEl.style.maxHeight : null,
+    scrollWidth: tableScrollEl ? tableScrollEl.style.width : null
+  };
   backdrop.classList.add('capturing');
-  if (tableScrollEl) tableScrollEl.style.maxHeight = 'none';
+  if (modalEl){ modalEl.style.maxWidth = 'none'; modalEl.style.width = 'max-content'; }
+  if (tableScrollEl){ tableScrollEl.style.maxHeight = 'none'; tableScrollEl.style.width = 'max-content'; }
   try{
     await gerarImagemDeArea('cpTecnicoCaptureArea', 'cpTecnicoCaptureHeader', nomeArquivo, 'btnGerarImagemTecnico');
   } finally {
     backdrop.classList.remove('capturing');
-    if (tableScrollEl) tableScrollEl.style.maxHeight = maxHeightOriginal;
+    if (modalEl){ modalEl.style.maxWidth = estiloOriginal.modalMaxWidth; modalEl.style.width = estiloOriginal.modalWidth; }
+    if (tableScrollEl){ tableScrollEl.style.maxHeight = estiloOriginal.scrollMaxHeight; tableScrollEl.style.width = estiloOriginal.scrollWidth; }
   }
 }
 
