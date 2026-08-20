@@ -4476,7 +4476,13 @@ function cpUrgentesAgora(){
   const cfg = CONFIG.reparo;
   const now = new Date();
   const abertas = cpBaseRows(getAllRows()).filter(r => BACKLOG_STATUSES.includes(r.status) && r.aberturaDate);
-  return abertas.filter(r => (cfg.ideal - (now - r.aberturaDate)/3600000) <= 2);
+  // só quem está mesmo a caminho do vencimento (0 a 2h restantes) — quem já passou do prazo
+  // (restante negativo) é outro problema, já mostrado como "prazo perdido"/"chegou vencida" em
+  // outro lugar, não deve inflar o alerta de "vencendo em breve".
+  return abertas.filter(r => {
+    const horasRestantes = cfg.ideal - (now - r.aberturaDate)/3600000;
+    return horasRestantes >= 0 && horasRestantes <= 2;
+  });
 }
 // null até o 1º cálculo — evita disparar um alerta gigante com tudo que já estava urgente no
 // momento em que a página foi aberta; só alerta quem ENTRA na faixa depois disso.
