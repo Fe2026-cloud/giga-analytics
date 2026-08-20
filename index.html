@@ -471,6 +471,26 @@
   .dp-tipo-btn.active[data-tipo="Ativação"]{background:rgba(59,130,246,0.28);color:#2563EB;border-color:rgba(59,130,246,0.5);}
   .dp-tipo-btn.active[data-tipo="Reparo Corretivo"]{background:rgba(34,197,94,0.28);color:#15803D;border-color:rgba(34,197,94,0.5);}
 
+  /* ---------- Calculadora de Prazo ---------- */
+  .cp-top-grid{display:grid;grid-template-columns:260px 1fr;gap:14px;margin-bottom:18px;align-items:stretch;}
+  @media (max-width:900px){.cp-top-grid{grid-template-columns:1fr;}}
+  .cp-geral-card{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
+  .cp-geral-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);margin-bottom:8px;}
+  .cp-geral-value{font-size:42px;font-weight:800;font-family:var(--font-ui);line-height:1;}
+  .cp-geral-foot{font-size:11.5px;color:var(--text-dim);margin-top:8px;}
+  .cp-select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text);}
+  .cp-status-bar{display:flex;gap:6px;flex-wrap:wrap;}
+  .cp-status-btn{
+    background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
+    padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .cp-status-btn:hover{border-color:var(--accent-dim);color:var(--text);}
+  .cp-status-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent);}
+  .cp-pill{display:inline-block;padding:3px 9px;border-radius:12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
+  .cp-pill-red{background:var(--red-bg);color:var(--red);}
+  .cp-pill-green{background:var(--green-bg);color:var(--green);}
+
   .report-title-bar{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px 2px;}
   .report-title-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text);}
   .report-title-bar #reportClock{font-size:12px;color:var(--text-faint);font-family:var(--font-mono);}
@@ -634,6 +654,7 @@
       <div class="sidebar-item active" data-module="visao-geral"><span class="ic">🏠</span><span class="lbl">Visão Geral</span></div>
       <div class="sidebar-item" data-module="producao"><span class="ic">📈</span><span class="lbl">Produção</span></div>
       <div class="sidebar-item" data-module="prazos"><span class="ic">⏱️</span><span class="lbl">Prazos</span></div>
+      <div class="sidebar-item" data-module="calc-prazo"><span class="ic">🧮</span><span class="lbl">Calculadora de Prazo</span></div>
       <div class="sidebar-item" data-module="improdutivas"><span class="ic">⚠️</span><span class="lbl">Improdutivas</span></div>
       <div class="sidebar-item" data-module="backlog"><span class="ic">📦</span><span class="lbl">Backlog</span></div>
       <div class="sidebar-item" data-module="prod-recurso"><span class="ic">🧑‍🔧</span><span class="lbl">Produção por Recurso</span></div>
@@ -901,6 +922,37 @@
       <div class="panel">
         <div class="panel-head"><h3>Recursos com OS em andamento</h3><span class="desc" id="execDesc"></span></div>
         <div class="table-scroll"><table id="execTable"></table></div>
+      </div>
+    </div>
+
+    <div class="module" id="module-calc-prazo">
+      <div class="section-title"><h2>Calculadora de Prazo</h2><span class="hint">reparo corretivo · C10/C13/C14 · atualiza sozinha a cada CSV importado</span></div>
+
+      <div class="cp-top-grid">
+        <div class="panel cp-geral-card">
+          <div class="cp-geral-label">Prazo geral do dia</div>
+          <div class="cp-geral-value" id="cpGeralValor">—</div>
+          <div class="cp-geral-foot" id="cpGeralFoot"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Prazos por cidade</h3><span class="desc">ordens concluídas, agrupadas por cidade</span></div>
+          <div class="table-scroll"><table class="pivot compact-table" id="cpCidadeTable"></table></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px 0;">
+          <input type="text" id="cpBusca" placeholder="🔎 Buscar OS, técnico ou cliente..." class="pr-busca">
+          <select id="cpCidadeFiltro" class="cp-select"><option value="TODAS">Todas as cidades</option></select>
+          <div class="cp-status-bar" id="cpStatusFiltro">
+            <button type="button" class="cp-status-btn active" data-status="TODAS">Todas</button>
+            <button type="button" class="cp-status-btn" data-status="ABERTAS">Em aberto</button>
+            <button type="button" class="cp-status-btn" data-status="CONCLUIDAS">Concluídas</button>
+          </div>
+          <button type="button" class="btn ghost" id="btnExportarCalcPrazo" style="margin-left:auto;">⬇ Exportar Excel</button>
+        </div>
+        <div class="hint" id="cpTableHint" style="padding:6px 14px 0;"></div>
+        <div class="table-scroll" style="max-height:520px;overflow-y:auto;"><table class="pivot compact-table" id="cpTable"></table></div>
       </div>
     </div>
 
@@ -2998,6 +3050,7 @@ function render(){
   rc(() => renderSLAPanel(rows, 'Ativação', CONFIG.ativacao, 'ativBucket','ativTable','ativDesc'), 'SLA Ativação');
   rc(() => renderPrazosPorCidade(rows), 'Prazos por cidade');
   rc(() => renderDetalhamentoPrazos(rows), 'Detalhamento de prazos');
+  rc(() => renderCalculadoraPrazo(rows, now), 'Calculadora de Prazo');
   rc(() => renderVencimento(rows, now), 'Vencimento');
   rc(() => renderExecucao(rows, now), 'Execução');
   rc(() => renderProducaoPorTipo(rows), 'Produção por tipo');
@@ -4265,6 +4318,189 @@ function renderDetalhamentoPrazos(rows){
   el.innerHTML = html;
 }
 
+/* ============================= CALCULADORA DE PRAZO (Reparo Corretivo) =============================
+   Reconstrói, com os dados já importados (C10/C13/C14, Reparo Corretivo), a mesma lógica da
+   planilha "Acompanhamento de Prazo" que o time já usa: VENCIMENTO/PERÍODO/SINALIZAR pra quem
+   está aberta (ainda não concluída/cancelada), ENCERRAMENTO/ACOMPANHAMENTO/STATUS PRAZO pra
+   quem já foi concluída. Usa CONFIG.reparo (ideal/max) como as metas de 24h/48h. */
+const CALC_PRAZO_REGIONAIS = ['C10','C13','C14'];
+const CALC_PRAZO_STATUS_BUCKETS = ['ATÉ 24H','ATÉ 48H','MAIOR QUE 48H','OUTLIERS'];
+let cpBuscaTxt = '';
+let cpCidadeFiltroVal = 'TODAS';
+let cpStatusFiltroVal = 'TODAS'; // TODAS | ABERTAS | CONCLUIDAS
+let cpUltimasRows = null;
+let cpUltimoNow = null;
+
+function calcularLinhaPrazo(r, now, cfg){
+  const aberta = BACKLOG_STATUSES.includes(r.status);
+  const concluida = r.status === 'concluído';
+  const out = { limiteIdeal:null, vencimentoTexto:null, vencimentoHoras:null, vencimentoPerdido:false,
+    encerramento:null, acompanhamento:null, periodo:null, statusPrazo:null, sinalizar:null };
+  if (!r.aberturaDate) return out;
+  out.limiteIdeal = new Date(r.aberturaDate.getTime() + cfg.ideal*3600000);
+
+  if (aberta){
+    const horasDecorridas = (now - r.aberturaDate) / 3600000;
+    const horasRestantes = cfg.ideal - horasDecorridas;
+    out.vencimentoHoras = horasRestantes;
+    if (horasRestantes < 0){ out.vencimentoTexto = 'PRAZO PERDIDO'; out.vencimentoPerdido = true; }
+    else out.vencimentoTexto = fmtHoras(horasRestantes);
+
+    const hojeSemHora = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const limiteSemHora = new Date(out.limiteIdeal.getFullYear(), out.limiteIdeal.getMonth(), out.limiteIdeal.getDate());
+    if (limiteSemHora < hojeSemHora) out.periodo = 'PRAZO ESTOURADO';
+    else out.periodo = out.limiteIdeal.getHours() < 12 ? 'PRAZO MANHÃ' : 'PRAZO TARDE';
+
+    // lembrete escalonado: "até 24h" enquanto ainda não passou do prazo ideal (verde, aviso
+    // preventivo), "48h" depois que passou do ideal mas ainda não passou do máximo (vermelho,
+    // urgente) — depois do máximo já é "prazo perdido" no Vencimento, não precisa sinalizar de novo.
+    if (horasDecorridas < cfg.ideal) out.sinalizar = 'ate24h';
+    else if (horasDecorridas < cfg.max) out.sinalizar = '48h';
+  }
+
+  if (concluida && r.fimDate){
+    out.encerramento = fmtDate(r.fimDate);
+    const horasReais = (r.fimDate - r.aberturaDate) / 3600000;
+    out.acompanhamento = horasReais < cfg.ideal ? 'NO PRAZO' : 'FORA DO PRAZO';
+    const diasReais = horasReais / 24;
+    out.statusPrazo = diasReais < 1 ? 'ATÉ 24H' : diasReais < 2 ? 'ATÉ 48H' : diasReais < 3 ? 'MAIOR QUE 48H' : 'OUTLIERS';
+  }
+  return out;
+}
+function cpBaseRows(rows){
+  return rows.filter(r => r.tipo === 'Reparo Corretivo' && r.empresa === 'MOP'
+    && CALC_PRAZO_REGIONAIS.includes(r.regional)
+    && (BACKLOG_STATUSES.includes(r.status) || r.status === 'concluído'));
+}
+function cpPill(texto, cor){
+  return `<span class="cp-pill cp-pill-${cor}">${texto}</span>`;
+}
+function renderCalculadoraPrazo(rows, now){
+  const tbl = document.getElementById('cpTable');
+  if (!tbl) return;
+  const cfg = CONFIG.reparo;
+  cpUltimasRows = rows; cpUltimoNow = now;
+
+  const base = cpBaseRows(rows);
+  const calc = base.map(r => ({ r, c: calcularLinhaPrazo(r, now, cfg) }));
+
+  // ---------- Prazo geral do dia + Prazos por cidade (só ordens concluídas) ----------
+  const concluidasCalc = calc.filter(x => x.r.status === 'concluído' && x.c.statusPrazo);
+  const cidadesConcluidas = [...new Set(concluidasCalc.map(x => x.r.cidade))].sort();
+  const porCidade = {};
+  cidadesConcluidas.forEach(c => { porCidade[c] = { 'ATÉ 24H':0, 'ATÉ 48H':0, 'MAIOR QUE 48H':0, 'OUTLIERS':0 }; });
+  concluidasCalc.forEach(x => { porCidade[x.r.cidade][x.c.statusPrazo]++; });
+
+  const totalConcl = concluidasCalc.length;
+  const totalDentroPrazo = concluidasCalc.filter(x => x.c.statusPrazo === 'ATÉ 24H').length;
+  const pctGeral = totalConcl ? (100*totalDentroPrazo/totalConcl) : null;
+  const geralValorEl = document.getElementById('cpGeralValor');
+  geralValorEl.textContent = pctGeral===null ? '—' : pctGeral.toFixed(0)+'%';
+  geralValorEl.style.color = pctGeral===null ? 'var(--text-faint)' : 'var(--'+pctColor(pctGeral)+')';
+  document.getElementById('cpGeralFoot').textContent = totalConcl
+    ? (totalDentroPrazo+' de '+totalConcl+' dentro do prazo ideal ('+cfg.ideal+'h)')
+    : 'sem ordens concluídas no filtro atual';
+
+  let cidadeHtml = '<thead><tr><th>Prazo</th>' + cidadesConcluidas.map(c=>`<th class="num">${c}</th>`).join('') + '</tr></thead><tbody>';
+  if (!cidadesConcluidas.length){
+    cidadeHtml += '<tr><td class="muted">Sem ordens concluídas no filtro atual</td></tr>';
+  } else {
+    CALC_PRAZO_STATUS_BUCKETS.forEach(b => {
+      cidadeHtml += `<tr><td>${b}</td>` + cidadesConcluidas.map(c => `<td class="num">${porCidade[c][b]}</td>`).join('') + '</tr>';
+    });
+    cidadeHtml += '<tr class="total-row"><td>% dentro do prazo</td>' + cidadesConcluidas.map(c => {
+      const totalCidade = CALC_PRAZO_STATUS_BUCKETS.reduce((s,b)=>s+porCidade[c][b],0);
+      const pct = totalCidade ? (100*porCidade[c]['ATÉ 24H']/totalCidade) : 0;
+      return `<td class="num">${pct.toFixed(0)}%</td>`;
+    }).join('') + '</tr>';
+  }
+  cidadeHtml += '</tbody>';
+  document.getElementById('cpCidadeTable').innerHTML = cidadeHtml;
+
+  // ---------- filtro de cidade (dropdown) — reconstrói as opções a partir da base atual, sem
+  // perder a seleção do usuário se a cidade escolhida ainda existir no recorte ----------
+  const cidadeSel = document.getElementById('cpCidadeFiltro');
+  const todasCidades = [...new Set(base.map(r => r.cidade))].sort();
+  const valorAtual = cidadeSel.value || 'TODAS';
+  cidadeSel.innerHTML = '<option value="TODAS">Todas as cidades</option>' + todasCidades.map(c => `<option value="${c}">${c}</option>`).join('');
+  cidadeSel.value = todasCidades.includes(valorAtual) ? valorAtual : 'TODAS';
+  cpCidadeFiltroVal = cidadeSel.value;
+
+  // ---------- tabela principal, linha a linha ----------
+  let itens = calc;
+  if (cpStatusFiltroVal === 'ABERTAS') itens = itens.filter(x => BACKLOG_STATUSES.includes(x.r.status));
+  else if (cpStatusFiltroVal === 'CONCLUIDAS') itens = itens.filter(x => x.r.status === 'concluído');
+  if (cpCidadeFiltroVal !== 'TODAS') itens = itens.filter(x => x.r.cidade === cpCidadeFiltroVal);
+  const buscaNorm = semAcento(cpBuscaTxt);
+  if (buscaNorm) itens = itens.filter(x => semAcento(x.r.os).includes(buscaNorm) || semAcento(x.r.recurso).includes(buscaNorm) || semAcento(x.r.cliente||'').includes(buscaNorm));
+
+  itens = itens.slice().sort((a,b) => {
+    const aAberta = BACKLOG_STATUSES.includes(a.r.status), bAberta = BACKLOG_STATUSES.includes(b.r.status);
+    if (aAberta !== bAberta) return aAberta ? -1 : 1; // abertas primeiro — são as que o time precisa agir
+    if (aAberta) return (a.c.vencimentoHoras===null?0:a.c.vencimentoHoras) - (b.c.vencimentoHoras===null?0:b.c.vencimentoHoras); // mais urgente/vencida primeiro
+    return (b.r.fimDate?b.r.fimDate.getTime():0) - (a.r.fimDate?a.r.fimDate.getTime():0); // concluídas: mais recente primeiro
+  });
+
+  document.getElementById('cpTableHint').textContent = itens.length + ' ordem(ns) no filtro atual (de ' + base.length + ' no total)';
+
+  let html = '<thead><tr><th>Data</th><th class="num">OS</th><th>Cliente</th><th>Técnico</th><th>Cidade</th><th>Status O.S</th>'
+    + '<th class="num">Abertura</th><th class="num">Limite</th><th class="num">Vencimento</th><th class="num">Encerramento</th>'
+    + '<th>Acompanhamento</th><th>Período</th><th>Status Prazo</th><th>Sinalizar</th></tr></thead><tbody>';
+  if (!itens.length){
+    html += '<tr><td colspan="14" class="muted">Nenhuma ordem de Reparo Corretivo no filtro atual</td></tr>';
+  } else {
+    itens.forEach(({r,c}) => {
+      const vencCls = c.vencimentoPerdido ? 'col-ausente' : '';
+      const acompCls = c.acompanhamento==='NO PRAZO' ? 'col-concluido' : c.acompanhamento==='FORA DO PRAZO' ? 'col-ausente' : '';
+      const statusPrazoCls = c.statusPrazo==='ATÉ 24H' ? 'col-concluido' : c.statusPrazo==='OUTLIERS' ? 'col-ausente' : c.statusPrazo ? 'col-pendente' : '';
+      const sinalizarHtml = c.sinalizar==='48h' ? cpPill('Sinalizar 48h','red') : c.sinalizar==='ate24h' ? cpPill('Sinalizar até 24h','green') : '';
+      html += `<tr>
+        <td class="num">${r.data}</td>
+        <td class="num">${r.os}</td>
+        <td>${r.cliente || '<span class="muted">—</span>'}</td>
+        <td class="recurso-name">${r.recurso}</td>
+        <td>${r.cidade}</td>
+        <td class="${statusColClass(r.status)}">${STATUS_COL_LABEL[r.status] || r.status}</td>
+        <td class="num">${fmtDate(r.aberturaDate)}</td>
+        <td class="num">${fmtDate(c.limiteIdeal)}</td>
+        <td class="num ${vencCls}">${c.vencimentoTexto || '<span class="muted">—</span>'}</td>
+        <td class="num">${c.encerramento || '<span class="muted">—</span>'}</td>
+        <td class="${acompCls}">${c.acompanhamento || '<span class="muted">—</span>'}</td>
+        <td>${c.periodo || '<span class="muted">—</span>'}</td>
+        <td class="${statusPrazoCls}">${c.statusPrazo || '<span class="muted">—</span>'}</td>
+        <td>${sinalizarHtml || '<span class="muted">—</span>'}</td>
+      </tr>`;
+    });
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+async function exportarCalculadoraPrazoExcel(){
+  if (!cpUltimasRows){ showToast('Nada pra exportar ainda.'); return; }
+  const ok = await loadSheetJS();
+  if (!ok){ showToast('Não consegui carregar o gerador de Excel — verifique a internet e tente de novo.'); return; }
+  const cfg = CONFIG.reparo;
+  const now = cpUltimoNow || new Date();
+  const base = cpBaseRows(cpUltimasRows);
+  const dados = base.map(r => {
+    const c = calcularLinhaPrazo(r, now, cfg);
+    return {
+      'Data': r.data, 'OS': r.os, 'Cliente': r.cliente||'', 'Técnico': r.recurso, 'Cidade': r.cidade,
+      'Status O.S': STATUS_COL_LABEL[r.status] || r.status,
+      'Abertura': fmtDate(r.aberturaDate), 'Limite': fmtDate(c.limiteIdeal),
+      'Vencimento': c.vencimentoTexto || '', 'Encerramento': c.encerramento || '',
+      'Acompanhamento': c.acompanhamento || '', 'Período': c.periodo || '',
+      'Status Prazo': c.statusPrazo || '',
+      'Sinalizar': c.sinalizar==='48h' ? 'Sinalizar 48h' : c.sinalizar==='ate24h' ? 'Sinalizar até 24h' : ''
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Calculadora de Prazo');
+  XLSX.writeFile(wb, 'calculadora_prazo_' + fmtDDMMYY2(new Date()).replace(/\//g,'-') + '.xlsx');
+  registrarAuditoria('exportar_calculadora_prazo', { linhas: dados.length });
+}
+
 function renderVencimento(rows, now){
   const aplicavel = rows.filter(r => BACKLOG_STATUSES.includes(r.status) && (r.tipo === 'Reparo Corretivo' || r.tipo === 'Ativação'));
   const comAlerta = aplicavel.map(r => ({ r, a: slaAlertaAberto(r, now) })).filter(x => x.a);
@@ -5354,6 +5590,22 @@ async function init(){
       if (detPrazosUltimasRows) renderDetalhamentoPrazos(detPrazosUltimasRows);
     });
   });
+  document.getElementById('cpBusca').addEventListener('input', (e) => {
+    cpBuscaTxt = e.target.value;
+    if (cpUltimasRows) renderCalculadoraPrazo(cpUltimasRows, cpUltimoNow || new Date());
+  });
+  document.getElementById('cpCidadeFiltro').addEventListener('change', (e) => {
+    cpCidadeFiltroVal = e.target.value;
+    if (cpUltimasRows) renderCalculadoraPrazo(cpUltimasRows, cpUltimoNow || new Date());
+  });
+  document.querySelectorAll('#cpStatusFiltro .cp-status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      cpStatusFiltroVal = btn.dataset.status;
+      document.querySelectorAll('#cpStatusFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b === btn));
+      if (cpUltimasRows) renderCalculadoraPrazo(cpUltimasRows, cpUltimoNow || new Date());
+    });
+  });
+  document.getElementById('btnExportarCalcPrazo').addEventListener('click', exportarCalculadoraPrazoExcel);
   document.getElementById('producaoRecursoCidadeFiltro').addEventListener('change', (e) => {
     prodRecursoCidadeFiltro = e.target.value;
     renderProducaoPorRecurso(getFilteredRows());
