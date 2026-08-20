@@ -1379,7 +1379,12 @@ function parseAberturaOS(str){
 // linha; se o mês do chamado for "mais à frente" que o da referência, assume que veio do ano anterior
 // (virada de ano, ex.: chamado 31/12 com referência 02/01/26 -> ano 2025).
 function parseAberturaChamado(str, refDateStr){
-  if (!str || !str.trim()) return null;
+  if (!str || !str.trim()){
+    // "Data Abertura Chamado" não veio preenchida nessa linha (acontece com frequência) — cai
+    // pra "Data de Abertura OS" como abertura, em vez de descartar a OS inteira (ela já vem com
+    // ano, formato "DD/MM/AA HH:MM", então dá pra usar direto via parseAberturaOS).
+    return refDateStr ? parseAberturaOS(refDateStr) : null;
+  }
   const parts = str.trim().split(' ');
   const dateParts = (parts[0]||'').split('/');
   if (dateParts.length < 2) return null;
