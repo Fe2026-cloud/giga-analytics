@@ -498,6 +498,13 @@
   .cp-pill-done{background:var(--gray-bg);color:var(--text-dim);}
   .cp-sinalizar-btn{cursor:pointer;transition:filter .12s;}
   .cp-sinalizar-btn:hover{filter:brightness(0.92);}
+  .rc-informar-btn{cursor:pointer;transition:filter .12s;}
+  .rc-informar-btn:hover{filter:brightness(0.92);}
+  .rc-tipo-irr{background:var(--red-bg);color:var(--red);}
+  .rc-tipo-ifi{background:var(--yellow-bg, var(--gray-bg));color:var(--yellow, var(--text));}
+  .rc-caixa-ok{color:var(--green);font-weight:800;font-size:14px;}
+  .rc-caixa-fora{color:var(--red);font-weight:800;font-size:14px;}
+  .rc-legenda{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--text-dim);padding:8px 14px 0;}
 
   .report-title-bar{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px 2px;}
   .report-title-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text);}
@@ -663,6 +670,7 @@
       <div class="sidebar-item" data-module="producao"><span class="ic">📈</span><span class="lbl">Produção</span></div>
       <div class="sidebar-item" data-module="prazos"><span class="ic">⏱️</span><span class="lbl">Prazos</span></div>
       <div class="sidebar-item" data-module="calc-prazo"><span class="ic">🧮</span><span class="lbl">Calculadora de Prazo</span></div>
+      <div class="sidebar-item" data-module="reincidencias"><span class="ic">🔁</span><span class="lbl">Reincidências</span></div>
       <div class="sidebar-item" data-module="improdutivas"><span class="ic">⚠️</span><span class="lbl">Improdutivas</span></div>
       <div class="sidebar-item" data-module="backlog"><span class="ic">📦</span><span class="lbl">Backlog</span></div>
       <div class="sidebar-item" data-module="prod-recurso"><span class="ic">🧑‍🔧</span><span class="lbl">Produção por Recurso</span></div>
@@ -968,6 +976,51 @@
         </div>
         <div class="hint" id="cpTableHint" style="padding:6px 14px 0;"></div>
         <div class="table-scroll" style="max-height:520px;overflow-y:auto;"><table class="pivot compact-table" id="cpTable"></table></div>
+      </div>
+    </div>
+
+    <div class="module" id="module-reincidencias">
+      <div class="section-title"><h2>Reincidências</h2><span class="hint">IRR: reparo corretivo que volta em até 30 dias de outro reparo · IFI: reparo em até 15 dias de uma ativação ou mudança de endereço · C10/C13/C14</span></div>
+
+      <div class="venc-grid" id="rcCards" style="margin-bottom:16px;"></div>
+
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-head"><h3>Por cidade</h3><span class="desc">clique num número pra filtrar a lista abaixo</span></div>
+        <div class="table-scroll"><table class="pivot compact-table" id="rcCidadeTable"></table></div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px 0;">
+          <input type="text" id="rcBusca" placeholder="🔎 Buscar OS, contrato, cliente ou técnico..." class="pr-busca" style="margin-left:0;min-width:240px;">
+          <select id="rcCidadeFiltro" class="cp-select"><option value="TODAS">Todas as cidades</option></select>
+          <select id="rcInformadaFiltro" class="cp-select">
+            <option value="TODAS">Informada: todas</option>
+            <option value="FALTA">Falta informar ao gestor</option>
+            <option value="INFORMADAS">Já informadas</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px 0;">
+          <div class="cp-status-bar" id="rcTipoFiltro">
+            <button type="button" class="cp-status-btn active" data-tipo="TODOS">IRR + IFI</button>
+            <button type="button" class="cp-status-btn" data-tipo="IRR">IRR</button>
+            <button type="button" class="cp-status-btn" data-tipo="IFI">IFI</button>
+          </div>
+          <div class="cp-status-bar" id="rcStatusFiltro">
+            <button type="button" class="cp-status-btn active" data-status="ABERTAS">Em aberto</button>
+            <button type="button" class="cp-status-btn" data-status="TODAS">Todas</button>
+            <button type="button" class="cp-status-btn" data-status="CONCLUIDAS">Concluídas</button>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn ghost" id="btnCopiarReincidencias">📋 Copiar p/ gestor</button>
+            <button type="button" class="btn ghost" id="btnExportarReincidencias">⬇ Exportar Excel</button>
+          </div>
+        </div>
+        <div class="rc-legenda">
+          <span><span class="rc-caixa-fora">✗</span> fora da caixa correspondente (técnico diferente do atendimento anterior)</span>
+          <span><span class="rc-caixa-ok">✓</span> na caixa correspondente (mesmo técnico do atendimento anterior)</span>
+        </div>
+        <div class="hint" id="rcTableHint" style="padding:6px 14px 0;"></div>
+        <div class="table-scroll" style="max-height:560px;overflow-y:auto;"><table class="pivot compact-table" id="rcTable"></table></div>
       </div>
     </div>
 
@@ -1823,6 +1876,12 @@ function iniciarRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_equipe' }, recarregarRedeExternaEquipeRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'prazo_sinalizacoes' }, recarregarSinalizacoesRealtime)
     .subscribe();
+  // Canal separado: se a tabela ainda não existir (migração 0019 não rodou), só ESTE canal
+  // falha ao assinar — o tempo real do resto do painel não é afetado.
+  supabaseClient
+    .channel('painel-realtime-reincidencias')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'reincidencia_informadas' }, recarregarReincidenciasInformadasRealtime)
+    .subscribe();
 }
 
 /* ============================= ORDENS DE SERVIÇO (Supabase) =============================
@@ -2187,6 +2246,9 @@ async function loadPersisted(){
   try{
     await carregarSinalizacoesDoSupabase();
   }catch(e){ console.error('Falha ao carregar sinalizações de prazo do Supabase', e); }
+  try{
+    await carregarReincidenciasInformadasDoSupabase();
+  }catch(e){ console.error('Falha ao carregar reincidências informadas do Supabase (migração 0019 rodou?)', e); }
   // O painel sempre abre no tema claro — não guarda/lê preferência entre sessões
   // (dá pra alternar durante o uso, mas volta pro claro no próximo carregamento).
   await applyTheme('light');
@@ -3186,6 +3248,7 @@ function render(){
   rc(() => renderPrazosPorCidade(rows), 'Prazos por cidade');
   rc(() => renderDetalhamentoPrazos(rows), 'Detalhamento de prazos');
   rc(() => renderCalculadoraPrazo(rows, now), 'Calculadora de Prazo');
+  rc(() => renderReincidencias(rows, now), 'Reincidências');
   rc(() => atualizarSinoUrgentes(), 'Sino de OS urgentes');
   rc(() => renderVencimento(rows, now), 'Vencimento');
   rc(() => renderExecucao(rows, now), 'Execução');
@@ -4499,6 +4562,344 @@ async function desmarcarSinalizado(os){
     registrarAuditoria('desmarcar_sinalizacao_prazo', { os });
     showToast('Sinalização da OS ' + os + ' desfeita.');
   }catch(e){ console.error('Falha ao desmarcar sinalização', e); showToast('Não consegui desmarcar — tenta de novo.'); }
+}
+
+/* ============================= REINCIDÊNCIAS (IRR / IFI) =============================
+   Substitui a planilha "Acompanhamento IRR". Pra cada OS de Reparo Corretivo (a "nova"), procura no
+   histórico do MESMO CONTRATO um atendimento anterior já concluído:
+     · IRR — o anterior foi outro Reparo Corretivo, concluído até 30 dias antes da abertura da nova;
+     · IFI — o anterior foi uma Ativação ou Mudança de Endereço, concluída até 15 dias antes.
+   Se houver vários, vale o mais recente. "Caixa" = técnico da OS nova; ✓ quando é o mesmo técnico
+   do atendimento anterior, ✗ quando é outro. A coluna Informada? guarda se o assistente já
+   reportou essa reincidência ao gestor da área (reincidencia_informadas, chave = nº da OS nova). */
+const RC_REGIONAIS = ['C10','C13','C14'];
+const RC_REGRAS = {
+  IRR: { tiposAnteriores: ['Reparo Corretivo'], dias: 30 },
+  IFI: { tiposAnteriores: ['Ativação','Mudança de Endereço'], dias: 15 }
+};
+let RC_INFORMADAS = {}; // { [os]: { informadoPor, informadoEm } }
+let RC_TABELA_OK = true; // false enquanto a migração 0019 não foi rodada no Supabase
+let rcUltimasRows = null;
+let rcBuscaTxt = '';
+let rcCidadeFiltroVal = 'TODAS';
+let rcTipoFiltroVal = 'TODOS';       // TODOS | IRR | IFI
+let rcStatusFiltroVal = 'ABERTAS';   // ABERTAS | TODAS | CONCLUIDAS
+let rcInformadaFiltroVal = 'TODAS';  // TODAS | FALTA | INFORMADAS
+let rcItensVisiveis = [];            // o que está na tabela agora — usado por Exportar/Copiar
+
+async function carregarReincidenciasInformadasDoSupabase(){
+  const { data, error } = await supabaseClient.from('reincidencia_informadas').select('os, informado_por, informado_em');
+  if (error){ RC_TABELA_OK = false; throw error; }
+  RC_TABELA_OK = true;
+  const novo = {};
+  (data||[]).forEach(row => { novo[row.os] = { informadoPor: row.informado_por, informadoEm: row.informado_em }; });
+  RC_INFORMADAS = novo;
+}
+async function recarregarReincidenciasInformadasRealtime(){
+  try{ await carregarReincidenciasInformadasDoSupabase(); render(); }
+  catch(e){ console.error('Falha ao recarregar reincidências informadas em tempo real', e); }
+}
+async function marcarReincidenciaInformada(os){
+  if (!podeEditarDados()) return;
+  if (!RC_TABELA_OK){ showToast('Falta rodar a migração 0019 no Supabase pra registrar quem já informou o gestor.'); return; }
+  try{
+    const agora = new Date().toISOString();
+    const { error } = await supabaseClient.from('reincidencia_informadas')
+      .upsert({ os, informado_por: CURRENT_USER.id, informado_em: agora }, { onConflict: 'os' });
+    if (error) throw error;
+    RC_INFORMADAS[os] = { informadoPor: CURRENT_USER.id, informadoEm: agora };
+    render();
+    registrarAuditoria('informar_reincidencia', { os });
+    showToast('Reincidência da OS ' + os + ' marcada como informada ao gestor.');
+  }catch(e){ console.error('Falha ao marcar reincidência informada', e); showToast('Não consegui marcar — tenta de novo.'); }
+}
+async function desmarcarReincidenciaInformada(os){
+  if (!podeEditarDados()) return;
+  try{
+    const { error } = await supabaseClient.from('reincidencia_informadas').delete().eq('os', os);
+    if (error) throw error;
+    delete RC_INFORMADAS[os];
+    render();
+    registrarAuditoria('desmarcar_reincidencia_informada', { os });
+    showToast('Marcação da OS ' + os + ' desfeita.');
+  }catch(e){ console.error('Falha ao desmarcar reincidência informada', e); showToast('Não consegui desmarcar — tenta de novo.'); }
+}
+
+function rcChaveContrato(c){ return String(c||'').trim().toUpperCase().replace(/^0+(?=.)/, ''); }
+function rcInicioDoDia(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+// A mesma OS aparece em vários CSVs diários (aberta num dia, concluída no outro): fica só a
+// aparição mais recente (maior data; no empate, a de maior horário de fim).
+function rcUnicasPorOS(rows){
+  const mapa = new Map();
+  const tempo = r => { const d = parseDDMMYY(r.data); return d ? d.getTime() : 0; };
+  rows.forEach(r => {
+    if (!r.os) return;
+    const atual = mapa.get(r.os);
+    if (!atual){ mapa.set(r.os, r); return; }
+    const ta = tempo(atual), tb = tempo(r);
+    if (tb > ta || (tb === ta && (r.fimDate ? r.fimDate.getTime() : 0) >= (atual.fimDate ? atual.fimDate.getTime() : 0))) mapa.set(r.os, r);
+  });
+  return mapa;
+}
+// rowsNovos = OS candidatas a "nova" (respeita o filtro de período/regional do painel);
+// todasRows = base inteira, onde se procura o atendimento anterior do contrato.
+function rcDetectar(rowsNovos, todasRows){
+  const unicas = rcUnicasPorOS(todasRows.filter(r => RC_REGIONAIS.includes(r.regional)));
+  const porContrato = new Map();
+  unicas.forEach(r => {
+    const k = rcChaveContrato(r.contrato);
+    if (!k) return;
+    if (!porContrato.has(k)) porContrato.set(k, []);
+    porContrato.get(k).push(r);
+  });
+  const osNovas = new Set(rowsNovos.filter(r => RC_REGIONAIS.includes(r.regional) && r.tipo === 'Reparo Corretivo').map(r => r.os));
+  const itens = [];
+  let semContrato = 0;
+  osNovas.forEach(os => {
+    const R = unicas.get(os);
+    if (!R || !(BACKLOG_STATUSES.includes(R.status) || R.status === 'concluído')) return;
+    const k = rcChaveContrato(R.contrato);
+    if (!k){ semContrato++; return; }
+    const refNovo = R.aberturaDate || parseDDMMYY(R.data);
+    if (!refNovo) return;
+    const candidatos = [];
+    (porContrato.get(k) || []).forEach(P => {
+      if (P.os === R.os || P.status !== 'concluído') return;
+      const tipoReg = Object.keys(RC_REGRAS).find(t => RC_REGRAS[t].tiposAnteriores.includes(P.tipo));
+      if (!tipoReg) return;
+      const refP = P.fimDate || P.aberturaDate || parseDDMMYY(P.data);
+      if (!refP || refP.getTime() > refNovo.getTime()) return;
+      const dias = Math.round((rcInicioDoDia(refNovo) - rcInicioDoDia(refP)) / 86400000);
+      if (dias > RC_REGRAS[tipoReg].dias) return;
+      candidatos.push({ P, tipo: tipoReg, dias, refP });
+    });
+    if (!candidatos.length) return;
+    candidatos.sort((a,b) => b.refP - a.refP);
+    const m = candidatos[0];
+    const semTec = !R.recurso || R.recurso === '(sem recurso)';
+    itens.push({
+      r: R, tipo: m.tipo, p: m.P, dias: m.dias, refAnterior: m.refP,
+      mesmoTecnico: semTec ? null : semAcento(R.recurso) === semAcento(m.P.recurso),
+      repeticoes: candidatos.length
+    });
+  });
+  return { itens, semContrato };
+}
+
+function rcEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function rcInformadaHtml(r){
+  const marcado = RC_INFORMADAS[r.os];
+  const podeClicar = podeEditarDados();
+  if (marcado){
+    const titulo = marcado.informadoEm ? ('Informada ao gestor em ' + fmtDate(new Date(marcado.informadoEm)) + (podeClicar ? ' — clique pra desfazer' : '')) : '';
+    return `<span class="cp-pill cp-pill-done${podeClicar?' rc-informar-btn':''}" data-os="${rcEsc(r.os)}" data-acao="desmarcar" title="${titulo}">✓ Informada</span>`;
+  }
+  return `<span class="cp-pill cp-pill-red${podeClicar?' rc-informar-btn':''}" data-os="${rcEsc(r.os)}" data-acao="marcar" title="${podeClicar?'Clique depois de reportar ao gestor':''}">Informar</span>`;
+}
+function rcTextoInformada(r){ return RC_INFORMADAS[r.os] ? 'Informada' : 'Falta informar'; }
+function rcCaixaHtml(it){
+  if (it.mesmoTecnico === null) return '<span class="muted">—</span>';
+  return it.mesmoTecnico
+    ? '<span class="rc-caixa-ok" title="Na caixa correspondente (mesmo técnico)">✓</span>'
+    : '<span class="rc-caixa-fora" title="Fora da caixa correspondente (técnico diferente)">✗</span>';
+}
+function rcTableHeadHtml(){
+  return '<thead><tr><th>Informada?</th><th>Tipo</th><th class="num">OS</th><th class="num">Contrato</th><th>Cliente</th>'
+    + '<th class="num">Abertura</th><th>Caixa (técnico atual)</th><th>Status</th>'
+    + '<th class="num">OS anterior</th><th>Tipo anterior</th><th class="num">Data anterior</th><th class="num">Dias</th>'
+    + '<th>Técnico anterior</th><th>Na caixa?</th><th>Cidade</th></tr></thead>';
+}
+function rcRowHtml(it){
+  const r = it.r, p = it.p;
+  const tipoCls = it.tipo === 'IRR' ? 'rc-tipo-irr' : 'rc-tipo-ifi';
+  const rep = it.repeticoes > 1 ? ` <span class="muted" style="font-size:10px;" title="Quantidade de atendimentos anteriores dentro do prazo">(${it.repeticoes}x)</span>` : '';
+  return `<tr>
+    <td>${rcInformadaHtml(r)}</td>
+    <td><span class="cp-pill ${tipoCls}">${it.tipo}</span>${rep}</td>
+    <td class="num">${rcEsc(r.os)}</td>
+    <td class="num">${rcEsc(r.contrato)}</td>
+    <td>${r.cliente ? rcEsc(r.cliente) : '<span class="muted">—</span>'}</td>
+    <td class="num">${fmtDate(r.aberturaDate)}</td>
+    <td class="recurso-name">${rcEsc(r.recurso)}</td>
+    <td class="${statusColClass(r.status)}">${STATUS_COL_LABEL[r.status] || r.status}</td>
+    <td class="num">${rcEsc(p.os)}</td>
+    <td>${rcEsc(p.tipo)}</td>
+    <td class="num">${it.refAnterior.toLocaleDateString('pt-BR')}</td>
+    <td class="num">${it.dias}</td>
+    <td class="recurso-name">${rcEsc(p.recurso)}</td>
+    <td style="text-align:center;">${rcCaixaHtml(it)}</td>
+    <td>${rcEsc(r.cidade)}</td>
+  </tr>`;
+}
+function rcAplicarFiltro(f){
+  if (f.tipo !== undefined) rcTipoFiltroVal = f.tipo;
+  if (f.informada !== undefined){ rcInformadaFiltroVal = f.informada; document.getElementById('rcInformadaFiltro').value = f.informada; }
+  if (f.cidade !== undefined) rcCidadeFiltroVal = f.cidade;
+  document.querySelectorAll('#rcTipoFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === rcTipoFiltroVal));
+  if (rcUltimasRows) renderReincidencias(rcUltimasRows, new Date());
+}
+function renderReincidencias(rows, now){
+  const tbl = document.getElementById('rcTable');
+  if (!tbl) return;
+  rcUltimasRows = rows;
+
+  const { itens: todos, semContrato } = rcDetectar(rows, getAllRows());
+  let base = todos;
+  if (rcStatusFiltroVal === 'ABERTAS') base = base.filter(it => BACKLOG_STATUSES.includes(it.r.status));
+  else if (rcStatusFiltroVal === 'CONCLUIDAS') base = base.filter(it => it.r.status === 'concluído');
+
+  // ---------- cards ----------
+  const ehInformada = it => !!RC_INFORMADAS[it.r.os];
+  const nIRR = base.filter(it => it.tipo === 'IRR').length;
+  const nIFI = base.filter(it => it.tipo === 'IFI').length;
+  const nInf = base.filter(ehInformada).length;
+  const cards = [
+    { label:'Reincidências', valor: base.length, cor:'text', filtro:{ tipo:'TODOS', informada:'TODAS' } },
+    { label:'IRR · reparo em até 30d', valor: nIRR, cor:'red', filtro:{ tipo:'IRR', informada:'TODAS' } },
+    { label:'IFI · até 15d da ativação/mudança', valor: nIFI, cor:'yellow', filtro:{ tipo:'IFI', informada:'TODAS' } },
+    { label:'Falta informar ao gestor', valor: base.length - nInf, cor:'red', filtro:{ tipo:'TODOS', informada:'FALTA' } },
+    { label:'Já informadas', valor: nInf, cor:'green', filtro:{ tipo:'TODOS', informada:'INFORMADAS' } }
+  ];
+  const cardsEl = document.getElementById('rcCards');
+  cardsEl.innerHTML = cards.map((c,i) => `
+    <div class="venc-card clickable-card" data-rc-card="${i}"><div class="value" style="color:var(--${c.cor})">${c.valor}</div><div class="label">${c.label}</div></div>
+  `).join('');
+  cardsEl.querySelectorAll('[data-rc-card]').forEach(el => {
+    el.addEventListener('click', () => rcAplicarFiltro(cards[+el.dataset.rcCard].filtro));
+  });
+
+  // ---------- filtro de cidade (mantém a seleção se ainda existir) ----------
+  const cidadeSel = document.getElementById('rcCidadeFiltro');
+  const cidades = [...new Set(base.map(it => it.r.cidade))].sort();
+  const valorAtual = cidadeSel.value || 'TODAS';
+  cidadeSel.innerHTML = '<option value="TODAS">Todas as cidades</option>' + cidades.map(c => `<option value="${rcEsc(c)}">${rcEsc(c)}</option>`).join('');
+  cidadeSel.value = cidades.includes(valorAtual) ? valorAtual : 'TODAS';
+  rcCidadeFiltroVal = cidadeSel.value;
+
+  // ---------- Por cidade ----------
+  const rcCliques = [];
+  const celula = (n, cidade, tipo, informada) => {
+    rcCliques.push({ cidade, tipo, informada });
+    return `<td class="num${n?' clickable-cell':''}" data-rc-idx="${rcCliques.length-1}">${n}</td>`;
+  };
+  let cidHtml = '<thead><tr><th>Cidade</th><th class="num">IRR</th><th class="num">IFI</th><th class="num">Total</th><th class="num">Falta informar</th></tr></thead><tbody>';
+  if (!cidades.length){
+    cidHtml += '<tr><td colspan="5" class="muted">Nenhuma reincidência no filtro atual</td></tr>';
+  } else {
+    cidades.forEach(c => {
+      const doCid = base.filter(it => it.r.cidade === c);
+      cidHtml += `<tr><td>${rcEsc(c)}</td>`
+        + celula(doCid.filter(it => it.tipo==='IRR').length, c, 'IRR', 'TODAS')
+        + celula(doCid.filter(it => it.tipo==='IFI').length, c, 'IFI', 'TODAS')
+        + celula(doCid.length, c, 'TODOS', 'TODAS')
+        + celula(doCid.filter(it => !ehInformada(it)).length, c, 'TODOS', 'FALTA')
+        + '</tr>';
+    });
+    cidHtml += `<tr class="total-row"><td>TOTAL</td>`
+      + celula(nIRR, 'TODAS', 'IRR', 'TODAS') + celula(nIFI, 'TODAS', 'IFI', 'TODAS')
+      + celula(base.length, 'TODAS', 'TODOS', 'TODAS') + celula(base.length - nInf, 'TODAS', 'TODOS', 'FALTA') + '</tr>';
+  }
+  cidHtml += '</tbody>';
+  const cidTbl = document.getElementById('rcCidadeTable');
+  cidTbl.innerHTML = cidHtml;
+  cidTbl.querySelectorAll('[data-rc-idx]').forEach(td => {
+    const f = rcCliques[+td.dataset.rcIdx];
+    if (!f) return;
+    td.addEventListener('click', () => {
+      cidadeSel.value = f.cidade;
+      rcAplicarFiltro({ cidade: f.cidade, tipo: f.tipo, informada: f.informada });
+    });
+  });
+
+  // ---------- lista ----------
+  let itens = base;
+  if (rcCidadeFiltroVal !== 'TODAS') itens = itens.filter(it => it.r.cidade === rcCidadeFiltroVal);
+  if (rcTipoFiltroVal !== 'TODOS') itens = itens.filter(it => it.tipo === rcTipoFiltroVal);
+  if (rcInformadaFiltroVal === 'FALTA') itens = itens.filter(it => !ehInformada(it));
+  else if (rcInformadaFiltroVal === 'INFORMADAS') itens = itens.filter(ehInformada);
+  const busca = semAcento(rcBuscaTxt);
+  if (busca) itens = itens.filter(it => [it.r.os, it.r.contrato, it.r.cliente, it.r.recurso, it.p.os, it.p.recurso].some(v => semAcento(v||'').includes(busca)));
+
+  itens = itens.slice().sort((a,b) => {
+    const ia = ehInformada(a), ib = ehInformada(b);
+    if (ia !== ib) return ia ? 1 : -1; // quem falta informar primeiro — é onde o assistente precisa agir
+    const aa = BACKLOG_STATUSES.includes(a.r.status), ab = BACKLOG_STATUSES.includes(b.r.status);
+    if (aa !== ab) return aa ? -1 : 1;
+    return (a.r.aberturaDate ? a.r.aberturaDate.getTime() : 0) - (b.r.aberturaDate ? b.r.aberturaDate.getTime() : 0); // mais antiga primeiro
+  });
+  rcItensVisiveis = itens;
+
+  let hint = itens.length + ' reincidência(s) no filtro atual (de ' + base.length + ' no total)';
+  if (semContrato) hint += ' · ' + semContrato + ' OS de Reparo sem nº de contrato no CSV não puderam ser analisadas';
+  if (!RC_TABELA_OK) hint += ' · ⚠ falta rodar a migração 0019 (marcação "Informada?" indisponível)';
+  document.getElementById('rcTableHint').textContent = hint;
+
+  let html = rcTableHeadHtml() + '<tbody>';
+  if (!itens.length) html += '<tr><td colspan="15" class="muted">Nenhuma reincidência no filtro atual</td></tr>';
+  else itens.forEach(it => { html += rcRowHtml(it); });
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function rcTextoParaGestor(itens){
+  const agora = new Date();
+  const nIRR = itens.filter(i => i.tipo==='IRR').length, nIFI = itens.filter(i => i.tipo==='IFI').length;
+  let txt = 'REINCIDÊNCIAS — ' + fmtDate(agora) + '\n';
+  txt += 'Total: ' + itens.length + ' (IRR: ' + nIRR + ' · IFI: ' + nIFI + ')\n';
+  const porCidade = {};
+  itens.forEach(it => { (porCidade[it.r.cidade] = porCidade[it.r.cidade] || []).push(it); });
+  Object.keys(porCidade).sort().forEach(cidade => {
+    txt += '\n📍 ' + cidade + ' (' + porCidade[cidade].length + ')\n';
+    porCidade[cidade].forEach(it => {
+      const r = it.r, p = it.p;
+      txt += '• [' + it.tipo + '] OS ' + r.os + ' · Contrato ' + r.contrato + (r.cliente ? ' · ' + r.cliente : '') + '\n';
+      txt += '  Técnico (caixa): ' + r.recurso + ' · aberta em ' + fmtDate(r.aberturaDate) + ' · ' + (STATUS_COL_LABEL[r.status] || r.status) + '\n';
+      txt += '  Anterior: OS ' + p.os + ' (' + p.tipo + ') em ' + it.refAnterior.toLocaleDateString('pt-BR') + ' — ' + it.dias + ' dia(s) — técnico: ' + p.recurso
+        + (it.mesmoTecnico === null ? '' : it.mesmoTecnico ? ' ✓ mesma caixa' : ' ✗ fora da caixa') + '\n';
+      if (r.endereco) txt += '  Endereço: ' + r.endereco + '\n';
+    });
+  });
+  return txt;
+}
+async function copiarReincidenciasParaGestor(){
+  if (!rcItensVisiveis.length){ showToast('Nada pra copiar no filtro atual.'); return; }
+  const txt = rcTextoParaGestor(rcItensVisiveis);
+  try{
+    await navigator.clipboard.writeText(txt);
+  }catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(_){ document.body.removeChild(ta); showToast('Não consegui copiar — use o Exportar Excel.'); return; }
+    document.body.removeChild(ta);
+  }
+  registrarAuditoria('copiar_reincidencias', { linhas: rcItensVisiveis.length });
+  showToast(rcItensVisiveis.length + ' reincidência(s) copiada(s) — é só colar no WhatsApp/e-mail do gestor.');
+}
+async function exportarReincidenciasExcel(){
+  if (!rcItensVisiveis.length){ showToast('Nada pra exportar no filtro atual.'); return; }
+  const ok = await loadSheetJS();
+  if (!ok){ showToast('Não consegui carregar o gerador de Excel — verifique a internet e tente de novo.'); return; }
+  const dados = rcItensVisiveis.map(it => ({
+    'Informada?': rcTextoInformada(it.r),
+    'Tipo': it.tipo,
+    'OS': it.r.os, 'Contrato': it.r.contrato, 'Cliente': it.r.cliente || '',
+    'Cidade': it.r.cidade, 'Regional': it.r.regional,
+    'Abertura': fmtDate(it.r.aberturaDate),
+    'Caixa (técnico atual)': it.r.recurso,
+    'Status': STATUS_COL_LABEL[it.r.status] || it.r.status,
+    'OS anterior': it.p.os, 'Tipo anterior': it.p.tipo,
+    'Data anterior': it.refAnterior.toLocaleDateString('pt-BR'), 'Dias': it.dias,
+    'Técnico anterior': it.p.recurso,
+    'Na caixa?': it.mesmoTecnico === null ? '' : it.mesmoTecnico ? 'Sim' : 'Não',
+    'Atendimentos anteriores no prazo': it.repeticoes,
+    'Endereço': it.r.endereco || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Reincidências');
+  XLSX.writeFile(wb, 'reincidencias_' + fmtDDMMYY2(new Date()).replace(/\//g,'-') + '.xlsx');
+  registrarAuditoria('exportar_reincidencias', { linhas: dados.length });
 }
 
 /* ============================= CALCULADORA DE PRAZO (Reparo Corretivo) =============================
@@ -6131,6 +6532,30 @@ async function init(){
     if (el.dataset.acao === 'desmarcar') desmarcarSinalizado(el.dataset.os);
     else marcarSinalizado(el.dataset.os, el.dataset.nivel);
   };
+  document.getElementById('rcBusca').addEventListener('input', (e) => {
+    rcBuscaTxt = e.target.value;
+    if (rcUltimasRows) renderReincidencias(rcUltimasRows, new Date());
+  });
+  document.getElementById('rcCidadeFiltro').addEventListener('change', (e) => rcAplicarFiltro({ cidade: e.target.value }));
+  document.getElementById('rcInformadaFiltro').addEventListener('change', (e) => rcAplicarFiltro({ informada: e.target.value }));
+  document.querySelectorAll('#rcTipoFiltro .cp-status-btn').forEach(btn => {
+    btn.addEventListener('click', () => rcAplicarFiltro({ tipo: btn.dataset.tipo }));
+  });
+  document.querySelectorAll('#rcStatusFiltro .cp-status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rcStatusFiltroVal = btn.dataset.status;
+      document.querySelectorAll('#rcStatusFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b === btn));
+      if (rcUltimasRows) renderReincidencias(rcUltimasRows, new Date());
+    });
+  });
+  document.getElementById('btnCopiarReincidencias').addEventListener('click', copiarReincidenciasParaGestor);
+  document.getElementById('btnExportarReincidencias').addEventListener('click', exportarReincidenciasExcel);
+  document.getElementById('rcTable').addEventListener('click', (e) => {
+    const el = e.target.closest('.rc-informar-btn');
+    if (!el) return;
+    if (el.dataset.acao === 'desmarcar') desmarcarReincidenciaInformada(el.dataset.os);
+    else marcarReincidenciaInformada(el.dataset.os);
+  });
   document.getElementById('cpTable').addEventListener('click', cpSinalizarClick);
   document.getElementById('cpDetalheTable').addEventListener('click', cpSinalizarClick);
   document.getElementById('cpTecnicoModalTable').addEventListener('click', cpSinalizarClick);
