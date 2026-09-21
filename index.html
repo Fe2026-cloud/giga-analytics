@@ -1695,13 +1695,22 @@ function configurarMenusMotivoAusencia(){
 }
 
 let realtimeDebounceTimer = null;
+// Enquanto ESTE navegador está importando arquivos, os eventos de tempo real gerados pelas
+// próprias gravações não podem recarregar a base no meio do lote (isso trocava OPERACIONAL/
+// BASE_HIST por um retrato parcial do banco e fazia os arquivos anteriores "sumirem"). Ficam
+// pendentes e rodam uma vez quando a importação termina.
+let importacaoEmAndamento = 0;
+let recargaRealtimePendente = false;
 function agendarRecarregamentoRealtime(){
+  if (importacaoEmAndamento > 0){ recargaRealtimePendente = true; return; }
   clearTimeout(realtimeDebounceTimer);
   realtimeDebounceTimer = setTimeout(async () => {
+    if (importacaoEmAndamento > 0){ recargaRealtimePendente = true; return; }
     try{
       await carregarOrdensServicoDoSupabase();
       await carregarHistoricoDoSupabase(); // só leitura — ver comentário acima
       await carregarAusenciasHojeDoSupabase();
+      SLOT_KEYS.forEach(updateDzStatus);
       refreshFilters();
       render();
     }catch(e){ console.error('Falha ao recarregar em tempo real', e); }
@@ -1738,12 +1747,20 @@ async function recarregarEquipeRealtime(){
     render();
   }catch(e){ console.error('Falha ao recarregar equipe em tempo real', e); }
 }
-async function recarregarRedeExternaRealtime(){
-  try{
-    await carregarRedeExternaDoSupabase();
-    updateDzStatusRedeExterna();
-    if (currentModule === 'rede-externa') renderRedeExterna();
-  }catch(e){ console.error('Falha ao recarregar Rede Externa em tempo real', e); }
+let redeRealtimeTimer = null;
+function recarregarRedeExternaRealtime(){
+  // Debounce + espera a importação local terminar (cada lote de linhas gravado dispara um evento;
+  // recarregar a cada um deles é lento e trocava a base no meio da importação).
+  if (importacaoEmAndamento > 0){ recargaRealtimePendente = true; return; }
+  clearTimeout(redeRealtimeTimer);
+  redeRealtimeTimer = setTimeout(async () => {
+    if (importacaoEmAndamento > 0){ recargaRealtimePendente = true; return; }
+    try{
+      await carregarRedeExternaDoSupabase();
+      updateDzStatusRedeExterna();
+      if (currentModule === 'rede-externa') renderRedeExterna();
+    }catch(e){ console.error('Falha ao recarregar Rede Externa em tempo real', e); }
+  }, 900);
 }
 async function recarregarRedeExternaEquipeRealtime(){
   try{
@@ -1858,10 +1875,44 @@ async function marcarComoHistorico(slot, data){
   if (error) throw error;
 }
 
+// Busca todas as linhas de uma tabela filha (ordens_servico / rede_externa_atividades) importação
+// por importação. Cada consulta usa o índice de importacao_id + ORDER BY id — paginar a tabela
+// inteira com range() sem ORDER BY (como era antes) deixa o Postgres livre pra repetir linhas
+// entre páginas (total inflado) ou pular outras (arquivo inteiro "sumindo"). Qualquer página que
+// falhar depois de 3 tentativas derruba a carga toda: melhor manter a tela como estava do que
+// mostrar uma base incompleta.
+async function buscarLinhasPorImportacao(tabela, colunas, idsImportacao){
+  const PAGE = 1000, CONCORRENCIA = 6;
+  const todas = [];
+  let prox = 0;
+  async function buscarPagina(id, from){
+    for (let tentativa = 0; ; tentativa++){
+      const r = await supabaseClient.from(tabela).select(colunas).eq('importacao_id', id).order('id').range(from, from + PAGE - 1);
+      if (!r.error) return r.data || [];
+      if (tentativa >= 2) throw r.error;
+      await new Promise(res => setTimeout(res, 400 * (tentativa + 1)));
+    }
+  }
+  async function trabalhador(){
+    while (prox < idsImportacao.length){
+      const id = idsImportacao[prox++];
+      for (let from = 0; ; from += PAGE){
+        const pagina = await buscarPagina(id, from);
+        for (const linha of pagina) todas.push(linha);
+        if (pagina.length < PAGE) break;
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCORRENCIA, idsImportacao.length) }, trabalhador));
+  return todas;
+}
+
 // Recarrega OPERACIONAL/BASE_HIST inteiros a partir do Supabase (chamado no início da sessão).
+// Monta o resultado em variáveis locais e só troca OPERACIONAL/BASE_HIST no final, de uma vez —
+// assim nada enxerga a base "vazia" durante a carga, e se algo falhar o estado atual é mantido.
+let cargaOSSeq = 0;
 async function carregarOrdensServicoDoSupabase(){
-  OPERACIONAL = { C10:null, C13:null, C14:null, JH:null, VIRTUS:null };
-  BASE_HIST = { C10:{}, C13:{}, C14:{}, JH:{}, VIRTUS:{} };
+  const minhaCarga = ++cargaOSSeq;
 
   // importacoes_csv é pequena (1 linha por arquivo importado) — busca tudo de
   // uma vez e faz o "join" em JS. Embutir esse join na query de ordens_servico
@@ -1874,31 +1925,29 @@ async function carregarOrdensServicoDoSupabase(){
   const mapaImportacoes = {};
   (importacoes || []).forEach(ic => { mapaImportacoes[ic.id] = ic; });
 
-  // ordens_servico pode ter várias dezenas de milhares de linhas — busca as
-  // páginas em paralelo (sabendo o total já na primeira resposta) em vez de
-  // uma de cada vez.
-  const PAGE = 1000;
   const COLUNAS = 'os, data, status, bairro, cidade, tipo, motivo, recurso, cliente, contrato, endereco, abertura_at, inicio_at, fim_at, importacao_id';
-  const primeira = await supabaseClient.from('ordens_servico').select(COLUNAS, { count: 'exact' }).range(0, PAGE - 1);
-  if (primeira.error){ console.error('Falha ao carregar ordens de serviço', primeira.error); return; }
-  const todasLinhas = [...(primeira.data || [])];
-  const total = primeira.count || todasLinhas.length;
-  const pendentes = [];
-  for (let from = PAGE; from < total; from += PAGE){
-    pendentes.push(supabaseClient.from('ordens_servico').select(COLUNAS).range(from, from + PAGE - 1));
+  let todasLinhas;
+  try{
+    todasLinhas = await buscarLinhasPorImportacao('ordens_servico', COLUNAS, (importacoes || []).map(ic => ic.id));
+  }catch(e){
+    console.error('Falha ao carregar ordens de serviço — mantendo a base atual da tela', e);
+    return;
   }
-  const resultados = await Promise.all(pendentes);
-  resultados.forEach(r => {
-    if (r.error) console.error('Falha ao carregar página de ordens de serviço', r.error);
-    else todasLinhas.push(...(r.data || []));
-  });
+  if (minhaCarga !== cargaOSSeq) return; // já existe uma carga mais nova em andamento — descarta esta
 
+  const novoOperacional = { C10:null, C13:null, C14:null, JH:null, VIRTUS:null };
+  const novoHist = { C10:{}, C13:{}, C14:{}, JH:{}, VIRTUS:{} };
   const grupos = {}; // key = slot + '|' + data_referencia -> { ...meta, rows:[] }
+  // Importações sem nenhuma OS (ex.: arquivo apagado pela metade) também precisam existir como grupo.
+  (importacoes || []).forEach(ic => {
+    if (!novoHist[ic.slot]) return;
+    grupos[ic.slot + '|' + ic.data_referencia] = { id: ic.id, slot: ic.slot, regional: ic.regional, empresa: ic.empresa, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
+  });
   todasLinhas.forEach(row => {
     const ic = mapaImportacoes[row.importacao_id];
     if (!ic) return; // linha órfã (não deveria acontecer, FK garante)
     const key = ic.slot + '|' + ic.data_referencia;
-    if (!grupos[key]) grupos[key] = { id: ic.id, slot: ic.slot, regional: ic.regional, empresa: ic.empresa, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
+    if (!grupos[key]) return;
     grupos[key].rows.push({
       regional: ic.regional, empresa: ic.empresa,
       os: row.os || '', data: row.data || '', status: row.status || '',
@@ -1911,18 +1960,27 @@ async function carregarOrdensServicoDoSupabase(){
       fimDate: row.fim_at ? new Date(row.fim_at) : null
     });
   });
+  const tempo = d => { const p = parseDDMMYY(d); return p ? p.getTime() : 0; };
   Object.values(grupos).forEach(g => {
     const entry = { id: g.id, rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
-    if (g.vigente) OPERACIONAL[g.slot] = entry; else BASE_HIST[g.slot][g.data] = entry;
+    if (!g.vigente){ novoHist[g.slot][g.data] = entry; return; }
+    // Só pode existir 1 dia vigente por slot; se por algum motivo houver mais de um no banco,
+    // o mais recente vale como operacional e os outros caem pro histórico (em vez de o último
+    // lido "ganhar" por acaso).
+    const atual = novoOperacional[g.slot];
+    if (!atual){ novoOperacional[g.slot] = entry; return; }
+    if (tempo(g.data) > tempo(atual.data)){ novoHist[g.slot][atual.data] = atual; novoOperacional[g.slot] = entry; }
+    else novoHist[g.slot][g.data] = entry;
   });
+  OPERACIONAL = novoOperacional;
+  BASE_HIST = novoHist;
 }
 
 // Recarrega REDE_EXT_OPERACIONAL/REDE_EXT_HIST a partir do Supabase — mesmo padrão de
 // carregarOrdensServicoDoSupabase, só que 1 bucket só (não por slot/regional).
+let cargaRedeSeq = 0;
 async function carregarRedeExternaDoSupabase(){
-  REDE_EXT_OPERACIONAL = { 'Infraestrutura POP': null, 'Rede Externa': null };
-  REDE_EXT_HIST = { 'Infraestrutura POP': {}, 'Rede Externa': {} };
-
+  const minhaCarga = ++cargaRedeSeq;
   const { data: importacoes, error: impErr } = await supabaseClient
     .from('rede_externa_importacoes')
     .select('id, grupo, vigente, data_referencia, uploaded_at, filename');
@@ -1930,28 +1988,28 @@ async function carregarRedeExternaDoSupabase(){
   const mapaImportacoes = {};
   (importacoes || []).forEach(ic => { mapaImportacoes[ic.id] = ic; });
 
-  const PAGE = 1000;
   const COLUNAS = 'os, data, status, cidade, tipo, motivo, recurso, abertura_at, inicio_at, fim_at, importacao_id';
-  const primeira = await supabaseClient.from('rede_externa_atividades').select(COLUNAS, { count: 'exact' }).range(0, PAGE - 1);
-  if (primeira.error){ console.error('Falha ao carregar atividades de Rede Externa', primeira.error); return; }
-  const todasLinhas = [...(primeira.data || [])];
-  const total = primeira.count || todasLinhas.length;
-  const pendentes = [];
-  for (let from = PAGE; from < total; from += PAGE){
-    pendentes.push(supabaseClient.from('rede_externa_atividades').select(COLUNAS).range(from, from + PAGE - 1));
+  let todasLinhas;
+  try{
+    todasLinhas = await buscarLinhasPorImportacao('rede_externa_atividades', COLUNAS, (importacoes || []).map(ic => ic.id));
+  }catch(e){
+    console.error('Falha ao carregar atividades de Rede Externa — mantendo a base atual da tela', e);
+    return;
   }
-  const resultados = await Promise.all(pendentes);
-  resultados.forEach(r => {
-    if (r.error) console.error('Falha ao carregar página de atividades de Rede Externa', r.error);
-    else todasLinhas.push(...(r.data || []));
-  });
+  if (minhaCarga !== cargaRedeSeq) return;
 
+  const novoOperacional = { 'Infraestrutura POP': null, 'Rede Externa': null };
+  const novoHist = { 'Infraestrutura POP': {}, 'Rede Externa': {} };
   const grupos = {}; // key = grupo + '|' + data_referencia -> { ...meta, rows:[] }
+  (importacoes || []).forEach(ic => {
+    if (!novoOperacional.hasOwnProperty(ic.grupo)) return;
+    grupos[ic.grupo + '|' + ic.data_referencia] = { id: ic.id, grupo: ic.grupo, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
+  });
   todasLinhas.forEach(row => {
     const ic = mapaImportacoes[row.importacao_id];
-    if (!ic || !REDE_EXT_OPERACIONAL.hasOwnProperty(ic.grupo)) return;
+    if (!ic || !novoOperacional.hasOwnProperty(ic.grupo)) return;
     const key = ic.grupo + '|' + ic.data_referencia;
-    if (!grupos[key]) grupos[key] = { id: ic.id, grupo: ic.grupo, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
+    if (!grupos[key]) return;
     grupos[key].rows.push({
       grupo: ic.grupo,
       os: row.os || '', data: row.data || '', status: row.status || '',
@@ -1963,10 +2021,17 @@ async function carregarRedeExternaDoSupabase(){
       fimDate: row.fim_at ? new Date(row.fim_at) : null
     });
   });
+  const tempo = d => { const p = parseDDMMYY(d); return p ? p.getTime() : 0; };
   Object.values(grupos).forEach(g => {
     const entry = { id: g.id, rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
-    if (g.vigente) REDE_EXT_OPERACIONAL[g.grupo] = entry; else REDE_EXT_HIST[g.grupo][g.data] = entry;
+    if (!g.vigente){ novoHist[g.grupo][g.data] = entry; return; }
+    const atual = novoOperacional[g.grupo];
+    if (!atual){ novoOperacional[g.grupo] = entry; return; }
+    if (tempo(g.data) > tempo(atual.data)){ novoHist[g.grupo][atual.data] = atual; novoOperacional[g.grupo] = entry; }
+    else novoHist[g.grupo][g.data] = entry;
   });
+  REDE_EXT_OPERACIONAL = novoOperacional;
+  REDE_EXT_HIST = novoHist;
 }
 
 // Apaga TODA a base de ordens de serviço do Supabase (usado por "Limpar base" — afeta todo mundo).
@@ -2192,7 +2257,16 @@ function updateProgress(current, total, filename){
 // importação mexe na base operacional/histórico por vez, na ordem chamada.
 let filaDeImportacao = Promise.resolve();
 function handleFilesBatch(fileList, expectedSlot){
-  const minhaVez = filaDeImportacao.then(() => handleFilesBatchInterno(fileList, expectedSlot));
+  importacaoEmAndamento++; // já na hora do clique, pra cobrir também o tempo esperando na fila
+  const minhaVez = filaDeImportacao
+    .then(() => handleFilesBatchInterno(fileList, expectedSlot))
+    .finally(() => {
+      importacaoEmAndamento--;
+      if (importacaoEmAndamento === 0 && recargaRealtimePendente){
+        recargaRealtimePendente = false;
+        agendarRecarregamentoRealtime();
+      }
+    });
   filaDeImportacao = minhaVez.catch(e => { console.error('Falha na fila de importação', e); });
   return minhaVez;
 }
@@ -2302,6 +2376,7 @@ async function handleRedeExternaCsv(file, grupo){
   if (!/\.csv$/i.test(file.name)){ showToast('Selecione um arquivo .csv'); return; }
   showProgress(true);
   updateProgress(0, 1, file.name);
+  importacaoEmAndamento++;
   try{
     const text = await readFileAsText(file);
     const objs = csvToObjects(text);
@@ -2339,6 +2414,11 @@ async function handleRedeExternaCsv(file, grupo){
     showToast('Erro ao importar ' + grupo + ': ' + (err.message || err));
   } finally {
     showProgress(false);
+    importacaoEmAndamento--;
+    if (importacaoEmAndamento === 0 && recargaRealtimePendente){
+      recargaRealtimePendente = false;
+      agendarRecarregamentoRealtime();
+    }
   }
 }
 const REDE_EXT_DZ_ID = { 'Infraestrutura POP': 'REDEEXTERNAINFRA', 'Rede Externa': 'REDEEXTERNAREDES' };
