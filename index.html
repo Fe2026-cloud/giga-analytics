@@ -980,13 +980,23 @@
     </div>
 
     <div class="module" id="module-reincidencias">
-      <div class="section-title"><h2>Reincidências</h2><span class="hint">IRR: reparo corretivo que volta em até 30 dias de outro reparo · IFI: reparo em até 15 dias de uma ativação ou mudança de endereço · C10/C13/C14</span></div>
+      <div class="section-title">
+        <h2>Reincidências</h2><span class="hint">IRR: reparo corretivo que volta em até 30 dias de outro reparo · IFI: reparo em até 15 dias de uma ativação ou mudança de endereço · C10/C13/C14</span>
+        <button class="btn primary" id="btnGerarImagemReincidencias" style="margin-left:auto;">🖼 Gerar imagem</button>
+      </div>
 
-      <div class="venc-grid" id="rcCards" style="margin-bottom:16px;"></div>
+      <div id="rcCaptureArea">
+        <div class="report-capture-header" id="rcCaptureHeader">
+          <span class="report-capture-brand">GIGA+ FIBRA · Grupo Alloha</span>
+          <span class="report-capture-title">Reincidências (IRR / IFI)</span>
+          <span class="report-capture-meta" id="rcCaptureMeta"></span>
+        </div>
+        <div class="venc-grid" id="rcCards" style="margin-bottom:16px;"></div>
 
-      <div class="panel" style="margin-bottom:16px;">
-        <div class="panel-head"><h3>Por cidade</h3><span class="desc">clique num número pra filtrar a lista abaixo</span></div>
-        <div class="table-scroll"><table class="pivot compact-table" id="rcCidadeTable"></table></div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-head"><h3>Por cidade</h3><span class="desc">clique num número pra filtrar a lista abaixo</span></div>
+          <div class="table-scroll"><table class="pivot compact-table" id="rcCidadeTable"></table></div>
+        </div>
       </div>
 
       <div class="panel">
@@ -4641,17 +4651,37 @@ function rcUnicasPorOS(rows){
   });
   return mapa;
 }
+// Todo "atendimento anterior" candidato a IRR/IFI: uma conclusão de OS (1 por OS+dia, pra não
+// duplicar o mesmo evento reimportado em dias seguintes). Ao contrário de rcUnicasPorOS (que só
+// guarda o estado MAIS RECENTE de cada OS), aqui uma conclusão antiga não é descartada quando a
+// mesma OS reabre depois — senão a reabertura fica sem "anterior" pra comparar (ver rcDetectar).
+function rcConclusoesPorOS(rows){
+  const porDia = new Map(); // 'os|dia' -> melhor linha concluída daquele dia
+  rows.forEach(r => {
+    if (r.status !== 'concluído' || !r.fimDate || !r.os) return;
+    const k = r.os + '|' + r.data;
+    const atual = porDia.get(k);
+    if (!atual || r.fimDate.getTime() >= atual.fimDate.getTime()) porDia.set(k, r);
+  });
+  const porOS = new Map();
+  porDia.forEach(r => { if (!porOS.has(r.os)) porOS.set(r.os, []); porOS.get(r.os).push(r); });
+  return porOS;
+}
 // rowsNovos = OS candidatas a "nova" (respeita o filtro de período/regional do painel);
 // todasRows = base inteira, onde se procura o atendimento anterior do contrato.
 function rcDetectar(rowsNovos, todasRows){
-  const unicas = rcUnicasPorOS(todasRows.filter(r => RC_REGIONAIS.includes(r.regional)));
+  const regionais = todasRows.filter(r => RC_REGIONAIS.includes(r.regional));
+  const unicas = rcUnicasPorOS(regionais); // estado ATUAL de cada OS (a mais recente)
+  const conclusoesPorOS = rcConclusoesPorOS(regionais); // TODAS as conclusões de cada OS, mesmo se ela reabriu depois
+
   const porContrato = new Map();
-  unicas.forEach(r => {
-    const k = rcChaveContrato(r.contrato);
+  conclusoesPorOS.forEach(lista => lista.forEach(P => {
+    const k = rcChaveContrato(P.contrato);
     if (!k) return;
     if (!porContrato.has(k)) porContrato.set(k, []);
-    porContrato.get(k).push(r);
-  });
+    porContrato.get(k).push(P);
+  }));
+
   const osNovas = new Set(rowsNovos.filter(r => RC_REGIONAIS.includes(r.regional) && r.tipo === 'Reparo Corretivo').map(r => r.os));
   const itens = [];
   let semContrato = 0;
@@ -4660,14 +4690,24 @@ function rcDetectar(rowsNovos, todasRows){
     if (!R || !(BACKLOG_STATUSES.includes(R.status) || R.status === 'concluído')) return;
     const k = rcChaveContrato(R.contrato);
     if (!k){ semContrato++; return; }
-    const refNovo = R.aberturaDate || parseDDMMYY(R.data);
-    if (!refNovo) return;
+    // O sistema às vezes reabre a MESMA OS pra um retorno em vez de gerar uma nova (o campo
+    // "abertura" fica "congelado" na criação original nesse caso, sem valer como referência da
+    // reabertura) — por isso usa o dia em que a linha reapareceu aberta no CSV como referência
+    // pra esse caso, e a abertura de verdade (confiável) pra comparar com uma OS diferente.
+    const refCrossOS = R.aberturaDate || parseDDMMYY(R.data);
+    const refMesmaOS = parseDDMMYY(R.data) || refCrossOS;
+    if (!refCrossOS && !refMesmaOS) return;
     const candidatos = [];
     (porContrato.get(k) || []).forEach(P => {
-      if (P.os === R.os || P.status !== 'concluído') return;
+      const mesmaOS = P.os === R.os;
+      // reaberta no mesmo dia em que concluiu (ex.: cancelada de manhã, concluída à tarde) não é
+      // reincidência — só conta quando volta a abrir em outro dia, depois de ter sido fechada.
+      if (mesmaOS && P.data === R.data) return;
+      const refNovo = mesmaOS ? refMesmaOS : refCrossOS;
+      if (!refNovo) return;
       const tipoReg = Object.keys(RC_REGRAS).find(t => RC_REGRAS[t].tiposAnteriores.includes(P.tipo));
       if (!tipoReg) return;
-      const refP = P.fimDate || P.aberturaDate || parseDDMMYY(P.data);
+      const refP = P.fimDate;
       if (!refP || refP.getTime() > refNovo.getTime()) return;
       const dias = Math.round((rcInicioDoDia(refNovo) - rcInicioDoDia(refP)) / 86400000);
       if (dias > RC_REGRAS[tipoReg].dias) return;
@@ -4839,6 +4879,17 @@ function renderReincidencias(rows, now){
   else itens.forEach(it => { html += rcRowHtml(it); });
   html += '</tbody>';
   tbl.innerHTML = html;
+}
+
+// Imagem dos cards + "Por cidade" (o recorte de status — Em aberto/Todas/Concluídas — vale pros
+// dois; a lista detalhada abaixo não entra na imagem).
+async function gerarImagemReincidencias(){
+  const metaEl = document.getElementById('rcCaptureMeta');
+  if (metaEl){
+    const statusTxt = { ABERTAS: 'Em aberto', TODAS: 'Todas as OS', CONCLUIDAS: 'Concluídas' }[rcStatusFiltroVal] || '';
+    metaEl.textContent = 'Recorte: ' + statusTxt + '  ·  Gerado em ' + new Date().toLocaleString('pt-BR');
+  }
+  return gerarImagemDeArea('rcCaptureArea', 'rcCaptureHeader', 'reincidencias', 'btnGerarImagemReincidencias');
 }
 
 function rcTextoParaGestor(itens){
@@ -6548,6 +6599,7 @@ async function init(){
       if (rcUltimasRows) renderReincidencias(rcUltimasRows, new Date());
     });
   });
+  document.getElementById('btnGerarImagemReincidencias').addEventListener('click', gerarImagemReincidencias);
   document.getElementById('btnCopiarReincidencias').addEventListener('click', copiarReincidenciasParaGestor);
   document.getElementById('btnExportarReincidencias').addEventListener('click', exportarReincidenciasExcel);
   document.getElementById('rcTable').addEventListener('click', (e) => {
