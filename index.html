@@ -4577,11 +4577,14 @@ async function desmarcarSinalizado(os){
 /* ============================= REINCIDÊNCIAS (IRR / IFI) =============================
    Substitui a planilha "Acompanhamento IRR". Pra cada OS de Reparo Corretivo (a "nova"), procura no
    histórico do MESMO CONTRATO um atendimento anterior já concluído:
-     · IRR — o anterior foi outro Reparo Corretivo, concluído até 30 dias antes da abertura da nova;
+     · IRR — o anterior foi outro Reparo Corretivo, concluído até 30 dias antes;
      · IFI — o anterior foi uma Ativação ou Mudança de Endereço, concluída até 15 dias antes.
-   Se houver vários, vale o mais recente. "Caixa" = técnico da OS nova; ✓ quando é o mesmo técnico
-   do atendimento anterior, ✗ quando é outro. A coluna Informada? guarda se o assistente já
-   reportou essa reincidência ao gestor da área (reincidencia_informadas, chave = nº da OS nova). */
+   A janela é sempre medida CONCLUSÃO-a-CONCLUSÃO quando a nova já concluiu (dias entre o fim do
+   atendimento anterior e o fim do novo) — só cai pra "data de abertura" enquanto a nova ainda está
+   em aberto (ainda não tem uma conclusão pra comparar). Se houver vários anteriores dentro da
+   janela, vale o mais recente. "Caixa" = técnico da OS nova; ✓ quando é o mesmo técnico do
+   atendimento anterior, ✗ quando é outro. A coluna Informada? guarda se o assistente já reportou
+   essa reincidência ao gestor da área (reincidencia_informadas, chave = nº da OS nova). */
 const RC_REGIONAIS = ['C10','C13','C14'];
 const RC_REGRAS = {
   IRR: { tiposAnteriores: ['Reparo Corretivo'], dias: 30 },
@@ -4690,18 +4693,24 @@ function rcDetectar(rowsNovos, todasRows){
     if (!R || !(BACKLOG_STATUSES.includes(R.status) || R.status === 'concluído')) return;
     const k = rcChaveContrato(R.contrato);
     if (!k){ semContrato++; return; }
+    // A janela de 15/30 dias é medida ENTRE CONCLUSÕES sempre que possível — é isso que o
+    // "IFI: reparo em até 15 dias de uma ativação" da planilha quer dizer: quantos dias separam a
+    // CONCLUSÃO do atendimento anterior da CONCLUSÃO do atendimento que reincidiu, não de quando
+    // a nova OS foi aberta (uma OS pode ficar dias no backlog antes de ser atendida, o que não
+    // deveria "esticar" nem "encolher" a janela). Só cai pra abertura quando a nova ainda está em
+    // aberto (ainda não concluiu, então ainda não tem uma conclusão pra comparar).
     // O sistema às vezes reabre a MESMA OS pra um retorno em vez de gerar uma nova (o campo
-    // "abertura" fica "congelado" na criação original nesse caso, sem valer como referência da
-    // reabertura) — por isso usa o dia em que a linha reapareceu aberta no CSV como referência
-    // pra esse caso, e a abertura de verdade (confiável) pra comparar com uma OS diferente.
-    const refCrossOS = R.aberturaDate || parseDDMMYY(R.data);
-    const refMesmaOS = parseDDMMYY(R.data) || refCrossOS;
+    // "abertura" fica "congelado" na criação original nesse caso, sem valer como referência) —
+    // por isso, enquanto ainda aberta, usa o dia em que a linha reapareceu no CSV pra esse caso.
+    const concluidaR = R.status === 'concluído' && R.fimDate;
+    const refCrossOS = concluidaR ? R.fimDate : (R.aberturaDate || parseDDMMYY(R.data));
+    const refMesmaOS = concluidaR ? R.fimDate : (parseDDMMYY(R.data) || refCrossOS);
     if (!refCrossOS && !refMesmaOS) return;
     const candidatos = [];
     (porContrato.get(k) || []).forEach(P => {
       const mesmaOS = P.os === R.os;
-      // reaberta no mesmo dia em que concluiu (ex.: cancelada de manhã, concluída à tarde) não é
-      // reincidência — só conta quando volta a abrir em outro dia, depois de ter sido fechada.
+      // reaberta/reconcluída no mesmo dia em que concluiu antes (ex.: cancelada de manhã,
+      // concluída à tarde) não é reincidência — só conta quando o evento seguinte é de outro dia.
       if (mesmaOS && P.data === R.data) return;
       const refNovo = mesmaOS ? refMesmaOS : refCrossOS;
       if (!refNovo) return;
