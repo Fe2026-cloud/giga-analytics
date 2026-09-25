@@ -4685,14 +4685,34 @@ function rcDetectar(rowsNovos, todasRows){
     porContrato.get(k).push(P);
   }));
 
-  const osNovas = new Set(rowsNovos.filter(r => RC_REGIONAIS.includes(r.regional) && r.tipo === 'Reparo Corretivo').map(r => r.os));
-  const itens = [];
+  // A "nova" de cada contrato é sempre a ÚLTIMA ordem de Reparo Corretivo do contrato — a que
+  // ainda está em aberto, se houver uma; senão, a última que foi concluída. Um reparo antigo que
+  // já foi "sucedido" por outro mais recente do mesmo contrato não vira uma entrada própria; ele
+  // continua contando como possível "anterior" de quem sucedeu ele, só não é mais avaliado como
+  // se fosse ele mesmo a reincidência da vez.
+  const osVistas = new Set();
+  const porContratoOS = new Map(); // contrato -> [ estado atual de cada OS de Reparo Corretivo ]
   let semContrato = 0;
-  osNovas.forEach(os => {
-    const R = unicas.get(os);
+  rowsNovos.forEach(r => {
+    if (!RC_REGIONAIS.includes(r.regional) || r.tipo !== 'Reparo Corretivo' || !r.os || osVistas.has(r.os)) return;
+    osVistas.add(r.os);
+    const R = unicas.get(r.os);
     if (!R || !(BACKLOG_STATUSES.includes(R.status) || R.status === 'concluído')) return;
     const k = rcChaveContrato(R.contrato);
     if (!k){ semContrato++; return; }
+    if (!porContratoOS.has(k)) porContratoOS.set(k, []);
+    porContratoOS.get(k).push(R);
+  });
+
+  const itens = [];
+  porContratoOS.forEach((lista, k) => {
+    const abertas = lista.filter(r => BACKLOG_STATUSES.includes(r.status));
+    const refDe = r => (r.status === 'concluído' && r.fimDate) ? r.fimDate.getTime() : (r.aberturaDate || parseDDMMYY(r.data) || new Date(0)).getTime();
+    const pool = abertas.length ? abertas : lista.filter(r => r.status === 'concluído' && r.fimDate);
+    if (!pool.length) return;
+    // entre as candidatas (todas abertas, ou todas concluídas na falta de abertas), fica com a
+    // mais recente — é ela que representa "a ponta" do contrato agora.
+    const R = pool.reduce((a,b) => refDe(b) > refDe(a) ? b : a);
     // A janela de 15/30 dias é medida ENTRE CONCLUSÕES sempre que possível — é isso que o
     // "IFI: reparo em até 15 dias de uma ativação" da planilha quer dizer: quantos dias separam a
     // CONCLUSÃO do atendimento anterior da CONCLUSÃO do atendimento que reincidiu, não de quando
