@@ -6194,6 +6194,20 @@ function renderBacklogReport(rows){
         ${buildBacklogPivotTable(subset, CONFIG.capacity[r]||{}, r)}
       </div>`;
     });
+    // JH e Virtus são empresas parceiras, não regionais — não têm meta de Capacity nem backlog
+    // real do XLSX (esse só existe por regional), por isso entram sem esses dois (igual já
+    // acontece quando a aba de cima filtra só "JH Telecom" ou só "Virtus").
+    ['JH','VIRTUS'].forEach(emp => {
+      const subset = rows.filter(x => x.empresa === emp);
+      if (!subset.length) return;
+      html += `<div style="margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">${EMPRESA_LABEL[emp]}</div>
+          ${blockStatsLine(subset)}
+        </div>
+        ${buildBacklogPivotTable(subset, null, undefined)}
+      </div>`;
+    });
   } else if (currentFilterType === 'regional'){
     diagEl.innerHTML = gerarDiagnostico(rows, CONFIG.capacity[currentFilterValue]||{}, currentFilterValue, currentFilterValue+' — '+REGIONAL_LABEL[currentFilterValue]);
     html = `<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">${blockStatsLine(rows)}</div>` + buildBacklogPivotTable(rows, CONFIG.capacity[currentFilterValue]||{}, currentFilterValue);
