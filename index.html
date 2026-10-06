@@ -505,6 +505,12 @@
   .rc-caixa-ok{color:var(--green);font-weight:800;font-size:14px;}
   .rc-caixa-fora{color:var(--red);font-weight:800;font-size:14px;}
   .rc-legenda{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--text-dim);padding:8px 14px 0;}
+  .rc-amanha-banner{display:flex;gap:14px;align-items:center;padding:12px 16px;margin-bottom:14px;border-radius:12px;border:1px solid var(--border-soft);border-left:4px solid var(--yellow, var(--accent));background:var(--surface);box-shadow:var(--shadow-card);font-size:13px;color:var(--text);}
+  .rc-amanha-banner .rc-amanha-ico{font-size:24px;line-height:1;}
+  .rc-amanha-banner.clickable{cursor:pointer;transition:background .15s, box-shadow .15s;}
+  .rc-amanha-banner.clickable:hover{background:var(--accent-glow);box-shadow:0 0 0 1.5px var(--accent);}
+  .rc-amanha-banner.ativo{border-left-color:var(--accent);}
+  .rc-amanha-banner .rc-amanha-sub{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
 
   .report-title-bar{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px 2px;}
   .report-title-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text);}
@@ -991,6 +997,7 @@
           <span class="report-capture-title">Reincidências (IRR / IFI)</span>
           <span class="report-capture-meta" id="rcCaptureMeta"></span>
         </div>
+        <div class="rc-amanha-banner" id="rcAmanhaBanner"></div>
         <div class="venc-grid" id="rcCards" style="margin-bottom:16px;"></div>
 
         <div class="panel" style="margin-bottom:16px;">
@@ -1010,6 +1017,10 @@
           </select>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px 0;">
+          <div class="cp-status-bar" id="rcEscopoFiltro">
+            <button type="button" class="cp-status-btn active" data-escopo="PERIODO">Período do painel</button>
+            <button type="button" class="cp-status-btn" data-escopo="AMANHA" id="rcBtnAmanha">Amanhã</button>
+          </div>
           <div class="cp-status-bar" id="rcTipoFiltro">
             <button type="button" class="cp-status-btn active" data-tipo="TODOS">IRR + IFI</button>
             <button type="button" class="cp-status-btn" data-tipo="IRR">IRR</button>
@@ -3096,10 +3107,16 @@ function getMinMaxDatas(){
   });
   return { min, max };
 }
-function getFilteredRows(){
+// Filtro de regional/empresa do painel, SEM o corte de período (usado quando um módulo precisa
+// olhar um dia específico fora do período selecionado — ex.: "amanhã" em Reincidências).
+function getRowsSemPeriodo(){
   let rows = getAllRows();
   if (currentFilterType === 'regional') rows = rows.filter(r => r.regional === currentFilterValue && r.empresa === 'MOP');
   else if (currentFilterType === 'empresa') rows = rows.filter(r => r.empresa === currentFilterValue);
+  return rows;
+}
+function getFilteredRows(){
+  let rows = getRowsSemPeriodo();
   if (periodoInicio && periodoFim){
     rows = rows.filter(r => {
       const d = parseDDMMYY(r.data);
@@ -4597,6 +4614,8 @@ let rcBuscaTxt = '';
 let rcCidadeFiltroVal = 'TODAS';
 let rcTipoFiltroVal = 'TODOS';       // TODOS | IRR | IFI
 let rcStatusFiltroVal = 'ABERTAS';   // ABERTAS | TODAS | CONCLUIDAS
+let rcEscopoVal = 'PERIODO';         // PERIODO (período do painel) | AMANHA (próximo dia com OS agendada)
+let rcProxInfo = null;               // { data:'DD/MM/AA', ddmm:'07/10', label:'Amanhã'|'Próximo dia' } | null
 let rcInformadaFiltroVal = 'TODAS';  // TODAS | FALTA | INFORMADAS
 let rcItensVisiveis = [];            // o que está na tabela agora — usado por Exportar/Copiar
 
@@ -4774,7 +4793,7 @@ function rcCaixaHtml(it){
 }
 function rcTableHeadHtml(){
   return '<thead><tr><th>Informada?</th><th>Tipo</th><th class="num">OS</th><th class="num">Contrato</th><th>Cliente</th>'
-    + '<th class="num">Abertura</th><th>Caixa (técnico atual)</th><th>Status</th>'
+    + '<th class="num">Abertura</th><th class="num">Agenda</th><th>Caixa (técnico atual)</th><th>Status</th>'
     + '<th class="num">OS anterior</th><th>Tipo anterior</th><th class="num">Data anterior</th><th class="num">Dias</th>'
     + '<th>Técnico anterior</th><th>Na caixa?</th><th>Cidade</th></tr></thead>';
 }
@@ -4789,6 +4808,7 @@ function rcRowHtml(it){
     <td class="num">${rcEsc(r.contrato)}</td>
     <td>${r.cliente ? rcEsc(r.cliente) : '<span class="muted">—</span>'}</td>
     <td class="num">${fmtDate(r.aberturaDate)}</td>
+    <td class="num">${rcEsc(r.data)}</td>
     <td class="recurso-name">${rcEsc(r.recurso)}</td>
     <td class="${statusColClass(r.status)}">${STATUS_COL_LABEL[r.status] || r.status}</td>
     <td class="num">${rcEsc(p.os)}</td>
@@ -4804,15 +4824,68 @@ function rcAplicarFiltro(f){
   if (f.tipo !== undefined) rcTipoFiltroVal = f.tipo;
   if (f.informada !== undefined){ rcInformadaFiltroVal = f.informada; document.getElementById('rcInformadaFiltro').value = f.informada; }
   if (f.cidade !== undefined) rcCidadeFiltroVal = f.cidade;
+  if (f.escopo !== undefined) rcEscopoVal = f.escopo;
+  if (f.status !== undefined) rcStatusFiltroVal = f.status;
   document.querySelectorAll('#rcTipoFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === rcTipoFiltroVal));
+  document.querySelectorAll('#rcEscopoFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.escopo === rcEscopoVal));
+  document.querySelectorAll('#rcStatusFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.status === rcStatusFiltroVal));
   if (rcUltimasRows) renderReincidencias(rcUltimasRows, new Date());
+}
+// "Próximo dia" = o primeiro dia DEPOIS de hoje que já tem OS na base. Quando o operador exporta
+// os CSV no fim do dia (17h/18h), o arquivo já traz as OS agendadas pro dia seguinte — é daí que
+// sai a antecipação. Num fim de semana/feriado, vira a próxima data que realmente tem OS.
+function rcProximoDia(todasRows){
+  const hoje = todayMidnight();
+  const distintas = new Set();
+  todasRows.forEach(r => { if (r.data) distintas.add(r.data); });
+  let melhor = null;
+  distintas.forEach(s => {
+    const d = parseDDMMYY(s);
+    if (d && d.getTime() > hoje.getTime() && (!melhor || d.getTime() < melhor.date.getTime())) melhor = { data: s, date: d };
+  });
+  if (!melhor) return null;
+  const amanha = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+  melhor.ddmm = String(melhor.date.getDate()).padStart(2,'0') + '/' + String(melhor.date.getMonth()+1).padStart(2,'0');
+  melhor.label = melhor.date.getTime() === amanha.getTime() ? 'Amanhã' : 'Próximo dia';
+  return melhor;
 }
 function renderReincidencias(rows, now){
   const tbl = document.getElementById('rcTable');
   if (!tbl) return;
   rcUltimasRows = rows;
 
-  const { itens: todos, semContrato } = rcDetectar(rows, getAllRows());
+  // ---------- antecipação do dia seguinte (sempre calculada, pro aviso do topo) ----------
+  const todasRows = getAllRows();
+  const prox = rcProximoDia(todasRows);
+  rcProxInfo = prox;
+  const detProx = prox
+    ? rcDetectar(getRowsSemPeriodo().filter(r => r.data === prox.data), todasRows)
+    : { itens: [], semContrato: 0 };
+  const proxAbertos = detProx.itens.filter(it => BACKLOG_STATUSES.includes(it.r.status));
+  const proxIRR = proxAbertos.filter(it => it.tipo === 'IRR').length;
+  const proxIFI = proxAbertos.filter(it => it.tipo === 'IFI').length;
+  const proxFalta = proxAbertos.filter(it => !RC_INFORMADAS[it.r.os]).length;
+  const bannerEl = document.getElementById('rcAmanhaBanner');
+  const btnAmanha = document.getElementById('rcBtnAmanha');
+  if (prox){
+    bannerEl.className = 'rc-amanha-banner clickable' + (rcEscopoVal === 'AMANHA' ? ' ativo' : '');
+    bannerEl.title = 'Clique pra ver só as reincidências agendadas pra ' + prox.ddmm;
+    bannerEl.innerHTML = `<div class="rc-amanha-ico">📅</div><div>
+      <div><b>${prox.label} (${prox.ddmm}):</b> ${proxAbertos.length} reincidência(s) agendada(s) — IRR <b>${proxIRR}</b> · IFI <b>${proxIFI}</b> · falta informar ao gestor <b>${proxFalta}</b></div>
+      <div class="rc-amanha-sub">${rcEscopoVal === 'AMANHA' ? 'Mostrando abaixo só as OS agendadas pra ' + prox.ddmm + '.' : 'Clique aqui pra ver a lista — dá pra já avisar o gestor e atender logo no começo do dia.'}</div></div>`;
+    bannerEl.onclick = () => rcAplicarFiltro({ escopo: 'AMANHA', status: 'ABERTAS' });
+    btnAmanha.textContent = prox.label + ' · ' + prox.ddmm + ' (' + proxAbertos.length + ')';
+  } else {
+    bannerEl.className = 'rc-amanha-banner';
+    bannerEl.title = '';
+    bannerEl.innerHTML = `<div class="rc-amanha-ico">📅</div><div>
+      <div><b>Antecipação do dia seguinte:</b> o CSV importado ainda não traz OS agendadas pra depois de hoje.</div>
+      <div class="rc-amanha-sub">Exporte e importe os CSV de novo no fim do dia (17h/18h) pra ver aqui as reincidências de amanhã.</div></div>`;
+    bannerEl.onclick = null;
+    btnAmanha.textContent = 'Amanhã';
+  }
+
+  const { itens: todos, semContrato } = rcEscopoVal === 'AMANHA' ? detProx : rcDetectar(rows, todasRows);
   let base = todos;
   if (rcStatusFiltroVal === 'ABERTAS') base = base.filter(it => BACKLOG_STATUSES.includes(it.r.status));
   else if (rcStatusFiltroVal === 'CONCLUIDAS') base = base.filter(it => it.r.status === 'concluído');
@@ -4898,13 +4971,15 @@ function renderReincidencias(rows, now){
   });
   rcItensVisiveis = itens;
 
-  let hint = itens.length + ' reincidência(s) no filtro atual (de ' + base.length + ' no total)';
+  let hint = (rcEscopoVal === 'AMANHA' && prox ? '📅 ' + prox.label + ' (' + prox.ddmm + ') — ' : '')
+    + itens.length + ' reincidência(s) no filtro atual (de ' + base.length + ' no total)';
+  if (rcEscopoVal === 'AMANHA' && !prox) hint = 'O CSV importado ainda não traz OS agendadas pra depois de hoje — exporte e importe de novo no fim do dia.';
   if (semContrato) hint += ' · ' + semContrato + ' OS de Reparo sem nº de contrato no CSV não puderam ser analisadas';
   if (!RC_TABELA_OK) hint += ' · ⚠ falta rodar a migração 0019 (marcação "Informada?" indisponível)';
   document.getElementById('rcTableHint').textContent = hint;
 
   let html = rcTableHeadHtml() + '<tbody>';
-  if (!itens.length) html += '<tr><td colspan="15" class="muted">Nenhuma reincidência no filtro atual</td></tr>';
+  if (!itens.length) html += '<tr><td colspan="16" class="muted">Nenhuma reincidência no filtro atual</td></tr>';
   else itens.forEach(it => { html += rcRowHtml(it); });
   html += '</tbody>';
   tbl.innerHTML = html;
@@ -4916,7 +4991,8 @@ async function gerarImagemReincidencias(){
   const metaEl = document.getElementById('rcCaptureMeta');
   if (metaEl){
     const statusTxt = { ABERTAS: 'Em aberto', TODAS: 'Todas as OS', CONCLUIDAS: 'Concluídas' }[rcStatusFiltroVal] || '';
-    metaEl.textContent = 'Recorte: ' + statusTxt + '  ·  Gerado em ' + new Date().toLocaleString('pt-BR');
+    const escopoTxt = (rcEscopoVal === 'AMANHA' && rcProxInfo) ? rcProxInfo.label + ' (' + rcProxInfo.ddmm + ')' : 'Período do painel';
+    metaEl.textContent = 'Escopo: ' + escopoTxt + '  ·  Recorte: ' + statusTxt + '  ·  Gerado em ' + new Date().toLocaleString('pt-BR');
   }
   return gerarImagemDeArea('rcCaptureArea', 'rcCaptureHeader', 'reincidencias', 'btnGerarImagemReincidencias');
 }
@@ -4924,7 +5000,8 @@ async function gerarImagemReincidencias(){
 function rcTextoParaGestor(itens){
   const agora = new Date();
   const nIRR = itens.filter(i => i.tipo==='IRR').length, nIFI = itens.filter(i => i.tipo==='IFI').length;
-  let txt = 'REINCIDÊNCIAS — ' + fmtDate(agora) + '\n';
+  const paraAmanha = rcEscopoVal === 'AMANHA' && rcProxInfo;
+  let txt = (paraAmanha ? 'REINCIDÊNCIAS PARA ' + rcProxInfo.label.toUpperCase() + ' (' + rcProxInfo.ddmm + ') — gerado em ' : 'REINCIDÊNCIAS — ') + fmtDate(agora) + '\n';
   txt += 'Total: ' + itens.length + ' (IRR: ' + nIRR + ' · IFI: ' + nIFI + ')\n';
   const porCidade = {};
   itens.forEach(it => { (porCidade[it.r.cidade] = porCidade[it.r.cidade] || []).push(it); });
@@ -4933,7 +5010,7 @@ function rcTextoParaGestor(itens){
     porCidade[cidade].forEach(it => {
       const r = it.r, p = it.p;
       txt += '• [' + it.tipo + '] OS ' + r.os + ' · Contrato ' + r.contrato + (r.cliente ? ' · ' + r.cliente : '') + '\n';
-      txt += '  Técnico (caixa): ' + r.recurso + ' · aberta em ' + fmtDate(r.aberturaDate) + ' · ' + (STATUS_COL_LABEL[r.status] || r.status) + '\n';
+      txt += '  Técnico (caixa): ' + r.recurso + ' · aberta em ' + fmtDate(r.aberturaDate) + (paraAmanha ? ' · agenda ' + r.data : '') + ' · ' + (STATUS_COL_LABEL[r.status] || r.status) + '\n';
       txt += '  Anterior: OS ' + p.os + ' (' + p.tipo + ') em ' + it.refAnterior.toLocaleDateString('pt-BR') + ' — ' + it.dias + ' dia(s) — técnico: ' + p.recurso
         + (it.mesmoTecnico === null ? '' : it.mesmoTecnico ? ' ✓ mesma caixa' : ' ✗ fora da caixa') + '\n';
       if (r.endereco) txt += '  Endereço: ' + r.endereco + '\n';
@@ -4966,6 +5043,7 @@ async function exportarReincidenciasExcel(){
     'OS': it.r.os, 'Contrato': it.r.contrato, 'Cliente': it.r.cliente || '',
     'Cidade': it.r.cidade, 'Regional': it.r.regional,
     'Abertura': fmtDate(it.r.aberturaDate),
+    'Agenda': it.r.data,
     'Caixa (técnico atual)': it.r.recurso,
     'Status': STATUS_COL_LABEL[it.r.status] || it.r.status,
     'OS anterior': it.p.os, 'Tipo anterior': it.p.tipo,
@@ -6640,6 +6718,12 @@ async function init(){
       rcStatusFiltroVal = btn.dataset.status;
       document.querySelectorAll('#rcStatusFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b === btn));
       if (rcUltimasRows) renderReincidencias(rcUltimasRows, new Date());
+    });
+  });
+  document.querySelectorAll('#rcEscopoFiltro .cp-status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // "Amanhã" são OS ainda não atendidas — por isso volta o recorte pra "Em aberto" junto.
+      rcAplicarFiltro(btn.dataset.escopo === 'AMANHA' ? { escopo: 'AMANHA', status: 'ABERTAS' } : { escopo: 'PERIODO' });
     });
   });
   document.getElementById('btnGerarImagemReincidencias').addEventListener('click', gerarImagemReincidencias);
