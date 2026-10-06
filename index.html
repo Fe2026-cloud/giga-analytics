@@ -5036,6 +5036,12 @@ function renderReincidencias(rows, now){
   let hint = (rcEscopoVal === 'AMANHA' && prox ? '📅 ' + prox.label + ' (' + prox.ddmm + ') — ' : '')
     + itens.length + ' reincidência(s) no filtro atual (de ' + base.length + ' no total)';
   if (rcEscopoVal === 'AMANHA' && !prox) hint = 'O CSV importado ainda não traz OS agendadas pra depois de hoje — exporte e importe de novo no fim do dia.';
+  // Os filtros do topo (aba de regional/empresa e período) valem pra esta tela também. Quando um
+  // deles está escondendo parte da operação, avisa aqui — senão parece que "sumiu" reincidência.
+  if (currentFilterType === 'regional') hint += ' · ⚠ aba do topo: ' + currentFilterValue + ' — ' + REGIONAL_LABEL[currentFilterValue] + ' (só MOP). Clique em "Consolidado" pra ver todas as regionais e as parceiras.';
+  else if (currentFilterType === 'empresa') hint += ' · ⚠ aba do topo: ' + EMPRESA_LABEL[currentFilterValue] + '. Clique em "Consolidado" pra ver tudo.';
+  const periodoEl = document.getElementById('periodoLabel');
+  if (rcEscopoVal === 'PERIODO' && periodoEl && periodoEl.textContent) hint += ' · período do painel: ' + periodoEl.textContent;
   if (semContrato) hint += ' · ' + semContrato + ' OS de Reparo sem nº de contrato no CSV não puderam ser analisadas';
   if (!RC_TABELA_OK) hint += ' · ⚠ falta rodar a migração 0019 (marcação "Informada?" indisponível)';
   document.getElementById('rcTableHint').textContent = hint;
