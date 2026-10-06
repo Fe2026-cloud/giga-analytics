@@ -1017,6 +1017,10 @@
           </select>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px 0;">
+          <div class="cp-status-bar" id="rcAnteriorFiltro" title="Como tratar o atendimento anterior: 'Com inferidas' também aceita uma OS que ficou 'iniciado' no último arquivo e nunca apareceu como concluída (a conclusão aconteceu depois da exportação)">
+            <button type="button" class="cp-status-btn active" data-anterior="COM_INFERIDAS">Anterior: confirmada + inferida</button>
+            <button type="button" class="cp-status-btn" data-anterior="SO_CONFIRMADAS">Só confirmadas</button>
+          </div>
           <div class="cp-status-bar" id="rcEscopoFiltro">
             <button type="button" class="cp-status-btn active" data-escopo="PERIODO">Período do painel</button>
             <button type="button" class="cp-status-btn" data-escopo="AMANHA" id="rcBtnAmanha">Amanhã</button>
@@ -1039,6 +1043,7 @@
         <div class="rc-legenda">
           <span><span class="rc-caixa-fora">✗</span> fora da caixa correspondente (técnico diferente do atendimento anterior)</span>
           <span><span class="rc-caixa-ok">✓</span> na caixa correspondente (mesmo técnico do atendimento anterior)</span>
+          <span><span class="cp-pill cp-pill-done" style="font-size:9.5px;">inferida</span> atendimento anterior sem conclusão registrada no CSV (ficou "iniciado" e a OS sumiu depois)</span>
         </div>
         <div class="hint" id="rcTableHint" style="padding:6px 14px 0;"></div>
         <div class="table-scroll" style="max-height:560px;overflow-y:auto;"><table class="pivot compact-table" id="rcTable"></table></div>
@@ -4614,6 +4619,7 @@ let rcBuscaTxt = '';
 let rcCidadeFiltroVal = 'TODAS';
 let rcTipoFiltroVal = 'TODOS';       // TODOS | IRR | IFI
 let rcStatusFiltroVal = 'ABERTAS';   // ABERTAS | TODAS | CONCLUIDAS
+let rcAnteriorVal = 'COM_INFERIDAS'; // COM_INFERIDAS | SO_CONFIRMADAS (anterior só se constar como concluída)
 let rcEscopoVal = 'PERIODO';         // PERIODO (período do painel) | AMANHA (próximo dia com OS agendada)
 let rcProxInfo = null;               // { data:'DD/MM/AA', ddmm:'07/10', label:'Amanhã'|'Próximo dia' } | null
 let rcInformadaFiltroVal = 'TODAS';  // TODAS | FALTA | INFORMADAS
@@ -4689,20 +4695,58 @@ function rcConclusoesPorOS(rows){
   porDia.forEach(r => { if (!porOS.has(r.os)) porOS.set(r.os, []); porOS.get(r.os).push(r); });
   return porOS;
 }
+// O CSV é uma "foto" tirada na hora da exportação. Um reparo que estava 'iniciado' (técnico no
+// local) quando o arquivo saiu e foi concluído DEPOIS nunca aparece como concluído: no dia
+// seguinte a OS some da agenda e só sobra a linha da fila ('cancelado'). Sem tratar isso, o
+// atendimento anterior simplesmente não existe pro painel e o IRR/IFI escapa. Aqui entra como
+// "anterior inferido" a OS que (1) nunca teve linha 'concluído', (2) cuja última linha de
+// verdade (ignorando 'cancelado' = fila) é 'iniciado' e (3) é de um dia anterior ao mais recente
+// da base daquela regional/empresa — ou seja, já deveria ter aparecido de novo se continuasse
+// aberta. Vem marcada (_inferida) pra tela avisar que não é uma conclusão confirmada.
+function rcInferidasPorOS(rows){
+  const chave = r => r.regional + '|' + r.empresa;
+  const tDia = r => { const d = parseDDMMYY(r.data); return d ? d.getTime() : 0; };
+  const maxDia = new Map();
+  rows.forEach(r => { const t = tDia(r); if (t && (!maxDia.has(chave(r)) || t > maxDia.get(chave(r)))) maxDia.set(chave(r), t); });
+  const porOS = new Map();
+  rows.forEach(r => { if (!r.os) return; if (!porOS.has(r.os)) porOS.set(r.os, []); porOS.get(r.os).push(r); });
+  const out = new Map();
+  porOS.forEach((lista, os) => {
+    if (lista.some(r => r.status === 'concluído')) return; // já tem conclusão confirmada
+    const vivas = lista.filter(r => r.status !== 'cancelado');
+    if (!vivas.length) return;
+    const ultima = vivas.reduce((a, b) => {
+      if (tDia(b) !== tDia(a)) return tDia(b) > tDia(a) ? b : a;
+      return (b.fimDate ? b.fimDate.getTime() : 0) >= (a.fimDate ? a.fimDate.getTime() : 0) ? b : a;
+    });
+    if (ultima.status !== 'iniciado') return;
+    if (!(tDia(ultima) < maxDia.get(chave(ultima)))) return; // ainda é o dia mais recente: pode estar em andamento de verdade
+    const dia = parseDDMMYY(ultima.data);
+    const fim = ultima.fimDate || (dia ? new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 18, 0) : null);
+    if (!fim) return;
+    out.set(os, [Object.assign({}, ultima, { fimDate: fim, _inferida: true })]);
+  });
+  return out;
+}
 // rowsNovos = OS candidatas a "nova" (respeita o filtro de período/regional do painel);
 // todasRows = base inteira, onde se procura o atendimento anterior do contrato.
-function rcDetectar(rowsNovos, todasRows){
+// opts.inferidas (padrão true): aceita também o "anterior inferido" (ver rcInferidasPorOS).
+function rcDetectar(rowsNovos, todasRows, opts){
+  const incluirInferidas = !opts || opts.inferidas !== false;
   const regionais = todasRows.filter(r => RC_REGIONAIS.includes(r.regional));
   const unicas = rcUnicasPorOS(regionais); // estado ATUAL de cada OS (a mais recente)
   const conclusoesPorOS = rcConclusoesPorOS(regionais); // TODAS as conclusões de cada OS, mesmo se ela reabriu depois
+  const inferidasPorOS = incluirInferidas ? rcInferidasPorOS(regionais) : new Map();
 
   const porContrato = new Map();
-  conclusoesPorOS.forEach(lista => lista.forEach(P => {
+  const indexar = lista => lista.forEach(P => {
     const k = rcChaveContrato(P.contrato);
     if (!k) return;
     if (!porContrato.has(k)) porContrato.set(k, []);
     porContrato.get(k).push(P);
-  }));
+  });
+  conclusoesPorOS.forEach(indexar);
+  inferidasPorOS.forEach(indexar);
 
   // A "nova" de cada contrato é sempre a ÚLTIMA ordem de Reparo Corretivo do contrato — a que
   // ainda está em aberto, se houver uma; senão, a última que foi concluída. Um reparo antigo que
@@ -4746,7 +4790,22 @@ function rcDetectar(rowsNovos, todasRows){
     const refMesmaOS = concluidaR ? R.fimDate : (parseDDMMYY(R.data) || refCrossOS);
     if (!refCrossOS && !refMesmaOS) return;
     const candidatos = [];
-    (porContrato.get(k) || []).forEach(P => {
+    // O mesmo cliente às vezes aparece com o contrato com 1 dígito de prefixo a mais/menos entre
+    // uma OS e outra (ex.: 861544 e 5861544; 916231 e 6916231). Pra não perder a ligação, também
+    // vale o contrato "irmão" — mas só se o NOME DO CLIENTE for igual, pra não juntar contratos
+    // de pessoas diferentes que só coincidem nos últimos dígitos.
+    let doContrato = (porContrato.get(k) || []).slice();
+    const nomeR = semAcento(R.cliente);
+    if (nomeR){
+      const irmaos = [k.slice(1)];
+      for (let d = 0; d <= 9; d++) irmaos.push(d + k);
+      irmaos.forEach(ak => {
+        if (ak.length < 5 || ak === k) return;
+        (porContrato.get(ak) || []).forEach(P => { if (semAcento(P.cliente) === nomeR) doContrato.push(P); });
+      });
+    }
+    doContrato.forEach(P => {
+      if (P._inferida && P.os === R.os) return;
       const mesmaOS = P.os === R.os;
       // reaberta/reconcluída no mesmo dia em que concluiu antes (ex.: cancelada de manhã,
       // concluída à tarde) não é reincidência — só conta quando o evento seguinte é de outro dia.
@@ -4766,7 +4825,7 @@ function rcDetectar(rowsNovos, todasRows){
     const m = candidatos[0];
     const semTec = !R.recurso || R.recurso === '(sem recurso)';
     itens.push({
-      r: R, tipo: m.tipo, p: m.P, dias: m.dias, refAnterior: m.refP,
+      r: R, tipo: m.tipo, p: m.P, dias: m.dias, refAnterior: m.refP, inferida: !!m.P._inferida,
       mesmoTecnico: semTec ? null : semAcento(R.recurso) === semAcento(m.P.recurso),
       repeticoes: candidatos.length
     });
@@ -4813,7 +4872,7 @@ function rcRowHtml(it){
     <td class="${statusColClass(r.status)}">${STATUS_COL_LABEL[r.status] || r.status}</td>
     <td class="num">${rcEsc(p.os)}</td>
     <td>${rcEsc(p.tipo)}</td>
-    <td class="num">${it.refAnterior.toLocaleDateString('pt-BR')}</td>
+    <td class="num">${it.refAnterior.toLocaleDateString('pt-BR')}${it.inferida ? ' <span class="cp-pill cp-pill-done" style="font-size:9.5px;" title="Conclusão não confirmada: essa OS ficou \'iniciado\' no último arquivo e nunca apareceu como concluída (provavelmente foi concluída depois da exportação)">inferida</span>' : ''}</td>
     <td class="num">${it.dias}</td>
     <td class="recurso-name">${rcEsc(p.recurso)}</td>
     <td style="text-align:center;">${rcCaixaHtml(it)}</td>
@@ -4826,6 +4885,8 @@ function rcAplicarFiltro(f){
   if (f.cidade !== undefined) rcCidadeFiltroVal = f.cidade;
   if (f.escopo !== undefined) rcEscopoVal = f.escopo;
   if (f.status !== undefined) rcStatusFiltroVal = f.status;
+  if (f.anterior !== undefined) rcAnteriorVal = f.anterior;
+  document.querySelectorAll('#rcAnteriorFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.anterior === rcAnteriorVal));
   document.querySelectorAll('#rcTipoFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === rcTipoFiltroVal));
   document.querySelectorAll('#rcEscopoFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.escopo === rcEscopoVal));
   document.querySelectorAll('#rcStatusFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b.dataset.status === rcStatusFiltroVal));
@@ -4858,8 +4919,9 @@ function renderReincidencias(rows, now){
   const todasRows = getAllRows();
   const prox = rcProximoDia(todasRows);
   rcProxInfo = prox;
+  const optsDet = { inferidas: rcAnteriorVal !== 'SO_CONFIRMADAS' };
   const detProx = prox
-    ? rcDetectar(getRowsSemPeriodo().filter(r => r.data === prox.data), todasRows)
+    ? rcDetectar(getRowsSemPeriodo().filter(r => r.data === prox.data), todasRows, optsDet)
     : { itens: [], semContrato: 0 };
   const proxAbertos = detProx.itens.filter(it => BACKLOG_STATUSES.includes(it.r.status));
   const proxIRR = proxAbertos.filter(it => it.tipo === 'IRR').length;
@@ -4885,7 +4947,7 @@ function renderReincidencias(rows, now){
     btnAmanha.textContent = 'Amanhã';
   }
 
-  const { itens: todos, semContrato } = rcEscopoVal === 'AMANHA' ? detProx : rcDetectar(rows, todasRows);
+  const { itens: todos, semContrato } = rcEscopoVal === 'AMANHA' ? detProx : rcDetectar(rows, todasRows, optsDet);
   let base = todos;
   if (rcStatusFiltroVal === 'ABERTAS') base = base.filter(it => BACKLOG_STATUSES.includes(it.r.status));
   else if (rcStatusFiltroVal === 'CONCLUIDAS') base = base.filter(it => it.r.status === 'concluído');
@@ -5011,7 +5073,7 @@ function rcTextoParaGestor(itens){
       const r = it.r, p = it.p;
       txt += '• [' + it.tipo + '] OS ' + r.os + ' · Contrato ' + r.contrato + (r.cliente ? ' · ' + r.cliente : '') + '\n';
       txt += '  Técnico (caixa): ' + r.recurso + ' · aberta em ' + fmtDate(r.aberturaDate) + (paraAmanha ? ' · agenda ' + r.data : '') + ' · ' + (STATUS_COL_LABEL[r.status] || r.status) + '\n';
-      txt += '  Anterior: OS ' + p.os + ' (' + p.tipo + ') em ' + it.refAnterior.toLocaleDateString('pt-BR') + ' — ' + it.dias + ' dia(s) — técnico: ' + p.recurso
+      txt += '  Anterior: OS ' + p.os + ' (' + p.tipo + ') em ' + it.refAnterior.toLocaleDateString('pt-BR') + (it.inferida ? ' (conclusão não confirmada)' : '') + ' — ' + it.dias + ' dia(s) — técnico: ' + p.recurso
         + (it.mesmoTecnico === null ? '' : it.mesmoTecnico ? ' ✓ mesma caixa' : ' ✗ fora da caixa') + '\n';
       if (r.endereco) txt += '  Endereço: ' + r.endereco + '\n';
     });
@@ -5048,6 +5110,7 @@ async function exportarReincidenciasExcel(){
     'Status': STATUS_COL_LABEL[it.r.status] || it.r.status,
     'OS anterior': it.p.os, 'Tipo anterior': it.p.tipo,
     'Data anterior': it.refAnterior.toLocaleDateString('pt-BR'), 'Dias': it.dias,
+    'Anterior': it.inferida ? 'Inferida (iniciado, sem conclusão registrada)' : 'Concluída',
     'Técnico anterior': it.p.recurso,
     'Na caixa?': it.mesmoTecnico === null ? '' : it.mesmoTecnico ? 'Sim' : 'Não',
     'Atendimentos anteriores no prazo': it.repeticoes,
@@ -6719,6 +6782,9 @@ async function init(){
       document.querySelectorAll('#rcStatusFiltro .cp-status-btn').forEach(b => b.classList.toggle('active', b === btn));
       if (rcUltimasRows) renderReincidencias(rcUltimasRows, new Date());
     });
+  });
+  document.querySelectorAll('#rcAnteriorFiltro .cp-status-btn').forEach(btn => {
+    btn.addEventListener('click', () => rcAplicarFiltro({ anterior: btn.dataset.anterior }));
   });
   document.querySelectorAll('#rcEscopoFiltro .cp-status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
