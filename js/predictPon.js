@@ -166,6 +166,8 @@ async function renderPredictPon(forcar){
   }).join('') + '</div>' : '<div class="muted" style="font-size:12.5px;">Nenhum alerta de OLT/PON na última coleta.</div>';
   html += '<div class="pp-nota">Os alertas de rede vêm da lista de ONUs com problema do AutoISP, que é quase toda de ONUs sem contrato. Servem como indício físico na PON. O sinal dos clientes de verdade está na tabela abaixo.</div></div>';
 
+  html += ppGrade(L);
+
   // ---------- Clientes ----------
   const cidades = [...new Set(itens.map(i => i.cidade).filter(Boolean))].sort();
   if (PP.filtroCidade !== 'TODAS' && !cidades.includes(PP.filtroCidade)) PP.filtroCidade = 'TODAS';
@@ -234,6 +236,51 @@ async function renderPredictPon(forcar){
   document.getElementById('ppFiltroCidade').onchange = e => { PP.filtroCidade = e.target.value; renderPredictPon(); };
   document.getElementById('ppCsv').onclick = () => ppCsv(lista);
   ppDesenharMapa(itens);
+}
+
+// Grade de PONs por OLT (igual à da extensão): uma linha por slot, um quadrado por PON com alerta.
+// Número de cima = porta da PON; de baixo = ONUs nos alertas daquela PON. Cor = pior alerta da PON.
+const PP_ORDEM = ['OLT_PONS', 'MASSIVA', 'RISCO_PON', 'OLT', 'ENERGIA', 'CTO', 'ONU'];
+const PP_COR_GRADE = { OLT_PONS: 'red', MASSIVA: 'red', RISCO_PON: 'peach', OLT: 'red', ENERGIA: 'yellow', CTO: 'accent', ONU: 'accent' };
+const ppPior = lista => lista.reduce((m, a) => m == null || PP_ORDEM.indexOf(a.nivel) < PP_ORDEM.indexOf(m) ? a.nivel : m, null);
+const ppSlot = pon => { const p = String(pon || '').split('/'); return p.length > 1 ? p.slice(0, -1).join('/') : '?'; };
+const ppPorta = pon => { const p = String(pon || '').split('/'); return p[p.length - 1]; };
+function ppGrade(L){
+  const cidadeOlt = nome => { const o = (L.olts || []).find(x => x.hostname === nome); return o && o.cidades && o.cidades[0] || ''; };
+  const porOlt = new Map();
+  (L.alertas || []).forEach(a => {
+    if (!a.olt) return;
+    const o = porOlt.get(a.olt) || { olt: a.olt, alertas: [], onus: 0 };
+    o.alertas.push(a);
+    if (a.nivel !== 'OLT_PONS' && a.nivel !== 'OLT') o.onus += a.qtd || 0;
+    porOlt.set(a.olt, o);
+  });
+  const olts = [...porOlt.values()].map(o => Object.assign(o, { pior: ppPior(o.alertas) }))
+    .sort((a, b) => PP_ORDEM.indexOf(a.pior) - PP_ORDEM.indexOf(b.pior) || b.onus - a.onus);
+  const leg = ['OLT_PONS', 'RISCO_PON', 'ENERGIA', 'ONU'].map(n => `<span><i style="background:var(--${PP_COR_GRADE[n]})"></i>${{ OLT_PONS: 'Massiva / OLT', RISCO_PON: 'Risco de massiva', ENERGIA: 'Energia', ONU: 'CTO / ONUs isoladas' }[n]}</span>`).join('');
+  let h = `<div class="panel"><div class="panel-head"><h3>Grade de PONs</h3><span class="desc">linha = slot · quadrado = PON com problema · número de baixo = ONUs com alerta</span></div>`;
+  if (!olts.length) return h + '<div class="muted" style="font-size:12.5px;">Nenhuma OLT com alerta na última coleta. 👍</div></div>';
+  h += '<div class="pp-grade">' + olts.map(o => {
+    const porPon = new Map();
+    o.alertas.forEach(a => {
+      if (!a.pon || a.nivel === 'OLT_PONS' || a.nivel === 'OLT') return;
+      const p = porPon.get(a.pon) || { pon: a.pon, alertas: [], onus: 0 };
+      p.alertas.push(a); p.onus += a.qtd || 0;
+      porPon.set(a.pon, p);
+    });
+    const slots = new Map();
+    porPon.forEach(p => { const sl = ppSlot(p.pon); (slots.get(sl) || slots.set(sl, []).get(sl)).push(p); });
+    const linhas = [...slots.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(sl =>
+      `<div class="pp-slot"><span class="pp-sl">slot ${ppEsc(sl)}</span>${slots.get(sl).sort((a, b) => +ppPorta(a.pon) - +ppPorta(b.pon)).map(p => {
+        const n = ppPior(p.alertas);
+        return `<span class="pp-pq" style="--c:var(--${PP_COR_GRADE[n] || 'text-dim'})" title="PON ${ppEsc(p.pon)} · ${ppEsc(p.alertas.map(a => (a.rotulo || a.nivel) + ': ' + (a.detalhe || '')).join(' | '))}">${ppEsc(ppPorta(p.pon))}<small>${p.onus}</small></span>`;
+      }).join('')}</div>`).join('');
+    const grupo = o.alertas.find(a => a.nivel === 'OLT_PONS' || a.nivel === 'OLT');
+    const dx = grupo ? grupo.detalhe : `${porPon.size} PON(s) com alerta, ${o.onus} ONUs.`;
+    const rot = (o.alertas.find(a => a.nivel === o.pior) || {}).rotulo || o.pior;
+    return `<div class="pp-olt"><div class="pp-olt-h"><span class="pp-olt-tag" style="--c:var(--${PP_COR_GRADE[o.pior] || 'text-dim'})">${ppEsc(rot)}</span><b>${ppEsc(o.olt)}</b><span class="muted">${ppEsc(cidadeOlt(o.olt))}</span></div><div class="pp-olt-dx">${ppEsc(dx)}</div>${linhas}</div>`;
+  }).join('') + '</div>';
+  return h + `<div class="pp-leg">${leg}</div><div class="pp-nota">Passe o mouse num quadrado para ver os alertas daquela PON. Muitas PONs de slots diferentes ao mesmo tempo apontam para a OLT (energia, temperatura, uplink), não para a rede externa.</div></div>`;
 }
 
 function ppLinha(i){
