@@ -10,6 +10,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabaseClient.js"></script>
 <script src="js/predictPon.js"></script>
+<script src="js/vlanDados.js"></script>
+<script src="js/vlanMapa.js"></script>
 <style>
   :root{
     --bg: #0A1018;
@@ -672,6 +674,22 @@
   .pp-dg-a{font-size:12px;margin-top:6px;color:var(--text-dim);}
   .pp-novo{background:var(--red);color:#fff;border-radius:4px;padding:0 6px;font-size:10.5px;font-weight:700;}
   .pp-nota{font-size:11.5px;color:var(--text-faint);margin-top:10px;}
+  .vm-filtros{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  .vm-filtros label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-dim);font-weight:600;}
+  .vm-filtros .vm-busca{flex:1;min-width:220px;}
+  .vm-filtros .vm-busca input{width:100%;box-sizing:border-box;}
+  .vm-mapa{height:560px;}
+  @media (max-width:640px){.vm-mapa{height:420px;}}
+  .vm-rodape{font-size:12px;color:var(--text-dim);margin:-8px 0 8px;line-height:1.5;}
+  .vm-legenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;margin-bottom:16px;color:var(--text-dim);}
+  .vm-legenda i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+  .vm-rot span{display:inline-block;transform:translate(-50%,-50%);color:#fff;font:700 11px/1 var(--font-ui);padding:3px 6px;border-radius:6px;border:1.5px solid #fff;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+  .vm-pop{border-collapse:collapse;margin:6px 0;font-size:12px;} .vm-pop td{padding:2px 8px 2px 0;vertical-align:top;}
+  .vm-alerta{color:#C2410C;font-size:12px;font-weight:600;}
+  .vm-linha{cursor:pointer;} .vm-linha:hover td{background:var(--surface-2);}
+  .vm-tag{font-size:11px;padding:2px 7px;border-radius:6px;white-space:nowrap;}
+  .vm-red{background:var(--red-bg);color:var(--red);} .vm-peach{background:var(--peach-bg);color:var(--peach);}
+  .vm-bairros{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;margin-top:8px;}
   .pp-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
   .pp-sel,.pp-btn{background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:12.5px var(--font-ui);}
   .pp-btn{cursor:pointer;} .pp-btn:hover{border-color:var(--accent);}
@@ -720,6 +738,7 @@
       <div class="sidebar-item" data-module="calc-prazo"><span class="ic">🧮</span><span class="lbl">Calculadora de Prazo</span></div>
       <div class="sidebar-item" data-module="reincidencias"><span class="ic">🔁</span><span class="lbl">Reincidências</span></div>
       <div class="sidebar-item" data-module="predict-pon"><span class="ic">🛰️</span><span class="lbl">Predict PON</span></div>
+      <div class="sidebar-item" data-module="mapa-vlan"><span class="ic">🗺️</span><span class="lbl">Mapa de VLANs</span></div>
       <div class="sidebar-item" data-module="improdutivas"><span class="ic">⚠️</span><span class="lbl">Improdutivas</span></div>
       <div class="sidebar-item" data-module="backlog"><span class="ic">📦</span><span class="lbl">Backlog</span></div>
       <div class="sidebar-item" data-module="prod-recurso"><span class="ic">🧑‍🔧</span><span class="lbl">Produção por Recurso</span></div>
@@ -1174,6 +1193,11 @@
     <div class="module" id="module-predict-pon">
       <div class="section-title"><h2>Predict PON</h2><span class="hint" id="predictPonHint">sinal das PONs e dos clientes no AutoISP</span></div>
       <div id="predictPonContainer"></div>
+    </div>
+
+    <div class="module" id="module-mapa-vlan">
+      <div class="section-title"><h2>Mapa de VLANs</h2><span class="hint">bairro × VLAN × equipamento na Baixada Santista · busca de clientes</span></div>
+      <div id="mapaVlanContainer"></div>
     </div>
 
     <div class="module" id="module-rede-externa">
@@ -6458,6 +6482,7 @@ function setModule(mod){
   if (mod === 'administracao') renderAdministracao();
   if (mod === 'rede-externa') renderRedeExterna();
   if (mod === 'predict-pon') renderPredictPon();
+  if (mod === 'mapa-vlan') renderMapaVlan();
 }
 function toggleSidebar(){
   sidebarCollapsed = !sidebarCollapsed;
