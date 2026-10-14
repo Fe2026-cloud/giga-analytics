@@ -140,10 +140,12 @@ async function renderPredictPon(forcar){
   const emRisco = ruins.filter(i => i.janela === 'IRR' || i.janela === 'IFI');
   const alertas = (L.alertas || []).filter(a => a.nivel !== 'ONU');
 
+  // Massivas/riscos que pertencem a uma OLT degradada aparecem dentro do cartão da OLT, não soltos.
+  const ppDentroOlt = nivel => { const n = alertas.filter(a => a.nivel === nivel && a.pai).length; return n ? `${n} dentro de OLT degradada` : ''; };
   const cards = [
     { v: R.olts_degradadas || 0, l: 'OLTs degradadas', c: 'red' },
-    { v: R.massivas || 0, l: 'Massivas', c: 'red' },
-    { v: R.risco || 0, l: 'Risco de massiva', c: 'peach' },
+    { v: R.massivas || 0, l: 'Massivas', c: 'red', sub: ppDentroOlt('MASSIVA') },
+    { v: R.risco || 0, l: 'Risco de massiva', c: 'peach', sub: ppDentroOlt('RISCO_PON') },
     { v: R.olts_falha || 0, l: 'OLT sem conexão', c: 'red' },
     { v: ruins.length, l: 'Clientes c/ sinal ruim', c: 'yellow' },
     { v: emRisco.length, l: 'Vão reincidir (IRR/IFI)', c: 'red', clique: 'RISCO' }
@@ -153,16 +155,19 @@ async function renderPredictPon(forcar){
   if (idade.cor !== 'green'){
     html += `<div class="pp-aviso pp-${idade.cor}">⚠ A última coleta foi há <b>${idade.txt}</b>. A coleta depende do Chrome de quem roda a extensão estar aberto e logado no AutoISP.</div>`;
   }
-  html += `<div class="pp-cards">${cards.map(k => `<div class="venc-card${k.clique ? ' clickable-card' : ''}" ${k.clique ? `data-pp-janela="${k.clique}"` : ''}><div class="value" style="color:var(--${k.v ? k.c : 'text-faint'})">${k.v}</div><div class="label">${k.l}</div></div>`).join('')}</div>`;
+  html += `<div class="pp-cards">${cards.map(k => `<div class="venc-card${k.clique ? ' clickable-card' : ''}" ${k.clique ? `data-pp-janela="${k.clique}"` : ''}><div class="value" style="color:var(--${k.v ? k.c : 'text-faint'})">${k.v}</div><div class="label">${k.l}</div>${k.sub ? `<div class="pp-sub">${k.sub}</div>` : ''}</div>`).join('')}</div>`;
 
   // ---------- O que fazer agora ----------
   const top = alertas.filter(a => !a.pai).slice(0, 8);
   html += `<div class="panel"><div class="panel-head"><h3>O que fazer agora</h3><span class="desc">rede (OLT/PON) · pior primeiro · <span class="pp-idade pp-${idade.cor}">coleta há ${idade.txt}</span></span></div>`;
   html += top.length ? '<div class="pp-diag">' + top.map(a => {
     const n = PP_NIVEL[a.nivel] || {};
-    const filhos = alertas.filter(f => f.pai === a.chave).map(f => f.pon);
+    const filhos = a.chave ? alertas.filter(f => f.pai === a.chave) : [];
+    const grupos = ['MASSIVA', 'RISCO_PON'].map(nv => [nv, filhos.filter(f => f.nivel === nv).map(f => f.pon)]).filter(g => g[1].length);
+    const outros = filhos.filter(f => f.nivel !== 'MASSIVA' && f.nivel !== 'RISCO_PON').map(f => f.pon);
+    if (outros.length) grupos.push(['', outros]);
     const onde = a.nivel === 'OLT_PONS' ? ppEsc(a.olt || '') : `${ppEsc(a.olt || '')}${a.pon ? ' · PON ' + ppEsc(a.pon) : ''}`;
-    return `<div class="pp-dg" style="--c:var(--${n.c || 'text-dim'})"><div class="pp-dg-h"><b>${ppEsc(a.rotulo || a.nivel)}</b>${a.novo ? '<span class="pp-novo">novo</span>' : ''}<span class="pp-dg-onde">${onde}</span></div><div class="pp-dg-t">${ppEsc(a.detalhe)}</div>${filhos.length ? `<div class="pp-dg-onde" style="margin-top:4px">PONs: ${filhos.map(ppEsc).join(', ')}</div>` : ''}<div class="pp-dg-a">➜ ${ppEsc(n.acao || '')}</div></div>`;
+    return `<div class="pp-dg" style="--c:var(--${n.c || 'text-dim'})"><div class="pp-dg-h"><b>${ppEsc(a.rotulo || a.nivel)}</b>${a.novo ? '<span class="pp-novo">novo</span>' : ''}<span class="pp-dg-onde">${onde}</span></div><div class="pp-dg-t">${ppEsc(a.detalhe)}</div>${grupos.map(g => `<div class="pp-dg-onde" style="margin-top:4px"><b style="color:var(--${g[0] === 'MASSIVA' ? 'red' : g[0] ? 'peach' : 'text-dim'})">${g[0] === 'MASSIVA' ? 'Massivas' : g[0] ? 'Em risco' : 'PONs'} (${g[1].length}):</b> ${g[1].map(ppEsc).join(', ')}</div>`).join('')}<div class="pp-dg-a">➜ ${ppEsc(n.acao || '')}</div></div>`;
   }).join('') + '</div>' : '<div class="muted" style="font-size:12.5px;">Nenhum alerta de OLT/PON na última coleta.</div>';
   html += '<div class="pp-nota">Os alertas de rede vêm da lista de ONUs com problema do AutoISP, que é quase toda de ONUs sem contrato. Servem como indício físico na PON. O sinal dos clientes de verdade está na tabela abaixo.</div></div>';
 
