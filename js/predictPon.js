@@ -11,7 +11,7 @@
  * ========================================================================== */
 const PP = {
   leitura: null, leituras: [], clientes: [], carregado: false, carregando: false, erro: null,
-  filtroCidade: 'TODAS', filtroJanela: 'RISCO', filtroSit: 'RUINS', ponMin: 3, ponCidade: 'TODAS', ponAbertas: new Set(),
+  filtroCidade: 'TODAS', filtroJanela: 'RISCO', filtroSit: 'RUINS', ponMin: 3, ponCidade: 'TODAS', ponAbertas: new Set(), oltAbertas: new Set(), slotAbertos: new Set(),
   mapa: null, camada: null, leafletPronto: null, timer: null
 };
 const PP_RUINS = ['critico', 'atencao', 'sem_sinal'];
@@ -177,10 +177,11 @@ async function renderPredictPon(forcar){
     const outros = filhos.filter(f => f.nivel !== 'MASSIVA' && f.nivel !== 'RISCO_PON').map(f => f.pon);
     if (outros.length) grupos.push(['', outros]);
     const onde = a.nivel === 'OLT_PONS' ? ppEsc(a.olt || '') : `${ppEsc(a.olt || '')}${a.pon ? ' · PON ' + ppEsc(a.pon) : ''}`;
-    return `<div class="pp-dg" style="--c:var(--${n.c || 'text-dim'})"><div class="pp-dg-h"><b>${ppEsc(a.rotulo || a.nivel)}</b>${a.novo ? '<span class="pp-novo">novo</span>' : ''}<span class="pp-dg-onde">${onde}</span></div><div class="pp-dg-t">${ppEsc(a.detalhe)}</div>${grupos.map(g => `<div class="pp-dg-onde" style="margin-top:4px"><b style="color:var(--${g[0] === 'MASSIVA' ? 'red' : g[0] ? 'peach' : 'text-dim'})">${g[0] === 'MASSIVA' ? 'Massivas' : g[0] ? 'Em risco' : 'PONs'} (${g[1].length}):</b> ${g[1].map(ppEsc).join(', ')}</div>`).join('')}<div class="pp-dg-a">➜ ${ppEsc(n.acao || '')}</div></div>`;
+    return `<div class="pp-dg" style="--c:var(--${n.c || 'text-dim'})"><div class="pp-dg-h"><b>${ppEsc(a.rotulo || a.nivel)}</b>${a.novo ? '<span class="pp-novo">novo</span>' : ''}<span class="pp-dg-onde">${onde}</span></div><div class="pp-dg-t">${ppEsc(a.detalhe)}</div>${grupos.map(g => `<div class="pp-dg-onde" style="margin-top:4px"><b style="color:var(--${g[0] === 'MASSIVA' ? 'red' : g[0] ? 'peach' : 'text-dim'})">${g[0] === 'MASSIVA' ? 'Massivas' : g[0] ? 'Em risco' : 'PONs'} (${g[1].length}):</b> ${g[1].map(ppEsc).join(', ')}</div>`).join('')}<div class="pp-dg-a">➜ ${ppEsc(n.acao || '')}</div>${a.nivel === 'OLT_PONS' ? `<button class="pp-btn pp-dg-abrir" data-pp-abrir-olt="${ppEsc(a.olt)}">Abrir por slot e PON ↓</button>` : ''}</div>`;
   }).join('') + '</div>' : '<div class="muted" style="font-size:12.5px;">Nenhum alerta de OLT/PON na última coleta.</div>';
   html += '<div class="pp-nota">Os alertas de rede vêm da lista de ONUs com problema do AutoISP, que é quase toda de ONUs sem contrato. Servem como indício físico na PON. O sinal dos clientes de verdade está na tabela abaixo.</div></div>';
 
+  html += ppDrillOlts(L, itens, alertas);
   html += ppGrade(L);
 
   // ---------- Clientes ----------
@@ -242,8 +243,61 @@ async function renderPredictPon(forcar){
   document.getElementById('ppPonMin').onchange = e => { PP.ponMin = +e.target.value; renderPredictPon(); };
   document.getElementById('ppPonCidade').onchange = e => { PP.ponCidade = e.target.value; renderPredictPon(); };
   document.getElementById('ppPonCsv').onclick = () => ppPonsCsv(criticas.pons);
+  el.querySelectorAll('[data-pp-abrir-olt]').forEach(b => b.onclick = () => {
+    const d = [...el.querySelectorAll('details[data-pp-olt]')].find(x => x.dataset.ppOlt === b.dataset.ppAbrirOlt);
+    if (d){ d.open = true; PP.oltAbertas.add(d.dataset.ppOlt); d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
+  el.querySelectorAll('details[data-pp-olt]').forEach(d => d.ontoggle = () => { d.open ? PP.oltAbertas.add(d.dataset.ppOlt) : PP.oltAbertas.delete(d.dataset.ppOlt); });
+  el.querySelectorAll('details[data-pp-slot]').forEach(d => d.ontoggle = () => { d.open ? PP.slotAbertos.add(d.dataset.ppSlot) : PP.slotAbertos.delete(d.dataset.ppSlot); });
   el.querySelectorAll('details[data-pp-pon]').forEach(d => d.ontoggle = () => { d.open ? PP.ponAbertas.add(d.dataset.ppPon) : PP.ponAbertas.delete(d.dataset.ppPon); });
   ppDesenharMapa(itens);
+}
+
+// ---------- OLT degradada aberta: OLT > slot > PON > clientes > atenuados > endereços ----------
+const PP_LIMITE = -27; // dBm: sinal igual ou pior que isso = atenuado (mesmo limite da extensão)
+const ppAtenuado = c => c.rx_dbm != null && Number(c.rx_dbm) <= PP_LIMITE;
+function ppDrillOlts(L, itens, alertas){
+  const grupos = alertas.filter(a => a.nivel === 'OLT_PONS' && a.olt);
+  if (!grupos.length) return '';
+  const html = grupos.map(g => {
+    const doAlerta = new Map(alertas.filter(f => f.pai === g.chave && f.pon).map(f => [f.pon, f]));
+    const daOlt = itens.filter(i => i.olt === g.olt && i.c.pon);
+    const porPon = new Map();
+    daOlt.forEach(i => { const l = porPon.get(i.c.pon) || []; l.push(i); porPon.set(i.c.pon, l); });
+    // PONs do alerta + PONs desta OLT com cliente atenuado
+    const pons = new Set([...doAlerta.keys()]);
+    porPon.forEach((l, pon) => { if (l.some(i => ppAtenuado(i.c))) pons.add(pon); });
+    const slots = new Map();
+    [...pons].forEach(pon => {
+      const cli = porPon.get(pon) || [];
+      const p = { pon, alerta: doAlerta.get(pon) || null, cli, aten: cli.filter(i => ppAtenuado(i.c)), los: cli.filter(i => i.c.situacao === 'sem_sinal').length };
+      const sl = ppSlot(pon); (slots.get(sl) || slots.set(sl, []).get(sl)).push(p);
+    });
+    const ordSlots = [...slots.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const tot = { pons: pons.size, cli: 0, aten: 0 };
+    const htmlSlots = ordSlots.map(sl => {
+      const lista = slots.get(sl).sort((a, b) => +ppPorta(a.pon) - +ppPorta(b.pon));
+      const sCli = lista.reduce((n, p) => n + p.cli.length, 0), sAten = lista.reduce((n, p) => n + p.aten.length, 0);
+      tot.cli += sCli; tot.aten += sAten;
+      const kSlot = g.olt + '|' + sl;
+      const linhasPon = lista.map(p => {
+        const cor = p.alerta ? (p.alerta.nivel === 'MASSIVA' ? 'red' : 'peach') : 'text-dim';
+        const end = p.aten.slice().sort((a, b) => ppRua(a.endereco).localeCompare(ppRua(b.endereco)) || Number(a.c.rx_dbm) - Number(b.c.rx_dbm)).map(i =>
+          `<tr><td>${ppEsc(i.endereco) || '<span class="muted">sem O.S. carregada</span>'}</td><td>${ppEsc(i.bairro)}</td><td>${ppEsc(i.cliente) || '<span class="muted">—</span>'}</td><td class="mono">${ppEsc(i.c.contrato)}</td><td class="num" style="color:var(--${(PP_SIT[i.c.situacao] || {}).c || 'text'});font-weight:700">${ppDbm(i.c.rx_dbm)}</td></tr>`).join('');
+        return `<div class="pp-dpon">
+          <div class="pp-dpon-h"><b class="mono" style="color:var(--${cor})">PON ${ppEsc(p.pon)}</b>${p.alerta ? `<span class="pp-tag pp-${p.alerta.nivel === 'MASSIVA' ? 'red' : 'peach'}">${ppEsc(p.alerta.rotulo || p.alerta.nivel)} · ${p.alerta.qtd} ONUs</span>` : '<span class="pp-tag">fora do alerta</span>'}
+            <span><b>${p.cli.length}</b> clientes consultados</span><span style="color:var(--${p.aten.length ? 'red' : 'text-dim'})"><b>${p.aten.length}</b> atenuados (≤ ${PP_LIMITE} dBm)</span>${p.los ? `<span class="muted">${p.los} em LoS</span>` : ''}</div>
+          ${end ? `<div class="table-scroll"><table class="pivot compact-table pp-tab"><thead><tr><th>Endereço</th><th>Bairro</th><th>Cliente</th><th>Contrato</th><th class="num">Sinal</th></tr></thead><tbody>${end}</tbody></table></div>` : ''}
+        </div>`;
+      }).join('');
+      return `<details class="pp-dslot" data-pp-slot="${ppEsc(kSlot)}"${PP.slotAbertos.has(kSlot) ? ' open' : ''}><summary><b>Slot ${ppEsc(sl)}</b><span>${lista.length} PON(s)</span><span>${sCli} clientes consultados</span><span style="color:var(--${sAten ? 'red' : 'text-dim'})">${sAten} atenuados</span></summary>${linhasPon}</details>`;
+    }).join('');
+    return `<details class="pp-dolt" data-pp-olt="${ppEsc(g.olt)}"${PP.oltAbertas.has(g.olt) ? ' open' : ''}><summary>
+      <span class="pp-olt-tag" style="--c:var(--red)">${ppEsc(g.rotulo || 'OLT degradada')}</span><b class="mono">${ppEsc(g.olt)}</b>
+      <span>${ordSlots.length} slots · ${tot.pons} PONs</span><span>${tot.cli} clientes consultados</span><span style="color:var(--red)"><b>${tot.aten}</b> atenuados</span></summary>${htmlSlots || '<div class="muted" style="padding:8px 12px;font-size:12.5px;">Nenhum cliente consultado nesta OLT ainda.</div>'}</details>`;
+  }).join('');
+  return `<div class="panel"><div class="panel-head"><h3>OLTs degradadas por slot e PON</h3><span class="desc">OLT › slot › PON › clientes › atenuados › endereços</span></div>${html}
+    <div class="pp-nota">"Clientes consultados" são os contratos com O.S. nos últimos 90 dias que a extensão já leu no AutoISP, não todos os clientes da PON. "ONUs" na etiqueta é quantas ONUs da PON estão na lista de problema do AutoISP. Endereço e nome vêm da última O.S. do contrato.</div></div>`;
 }
 
 // ---------- PONs críticas ----------
