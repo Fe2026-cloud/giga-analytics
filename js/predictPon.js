@@ -255,6 +255,8 @@ async function renderPredictPon(forcar){
 
 // ---------- OLT degradada aberta: OLT > slot > PON > clientes > atenuados > endereços ----------
 const PP_LIMITE = -27; // dBm: sinal igual ou pior que isso = atenuado (mesmo limite da extensão)
+const PP_MASSIVA_LOS = 16; // clientes sem sinal (LoS) na mesma PON = massiva (regra da operação GIGA+)
+const ppMassivaClientes = n => ({ nivel: 'MASSIVA', rotulo: 'Massiva', qtd: n, porClientes: true });
 const ppAtenuado = c => c.rx_dbm != null && Number(c.rx_dbm) <= PP_LIMITE;
 function ppDrillOlts(L, itens, alertas){
   const grupos = alertas.filter(a => a.nivel === 'OLT_PONS' && a.olt);
@@ -270,7 +272,8 @@ function ppDrillOlts(L, itens, alertas){
     const slots = new Map();
     [...pons].forEach(pon => {
       const cli = porPon.get(pon) || [];
-      const p = { pon, alerta: doAlerta.get(pon) || null, cli, aten: cli.filter(i => ppAtenuado(i.c)), los: cli.filter(i => i.c.situacao === 'sem_sinal').length };
+      const los = cli.filter(i => i.c.situacao === 'sem_sinal').length;
+      const p = { pon, alerta: (los >= PP_MASSIVA_LOS ? ppMassivaClientes(los) : null) || doAlerta.get(pon) || null, cli, aten: cli.filter(i => ppAtenuado(i.c)), los };
       const sl = ppSlot(pon); (slots.get(sl) || slots.set(sl, []).get(sl)).push(p);
     });
     const ordSlots = [...slots.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -285,7 +288,7 @@ function ppDrillOlts(L, itens, alertas){
         const end = p.aten.slice().sort((a, b) => ppRua(a.endereco).localeCompare(ppRua(b.endereco)) || Number(a.c.rx_dbm) - Number(b.c.rx_dbm)).map(i =>
           `<tr><td>${ppEsc(i.endereco) || '<span class="muted">sem O.S. carregada</span>'}</td><td>${ppEsc(i.bairro)}</td><td>${ppEsc(i.cliente) || '<span class="muted">—</span>'}</td><td class="mono">${ppEsc(i.c.contrato)}</td><td class="num" style="color:var(--${(PP_SIT[i.c.situacao] || {}).c || 'text'});font-weight:700">${ppDbm(i.c.rx_dbm)}</td></tr>`).join('');
         return `<div class="pp-dpon">
-          <div class="pp-dpon-h"><b class="mono" style="color:var(--${cor})">PON ${ppEsc(p.pon)}</b>${p.alerta ? `<span class="pp-tag pp-${p.alerta.nivel === 'MASSIVA' ? 'red' : 'peach'}">${ppEsc(p.alerta.rotulo || p.alerta.nivel)} · ${p.alerta.qtd} ONUs</span>` : '<span class="pp-tag">fora do alerta</span>'}
+          <div class="pp-dpon-h"><b class="mono" style="color:var(--${cor})">PON ${ppEsc(p.pon)}</b>${p.alerta ? `<span class="pp-tag pp-${p.alerta.nivel === 'MASSIVA' ? 'red' : 'peach'}">${ppEsc(p.alerta.rotulo || p.alerta.nivel)} · ${p.alerta.qtd} ${p.alerta.porClientes ? 'clientes sem sinal' : 'ONUs'}</span>` : '<span class="pp-tag">fora do alerta</span>'}
             <span><b>${p.cli.length}</b> clientes consultados</span><span style="color:var(--${p.aten.length ? 'red' : 'text-dim'})"><b>${p.aten.length}</b> atenuados (≤ ${PP_LIMITE} dBm)</span>${p.los ? `<span class="muted">${p.los} em LoS</span>` : ''}</div>
           ${end ? `<div class="table-scroll"><table class="pivot compact-table pp-tab"><thead><tr><th>Endereço</th><th>Bairro</th><th>Cliente</th><th>Contrato</th><th class="num">Sinal</th></tr></thead><tbody>${end}</tbody></table></div>` : ''}
         </div>`;
@@ -321,6 +324,7 @@ function ppPonsCriticas(itens, L){
     const p = mapa.get(k) || { k, olt: i.olt, pon: i.c.pon, itens: [], graves: 0, atencao: 0, energia: 0, risco: 0, cidades: new Map() };
     p.itens.push(i);
     if (PP_GRAVE.includes(i.c.situacao)) p.graves++;
+    if (i.c.situacao === 'sem_sinal') p.los = (p.los || 0) + 1;
     if (i.c.situacao === 'atencao') p.atencao++;
     if (i.c.situacao === 'sem_energia' || i.c.situacao === 'offline') p.energia++;
     if (i.ruim && (i.janela === 'IRR' || i.janela === 'IFI')) p.risco++;
@@ -328,7 +332,7 @@ function ppPonsCriticas(itens, L){
     mapa.set(k, p);
   });
   let pons = [...mapa.values()].map(p => {
-    p.alerta = alertaPon.get(p.k) || null;
+    p.alerta = (p.los >= PP_MASSIVA_LOS ? ppMassivaClientes(p.los) : null) || alertaPon.get(p.k) || null;
     p.cidade = [...p.cidades.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || '';
     return p;
   }).filter(p => p.alerta || p.graves >= PP.ponMin);
@@ -355,7 +359,7 @@ function ppPonsCriticas(itens, L){
     const grupos = [...ruas.values()].map(g => Object.assign(g, { graves: g.itens.filter(i => PP_GRAVE.includes(i.c.situacao)).length }))
       .sort((a, b) => b.graves - a.graves || b.itens.length - a.itens.length);
     const bairros = [...new Set(p.itens.map(i => i.bairro).filter(Boolean))];
-    const tag = p.alerta ? `<span class="pp-tag pp-${p.alerta.nivel === 'MASSIVA' ? 'red' : 'peach'}">${ppEsc(p.alerta.rotulo || p.alerta.nivel)}</span>` : '';
+    const tag = p.alerta ? `<span class="pp-tag pp-${p.alerta.nivel === 'MASSIVA' ? 'red' : 'peach'}">${ppEsc(p.alerta.rotulo || p.alerta.nivel)}${p.alerta.porClientes ? ` · ${p.alerta.qtd} sem sinal` : ''}</span>` : '';
     const linhas = grupos.map(g => {
       const its = g.itens.slice().sort((a, b) => (PP_GRAVE.includes(b.c.situacao) - PP_GRAVE.includes(a.c.situacao)) || (a.c.rx_dbm || 0) - (b.c.rx_dbm || 0));
       return `<tr class="pp-rua"><td colspan="6"><b>${ppEsc(g.rua)}</b>${g.bairros.size ? ' · ' + ppEsc([...g.bairros].join(', ')) : ''} <span class="muted">· ${g.itens.length} cliente(s)${g.graves ? `, <span style="color:var(--red)">${g.graves} em crítico/LoS</span>` : ''}</span></td></tr>` +
