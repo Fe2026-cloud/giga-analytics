@@ -11,7 +11,7 @@
  * ========================================================================== */
 const PP = {
   leitura: null, leituras: [], clientes: [], carregado: false, carregando: false, erro: null,
-  filtroCidade: 'TODAS', filtroJanela: 'RISCO', filtroSit: 'RUINS', ponMin: 3, ponCidade: 'TODAS', ponAbertas: new Set(), oltAbertas: new Set(), slotAbertos: new Set(),
+  filtroCidade: 'TODAS', filtroJanela: 'RISCO', filtroSit: 'RUINS', aba: 'rede', ponMin: 3, ponCidade: 'TODAS', ponAbertas: new Set(), oltAbertas: new Set(), slotAbertos: new Set(),
   mapa: null, camada: null, leafletPronto: null, timer: null
 };
 const PP_RUINS = ['critico', 'atencao', 'sem_sinal'];
@@ -153,36 +153,53 @@ async function renderPredictPon(forcar){
   // Massivas/riscos que pertencem a uma OLT degradada aparecem dentro do cartão da OLT, não soltos.
   const ppDentroOlt = nivel => { const n = alertas.filter(a => a.nivel === nivel && a.pai).length; return n ? `${n} dentro de OLT degradada` : ''; };
   const cards = [
-    { v: R.olts_degradadas || 0, l: 'OLTs degradadas', c: 'red' },
-    { v: R.massivas || 0, l: 'Massivas', c: 'red', sub: ppDentroOlt('MASSIVA') },
-    { v: R.risco || 0, l: 'Risco de massiva', c: 'peach', sub: ppDentroOlt('RISCO_PON') },
-    { v: R.olts_falha || 0, l: 'OLT sem conexão', c: 'red' },
-    { v: ruins.length, l: 'Clientes c/ sinal ruim', c: 'yellow' },
-    { v: emRisco.length, l: 'Vão reincidir (IRR/IFI)', c: 'red', clique: 'RISCO' }
+    { v: R.olts_degradadas || 0, l: 'OLTs degradadas', c: 'red', aba: 'rede' },
+    { v: R.massivas || 0, l: 'Massivas', c: 'red', sub: ppDentroOlt('MASSIVA'), aba: 'rede' },
+    { v: R.risco || 0, l: 'Risco de massiva', c: 'peach', sub: ppDentroOlt('RISCO_PON'), aba: 'rede' },
+    { v: R.olts_falha || 0, l: 'OLT sem conexão', c: 'red', aba: 'rede' },
+    { v: ruins.length, l: 'Clientes c/ sinal ruim', c: 'yellow', aba: 'clientes', janela: 'TODAS' },
+    { v: emRisco.length, l: 'Vão reincidir (IRR/IFI)', c: 'red', aba: 'clientes', janela: 'RISCO' }
   ];
 
   let html = '';
   if (idade.cor !== 'green'){
     html += `<div class="pp-aviso pp-${idade.cor}">⚠ A última coleta foi há <b>${idade.txt}</b>. A coleta depende do Chrome de quem roda a extensão estar aberto e logado no AutoISP.</div>`;
   }
-  html += `<div class="pp-cards">${cards.map(k => `<div class="venc-card${k.clique ? ' clickable-card' : ''}" ${k.clique ? `data-pp-janela="${k.clique}"` : ''}><div class="value" style="color:var(--${k.v ? k.c : 'text-faint'})">${k.v}</div><div class="label">${k.l}</div>${k.sub ? `<div class="pp-sub">${k.sub}</div>` : ''}</div>`).join('')}</div>`;
+  html += `<div class="pp-cards">${cards.map(k => `<div class="venc-card clickable-card pp-card" data-pp-ir="${k.aba}"${k.janela ? ` data-pp-janela="${k.janela}"` : ''} style="--c:var(--${k.v ? k.c : 'border'})"><div class="value" style="color:var(--${k.v ? k.c : 'text-faint'})">${k.v}</div><div class="label">${k.l}</div>${k.sub ? `<div class="pp-sub">${k.sub}</div>` : ''}</div>`).join('')}</div>`;
+
+  // ---------- abas ----------
+  const nAlertas = alertas.filter(a => !a.pai).length;
+  const ABAS = [['rede', '🛰️ Rede (OLT/PON)', nAlertas], ['clientes', '👥 Clientes × O.S.', emRisco.length], ['mapa', '🗺️ Mapa e equipe', null]];
+  if (!ABAS.some(a => a[0] === PP.aba)) PP.aba = 'rede';
+  html += `<div class="pp-abas" role="tablist">${ABAS.map(a => `<button role="tab" class="pp-aba-btn${PP.aba === a[0] ? ' active' : ''}" data-pp-aba="${a[0]}">${a[1]}${a[2] ? `<span class="pp-aba-n">${a[2]}</span>` : ''}</button>`).join('')}</div>`;
+  const aba = (id, conteudo) => `<div class="pp-aba" data-aba="${id}"${PP.aba === id ? '' : ' hidden'}>${conteudo}</div>`;
+  let rede = '', cli = '', mapa = '';
 
   // ---------- O que fazer agora ----------
-  const top = alertas.filter(a => !a.pai).slice(0, 8);
-  html += `<div class="panel"><div class="panel-head"><h3>O que fazer agora</h3><span class="desc">rede (OLT/PON) · pior primeiro · <span class="pp-idade pp-${idade.cor}">coleta há ${idade.txt}</span></span></div>`;
-  html += top.length ? '<div class="pp-diag">' + top.map(a => {
+  const top = alertas.filter(a => !a.pai).slice(0, 10);
+  const SIGLA = { OLT_PONS: 'OLT', MASSIVA: 'MAS', RISCO_PON: 'RIS', OLT: 'OLT', ENERGIA: 'ENE', CTO: 'CTO' };
+  const cidadeOlt = nome => { const o = (L.olts || []).find(x => x.hostname === nome); return o && o.cidades && o.cidades[0] || ''; };
+  rede += `<div class="panel"><div class="panel-head"><h3>O que fazer agora</h3><span class="desc">pior primeiro · <span class="pp-idade pp-${idade.cor}">coleta há ${idade.txt}</span> <span class="pp-i" title="Os alertas de rede vêm da lista de ONUs com problema do AutoISP, que é quase toda de ONUs sem contrato. Servem como indício físico na PON. O sinal dos clientes está na aba Clientes.">ⓘ</span></span></div>`;
+  rede += top.length ? '<div class="pp-alertas">' + top.map(a => {
     const n = PP_NIVEL[a.nivel] || {};
     const filhos = a.chave ? alertas.filter(f => f.pai === a.chave) : [];
     const grupos = ['MASSIVA', 'RISCO_PON'].map(nv => [nv, filhos.filter(f => f.nivel === nv).map(f => f.pon)]).filter(g => g[1].length);
     const outros = filhos.filter(f => f.nivel !== 'MASSIVA' && f.nivel !== 'RISCO_PON').map(f => f.pon);
     if (outros.length) grupos.push(['', outros]);
-    const onde = a.nivel === 'OLT_PONS' ? ppEsc(a.olt || '') : `${ppEsc(a.olt || '')}${a.pon ? ' · PON ' + ppEsc(a.pon) : ''}`;
-    return `<div class="pp-dg" style="--c:var(--${n.c || 'text-dim'})"><div class="pp-dg-h"><b>${ppEsc(a.rotulo || a.nivel)}</b>${a.novo ? '<span class="pp-novo">novo</span>' : ''}<span class="pp-dg-onde">${onde}</span></div><div class="pp-dg-t">${ppEsc(a.detalhe)}</div>${grupos.map(g => `<div class="pp-dg-onde" style="margin-top:4px"><b style="color:var(--${g[0] === 'MASSIVA' ? 'red' : g[0] ? 'peach' : 'text-dim'})">${g[0] === 'MASSIVA' ? 'Massivas' : g[0] ? 'Em risco' : 'PONs'} (${g[1].length}):</b> ${g[1].map(ppEsc).join(', ')}</div>`).join('')}<div class="pp-dg-a">➜ ${ppEsc(n.acao || '')}</div>${a.nivel === 'OLT_PONS' ? `<button class="pp-btn pp-dg-abrir" data-pp-abrir-olt="${ppEsc(a.olt)}">Abrir por slot e PON ↓</button>` : ''}</div>`;
-  }).join('') + '</div>' : '<div class="muted" style="font-size:12.5px;">Nenhum alerta de OLT/PON na última coleta.</div>';
-  html += '<div class="pp-nota">Os alertas de rede vêm da lista de ONUs com problema do AutoISP, que é quase toda de ONUs sem contrato. Servem como indício físico na PON. O sinal dos clientes de verdade está na tabela abaixo.</div></div>';
+    const cid = cidadeOlt(a.olt);
+    const onde = `${ppEsc(a.olt || '')}${a.nivel !== 'OLT_PONS' && a.pon ? ' · PON ' + ppEsc(a.pon) : ''}${cid ? ` <span class="pp-al-cid">${ppEsc(cid)}</span>` : ''}`;
+    const chips = grupos.map(g => `<div class="pp-al-chips"><span class="pp-al-chl" style="color:var(--${g[0] === 'MASSIVA' ? 'red' : g[0] ? 'peach' : 'text-dim'})">${g[0] === 'MASSIVA' ? 'Massivas' : g[0] ? 'Em risco' : 'PONs'} (${g[1].length})</span>${g[1].map(p => `<span class="pp-chip" style="--c:var(--${g[0] === 'MASSIVA' ? 'red' : g[0] ? 'peach' : 'text-dim'})">${ppEsc(p)}</span>`).join('')}</div>`).join('');
+    return `<div class="pp-al" style="--c:var(--${n.c || 'text-dim'})">
+      <div class="pp-al-ic">${SIGLA[a.nivel] || '!'}</div>
+      <div class="pp-al-corpo"><div class="pp-al-t"><b>${ppEsc(a.rotulo || a.nivel)}</b>${a.novo ? '<span class="pp-novo">novo</span>' : ''}<span class="pp-al-onde">${onde}</span></div>
+        <div class="pp-al-d">${ppEsc(a.detalhe)}</div>${chips}
+        <div class="pp-al-a"><b>Ação:</b> ${ppEsc(n.acao || '')}</div>
+        ${a.nivel === 'OLT_PONS' ? `<button class="pp-btn pp-dg-abrir" data-pp-abrir-olt="${ppEsc(a.olt)}">Abrir por slot e PON ↓</button>` : ''}</div>
+      <div class="pp-al-n"><b>${a.qtd || 0}</b><span>ONUs</span></div></div>`;
+  }).join('') + '</div>' : '<div class="muted" style="font-size:12.5px;">Nenhum alerta de OLT/PON na última coleta. 👍</div>';
+  rede += '</div>';
 
-  html += ppDrillOlts(L, itens, alertas);
-  html += ppGrade(L);
+  rede += ppDrillOlts(L, itens, alertas);
 
   // ---------- Clientes ----------
   const cidades = [...new Set(itens.map(i => i.cidade).filter(Boolean))].sort();
@@ -196,7 +213,7 @@ async function renderPredictPon(forcar){
   lista.sort((a, b) => a.prio - b.prio || (a.faltam == null ? 99 : a.faltam) - (b.faltam == null ? 99 : b.faltam) || (a.c.rx_dbm || 0) - (b.c.rx_dbm || 0));
 
   const sel = (id, val, ops) => `<select id="${id}" class="pp-sel">${ops.map(o => `<option value="${ppEsc(o[0])}"${o[0] === val ? ' selected' : ''}>${ppEsc(o[1])}</option>`).join('')}</select>`;
-  html += `<div class="panel"><div class="panel-head"><h3>Clientes com sinal ruim × O.S.</h3><span class="desc">${PP.clientes.length} contratos consultados · última consulta ${ppHora(ultimaCli)}</span></div>
+  cli += `<div class="panel"><div class="panel-head"><h3>Clientes com sinal ruim × O.S.</h3><span class="desc">${PP.clientes.length} contratos consultados · última consulta ${ppHora(ultimaCli)} <span class="pp-i" title="O sinal é a última leitura gravada no AutoISP, que só muda quando a OLT relê a ONU. &quot;Abrir&quot; leva à página do cliente no AutoISP, e abrir essa página faz a OLT reler o sinal.">ⓘ</span></span></div>
     <div class="pp-filtros">
       ${sel('ppFiltroJanela', PP.filtroJanela, [['RISCO', 'Vão reincidir (IRR/IFI)'], ['ABERTO', 'Já com reparo aberto'], ['TODAS', 'Qualquer janela']])}
       ${sel('ppFiltroSit', PP.filtroSit, [['RUINS', 'Sinal ruim (crítico/atenção/LoS)'], ['PIOROU', 'Sinal piorou'], ['ENERGIA', 'Sem energia/offline'], ['TODOS', 'Todos']])}
@@ -206,15 +223,15 @@ async function renderPredictPon(forcar){
     <div class="table-scroll" style="max-height:520px;overflow-y:auto;"><table class="pivot compact-table pp-tab"><thead><tr>
       <th>Risco</th><th>Contrato</th><th>Cliente</th><th>Cidade · Bairro</th><th class="num">Sinal (dBm)</th><th>Situação</th><th>Mudou</th><th>Última O.S.</th><th>Técnico</th><th>OLT · PON</th><th></th>
     </tr></thead><tbody>${lista.slice(0, 500).map(ppLinha).join('') || '<tr><td colspan="11" class="muted" style="text-align:center;padding:18px;">Nenhum cliente neste filtro.</td></tr>'}</tbody></table></div>
-    ${lista.length > 500 ? `<div class="pp-nota">Mostrando 500 de ${lista.length}. Use o CSV para ver todos.</div>` : ''}
-    <div class="pp-nota">O sinal é a última leitura gravada no AutoISP, que só muda quando a OLT relê a ONU. "Abrir" leva à página do cliente no AutoISP, e abrir essa página faz a OLT reler o sinal.</div></div>`;
+    ${lista.length > 500 ? `<div class="pp-nota">Mostrando 500 de ${lista.length}. Use o CSV para ver todos.</div>` : ''}</div>`;
 
   // ---------- PONs críticas: endereços e clientes ----------
   const criticas = ppPonsCriticas(itens, L);
-  html += criticas.html;
+  rede += criticas.html;
+  rede += ppGrade(L);
 
   // ---------- Mapa ----------
-  html += `<div class="panel"><div class="panel-head"><h3>Mapa dos clientes</h3><span class="desc">${PP.clientes.filter(c => c.lat != null).length} com coordenada · vermelho = crítico/LoS · amarelo = atenção</span></div><div id="ppMapa" class="pp-mapa"></div></div>`;
+  mapa += `<div class="panel"><div class="panel-head"><h3>Mapa dos clientes</h3><span class="desc">${PP.clientes.filter(c => c.lat != null).length} com coordenada · vermelho = crítico/LoS · amarelo = atenção</span></div><div id="ppMapa" class="pp-mapa"></div></div>`;
 
   // ---------- Ranking por técnico + evolução ----------
   const porTec = new Map();
@@ -225,7 +242,7 @@ async function renderPredictPon(forcar){
     porTec.set(i.ultima.recurso, t);
   });
   const tecs = [...porTec.values()].filter(t => t.ruins).sort((a, b) => b.ruins - a.ruins || (b.ruins / b.total) - (a.ruins / a.total)).slice(0, 15);
-  html += `<div class="pp-duas">
+  mapa += `<div class="pp-duas">
     <div class="panel"><div class="panel-head"><h3>Técnicos com mais clientes de sinal ruim</h3><span class="desc">O.S. concluídas nos últimos 30 dias</span></div>
       <div class="table-scroll"><table class="pivot compact-table"><thead><tr><th>Técnico</th><th class="num">Sinal ruim</th><th class="num">Consultados</th><th class="num">%</th></tr></thead><tbody>
       ${tecs.map(t => `<tr><td>${ppEsc(t.nome)}</td><td class="num" style="color:var(--yellow);font-weight:700">${t.ruins}</td><td class="num">${t.total}</td><td class="num">${Math.round(100 * t.ruins / t.total)}%</td></tr>`).join('') || '<tr><td colspan="4" class="muted" style="text-align:center;padding:14px;">Sem dados ainda.</td></tr>'}
@@ -233,9 +250,21 @@ async function renderPredictPon(forcar){
     <div class="panel"><div class="panel-head"><h3>Evolução (48 h)</h3><span class="desc">por coleta</span></div>${ppGrafico()}</div>
   </div>`;
 
+  html += aba('rede', rede) + aba('clientes', cli) + aba('mapa', mapa);
   el.innerHTML = html;
 
-  el.querySelectorAll('[data-pp-janela]').forEach(c => c.onclick = () => { PP.filtroJanela = c.dataset.ppJanela; PP.filtroSit = 'RUINS'; renderPredictPon(); });
+  const irAba = id => {
+    PP.aba = id;
+    el.querySelectorAll('.pp-aba').forEach(d => { d.hidden = d.dataset.aba !== id; });
+    el.querySelectorAll('.pp-aba-btn').forEach(b => b.classList.toggle('active', b.dataset.ppAba === id));
+    if (id === 'mapa' && PP.mapaEnquadrar) setTimeout(PP.mapaEnquadrar, 0);
+  };
+  el.querySelectorAll('.pp-aba-btn').forEach(b => b.onclick = () => irAba(b.dataset.ppAba));
+  el.querySelectorAll('[data-pp-ir]').forEach(c => c.onclick = () => {
+    if (c.dataset.ppJanela){ PP.filtroJanela = c.dataset.ppJanela; PP.filtroSit = 'RUINS'; PP.aba = c.dataset.ppIr; renderPredictPon(); }
+    else irAba(c.dataset.ppIr);
+    el.querySelector('.pp-abas').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   document.getElementById('ppFiltroJanela').onchange = e => { PP.filtroJanela = e.target.value; renderPredictPon(); };
   document.getElementById('ppFiltroSit').onchange = e => { PP.filtroSit = e.target.value; renderPredictPon(); };
   document.getElementById('ppFiltroCidade').onchange = e => { PP.filtroCidade = e.target.value; renderPredictPon(); };
@@ -299,8 +328,7 @@ function ppDrillOlts(L, itens, alertas){
       <span class="pp-olt-tag" style="--c:var(--red)">${ppEsc(g.rotulo || 'OLT degradada')}</span><b class="mono">${ppEsc(g.olt)}</b>
       <span>${ordSlots.length} slots · ${tot.pons} PONs</span><span>${tot.cli} clientes consultados</span><span style="color:var(--red)"><b>${tot.aten}</b> atenuados</span></summary>${htmlSlots || '<div class="muted" style="padding:8px 12px;font-size:12.5px;">Nenhum cliente consultado nesta OLT ainda.</div>'}</details>`;
   }).join('');
-  return `<div class="panel"><div class="panel-head"><h3>OLTs degradadas por slot e PON</h3><span class="desc">OLT › slot › PON › clientes › atenuados › endereços</span></div>${html}
-    <div class="pp-nota">"Clientes consultados" são os contratos com O.S. nos últimos 90 dias que a extensão já leu no AutoISP, não todos os clientes da PON. "ONUs" na etiqueta é quantas ONUs da PON estão na lista de problema do AutoISP. Endereço e nome vêm da última O.S. do contrato.</div></div>`;
+  return `<div class="panel"><div class="panel-head"><h3>OLTs degradadas por slot e PON</h3><span class="desc">OLT › slot › PON › clientes › atenuados › endereços <span class="pp-i" title="&quot;Clientes consultados&quot; são os contratos com O.S. nos últimos 90 dias que a extensão já leu no AutoISP, não todos os clientes da PON. &quot;ONUs&quot; na etiqueta é quantas ONUs da PON estão na lista de problema do AutoISP. Endereço e nome vêm da última O.S. do contrato.">ⓘ</span></span></div>${html}</div>`;
 }
 
 // ---------- PONs críticas ----------
@@ -343,7 +371,7 @@ function ppPonsCriticas(itens, L){
   pons.sort((a, b) => peso(b) - peso(a) || b.risco - a.risco);
 
   const sel = (id, val, ops) => `<select id="${id}" class="pp-sel">${ops.map(o => `<option value="${ppEsc(o[0])}"${String(o[0]) === String(val) ? ' selected' : ''}>${ppEsc(o[1])}</option>`).join('')}</select>`;
-  let h = `<div class="panel"><div class="panel-head"><h3>PONs críticas: endereços e clientes</h3><span class="desc">${pons.length} PON(s) · clientes agrupados por rua · clique para abrir</span></div>
+  let h = `<div class="panel"><div class="panel-head"><h3>PONs críticas: endereços e clientes</h3><span class="desc">${pons.length} PON(s) · clientes agrupados por rua · clique para abrir <span class="pp-i" title="Endereço e nome vêm da O.S. mais recente do contrato carregada no painel (o AutoISP não manda endereço). Vários clientes ruins na mesma rua costumam ser a mesma CTO; espalhados pela PON, olhar troncal/splitter primário.">ⓘ</span></span></div>
     <div class="pp-filtros">
       ${sel('ppPonMin', PP.ponMin, [[2, '2+ clientes em crítico/LoS'], [3, '3+ clientes em crítico/LoS'], [5, '5+ clientes em crítico/LoS'], [10, '10+ clientes em crítico/LoS']])}
       ${sel('ppPonCidade', PP.ponCidade, [['TODAS', 'Todas as cidades']].concat(cidades.map(c => [c, c])))}
@@ -367,14 +395,15 @@ function ppPonsCriticas(itens, L){
           const risco = i.janela === 'IRR' ? `<span class="pp-tag pp-red">IRR ${i.faltam}d</span>` : i.janela === 'IFI' ? `<span class="pp-tag pp-yellow">IFI ${i.faltam}d</span>` : i.janela === 'ABERTO' ? '<span class="pp-tag pp-peach">reparo aberto</span>' : '';
           return `<tr><td>${ppEsc(i.cliente) || '<span class="muted">—</span>'}</td><td class="mono">${ppEsc(i.c.contrato)}</td><td>${ppEsc(i.endereco) || '<span class="muted">sem O.S. carregada</span>'}</td><td class="num" style="color:var(--${s.c});font-weight:700">${ppDbm(i.c.rx_dbm)}</td><td style="color:var(--${s.c})">${ppEsc(s.t)}</td><td>${risco}</td></tr>`; }).join('');
     }).join('');
-    return `<details class="pp-pon" data-pp-pon="${ppEsc(p.k)}"${PP.ponAbertas.has(p.k) ? ' open' : ''}><summary>
+    const corPon = p.alerta ? (p.alerta.nivel === 'MASSIVA' ? 'red' : 'peach') : p.graves >= 10 ? 'red' : 'yellow';
+    return `<details class="pp-pon" style="--c:var(--${corPon})" data-pp-pon="${ppEsc(p.k)}"${PP.ponAbertas.has(p.k) ? ' open' : ''}><summary>
       <div class="pp-pon-h">${tag}<b class="mono">${ppEsc(p.olt)} · PON ${ppEsc(p.pon)}</b><span class="muted">${ppEsc(p.cidade)}</span></div>
       <div class="pp-pon-n"><span style="color:var(--red)"><b>${p.graves}</b> crítico/LoS</span><span style="color:var(--yellow)"><b>${p.atencao}</b> atenção</span>${p.energia ? `<span style="color:var(--peach)"><b>${p.energia}</b> sem energia/offline</span>` : ''}${p.risco ? `<span><b>${p.risco}</b> vão reincidir</span>` : ''}<span class="muted">${p.itens.length} consultados</span></div>
       <div class="pp-pon-b">${bairros.length ? 'Bairros: ' + ppEsc(bairros.slice(0, 6).join(', ')) + (bairros.length > 6 ? ` +${bairros.length - 6}` : '') + ' · ' : ''}Ruas: ${grupos.slice(0, 4).map(g => ppEsc(g.rua) + ' (' + g.itens.length + ')').join(', ')}${grupos.length > 4 ? ` +${grupos.length - 4}` : ''}</div>
     </summary><div class="table-scroll"><table class="pivot compact-table pp-tab"><thead><tr><th>Cliente</th><th>Contrato</th><th>Endereço</th><th class="num">Sinal</th><th>Situação</th><th>Risco</th></tr></thead><tbody>${linhas}</tbody></table></div></details>`;
   }).join('') + '</div>';
   if (pons.length > MAX) h += `<div class="pp-nota">Mostrando as ${MAX} piores de ${pons.length}. O CSV traz todas.</div>`;
-  h += '<div class="pp-nota">Endereço e nome vêm da O.S. mais recente do contrato carregada no painel (o AutoISP não manda endereço). Vários clientes ruins na mesma rua costumam ser a mesma CTO; espalhados pela PON, olhar troncal/splitter primário.</div></div>';
+  h += '</div>';
   return { pons, html: h };
 }
 function ppPonsCsv(pons){
@@ -404,7 +433,7 @@ function ppGrade(L){
   const olts = [...porOlt.values()].map(o => Object.assign(o, { pior: ppPior(o.alertas) }))
     .sort((a, b) => PP_ORDEM.indexOf(a.pior) - PP_ORDEM.indexOf(b.pior) || b.onus - a.onus);
   const leg = ['OLT_PONS', 'RISCO_PON', 'ENERGIA', 'ONU'].map(n => `<span><i style="background:var(--${PP_COR_GRADE[n]})"></i>${{ OLT_PONS: 'Massiva / OLT', RISCO_PON: 'Risco de massiva', ENERGIA: 'Energia', ONU: 'CTO / ONUs isoladas' }[n]}</span>`).join('');
-  let h = `<div class="panel"><div class="panel-head"><h3>Grade de PONs</h3><span class="desc">linha = slot · quadrado = PON com problema · número de baixo = ONUs com alerta</span></div>`;
+  let h = `<div class="panel"><div class="panel-head"><h3>Grade de PONs</h3><span class="desc">linha = slot · quadrado = PON com problema · número de baixo = ONUs com alerta <span class="pp-i" title="Passe o mouse num quadrado para ver os alertas daquela PON. Muitas PONs de slots diferentes ao mesmo tempo apontam para a OLT (energia, temperatura, uplink), não para a rede externa.">ⓘ</span></span></div>`;
   if (!olts.length) return h + '<div class="muted" style="font-size:12.5px;">Nenhuma OLT com alerta na última coleta. 👍</div></div>';
   h += '<div class="pp-grade">' + olts.map(o => {
     const porPon = new Map();
@@ -426,7 +455,7 @@ function ppGrade(L){
     const rot = (o.alertas.find(a => a.nivel === o.pior) || {}).rotulo || o.pior;
     return `<div class="pp-olt"><div class="pp-olt-h"><span class="pp-olt-tag" style="--c:var(--${PP_COR_GRADE[o.pior] || 'text-dim'})">${ppEsc(rot)}</span><b>${ppEsc(o.olt)}</b><span class="muted">${ppEsc(cidadeOlt(o.olt))}</span></div><div class="pp-olt-dx">${ppEsc(dx)}</div>${linhas}</div>`;
   }).join('') + '</div>';
-  return h + `<div class="pp-leg">${leg}</div><div class="pp-nota">Passe o mouse num quadrado para ver os alertas daquela PON. Muitas PONs de slots diferentes ao mesmo tempo apontam para a OLT (energia, temperatura, uplink), não para a rede externa.</div></div>`;
+  return h + `<div class="pp-leg">${leg}</div></div>`;
 }
 
 function ppLinha(i){
@@ -503,8 +532,9 @@ async function ppDesenharMapa(itens){
     m.bindPopup(`<b>${ppEsc(i.cliente || 'Contrato ' + i.c.contrato)}</b><br>Contrato ${ppEsc(i.c.contrato)}<br>${ppEsc(s.t)} · ${ppDbm(i.c.rx_dbm)} dBm<br>${ppEsc(i.olt || '')} ${i.c.pon ? '· PON ' + ppEsc(i.c.pon) : ''}${i.ultima ? '<br>' + ppEsc(i.ultima.tipo) + ' há ' + i.dias + 'd · ' + ppEsc(i.ultima.recurso) : ''}`);
     pontos.push([i.c.lat, i.c.lng]);
   });
-  if (pontos.length) mapa.fitBounds(pontos, { padding: [20, 20], maxZoom: 15 });
-  else mapa.setView([-23.96, -46.33], 10); // Baixada Santista
+  // o mapa pode nascer numa aba escondida (tamanho 0): enquadra de novo quando a aba abrir
+  PP.mapaEnquadrar = () => { mapa.invalidateSize(); if (pontos.length) mapa.fitBounds(pontos, { padding: [20, 20], maxZoom: 15 }); else mapa.setView([-23.96, -46.33], 10); };
+  PP.mapaEnquadrar(); // Baixada Santista quando não há ponto
 }
 
 // Tempo real: canal próprio, para não derrubar o resto do painel se a migração 0020 não tiver rodado.
