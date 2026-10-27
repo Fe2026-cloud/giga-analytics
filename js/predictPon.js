@@ -45,7 +45,7 @@ async function ppCarregar(){
       supabaseClient.from('predict_pon_leituras').select('coletado_em, resumo').gte('coletado_em', desde).order('coletado_em')
     ]);
     if (ult.error) throw ult.error;
-    PP.leitura = ult.data || null;
+    PP.leitura = ppRegraMassiva(ult.data || null);
     PP.leituras = serie.data || [];
     const clientes = [];
     for (let de = 0; de < 50000; de += 1000){
@@ -62,6 +62,34 @@ async function ppCarregar(){
   }finally{
     PP.carregando = false; PP.carregado = true;
   }
+}
+
+// Coletas de extensões antigas (< 0.3.3) marcam massiva com 4+ ONUs em LoS. A regra da operação é 16+:
+// abaixo disso o alerta vira risco de massiva aqui no site, e o resumo é recontado.
+function ppRegraMassiva(L){
+  if (!L || !Array.isArray(L.alertas)) return L;
+  let mudou = false;
+  L.alertas = L.alertas.map(a => {
+    if (a.nivel !== 'MASSIVA') return a;
+    const m = /(\d+)\s*ONUs? em LoS/i.exec(a.detalhe || '');
+    const los = m ? +m[1] : (a.qtd || 0);
+    if (los >= PP_MASSIVA_LOS) return a;
+    mudou = true;
+    return Object.assign({}, a, { nivel: 'RISCO_PON', rotulo: 'Risco de massiva',
+      detalhe: `${los} ONUs em LoS, abaixo das ${PP_MASSIVA_LOS} que fecham massiva. Verificar troncal/splitter antes de cair.` });
+  });
+  if (!mudou) return L;
+  L.alertas = L.alertas.map(a => {
+    if (a.nivel !== 'OLT_PONS' || !a.chave || !/massivas?,/.test(a.detalhe || '')) return a;
+    const f = L.alertas.filter(x => x.pai === a.chave);
+    const mas = f.filter(x => x.nivel === 'MASSIVA').length, ris = f.filter(x => x.nivel === 'RISCO_PON').length;
+    return Object.assign({}, a, { detalhe: a.detalhe.replace(/\(\d+ massivas?, \d+ em risco\)/, `(${mas} massiva${mas === 1 ? '' : 's'}, ${ris} em risco)`) });
+  });
+  const ordem = a => { const i = PP_ORDEM.indexOf(a.nivel); return i < 0 ? 99 : i; };
+  L.alertas = L.alertas.map((a, i) => [a, i]).sort((x, y) => ordem(x[0]) - ordem(y[0]) || x[1] - y[1]).map(x => x[0]);
+  const conta = n => L.alertas.filter(a => a.nivel === n).length;
+  L.resumo = Object.assign({}, L.resumo, { massivas: conta('MASSIVA'), risco: conta('RISCO_PON') });
+  return L;
 }
 
 // Última O.S. (Reparo / Ativação / Mudança) de cada contrato, a partir das O.S. já carregadas no painel.
