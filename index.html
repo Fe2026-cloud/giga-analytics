@@ -1029,6 +1029,102 @@
   tr.pr-total-row td, table.pr-table tr.pr-total-row td, table.pr-table tr.pr-total-row td.pr-col-recurso{background:#0A4EB0 !important;}
   /* títulos de seção que só repetem o título da página */
   #module-reincidencias > .section-title:first-child h2, #module-calc-prazo > .section-title:first-child h2, #module-prod-recurso > .section-title:first-child h2{display:none;}
+
+  /* ---------- demais módulos: mesmo padrão da Visão Geral ---------- */
+  .kc-ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:#fff;flex-shrink:0;position:relative;z-index:1;}
+  .kc-ic .i{width:21px;height:21px;stroke-width:1.9;}
+  .kc-blue{background:var(--grad-blue);} .kc-purple{background:var(--grad-purple);} .kc-green{background:var(--grad-green);}
+  .kc-orange{background:var(--grad-orange);} .kc-red{background:linear-gradient(135deg,#D92D3A 0%,#FF6B6B 100%);} .kc-navy{background:var(--grad-navy);}
+  .kc-cyan{background:linear-gradient(135deg,#0097B2 0%,#00D5E8 100%);}
+
+  /* Produção · Status das ordens */
+  .status-grid{gap:14px;}
+  .status-card{display:flex;align-items:center;gap:12px;padding:16px 16px;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;}
+  .status-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(8,43,89,.12);}
+  .status-card .label{margin:0 0 5px 0;font-size:10.5px;letter-spacing:.06em;}
+  .status-card .value{font-size:30px;font-weight:800;line-height:1;color:var(--text);}
+  .status-card .kc-ic{width:42px;height:42px;box-shadow:0 8px 16px rgba(8,43,89,.16);}
+
+  /* Produção · Visão geral e Produção por Recurso: cartões brancos com ícone e faixa de cor */
+  #kpiGrid, #prCardsGrid{gap:14px;}
+  #kpiGrid .kpi-card, #prCardsGrid .kpi-card{padding:16px 18px;border-radius:var(--radius);}
+  #kpiGrid .kpi-card::after, #prCardsGrid .kpi-card::after{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--grad-blue);}
+  #kpiGrid .kpi-card.alert-green::after{background:var(--grad-green);}
+  #kpiGrid .kpi-card.alert-yellow::after{background:var(--grad-orange);}
+  #kpiGrid .kpi-card.alert-red::after{background:linear-gradient(90deg,#D92D3A,#FF6B6B);}
+  #kpiGrid .kpi-card .label-row, #prCardsGrid .kpi-card .label-row{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  #kpiGrid .kpi-card .value, #prCardsGrid .kpi-card .value{font-size:32px;font-weight:800;}
+  #kpiGrid .kpi-card .foot, #prCardsGrid .kpi-card .foot{font-size:11.5px;color:var(--text-faint);}
+  .kpi-card .label-row .kc-ic{width:34px;height:34px;border-radius:11px;}
+  .kpi-card .label-row .kc-ic .i{width:18px;height:18px;}
+  .kpi-card .label-ic:not(.kc-ic){font-size:16px;}
+
+  /* Prazos / Reincidências: cartões de alerta em gradiente */
+  .venc-grid{gap:16px;}
+  .venc-card{position:relative;overflow:hidden;border:none;color:#fff;text-align:left;padding:16px 18px;min-height:112px;
+    display:grid;grid-template-columns:1fr auto;grid-template-areas:"v i" "l l";align-content:space-between;align-items:center;
+    background:var(--grad-navy);box-shadow:0 12px 26px rgba(8,43,89,.2);}
+  .venc-card::before{content:"";position:absolute;right:-50px;top:-60px;width:170px;height:170px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.22),transparent 72%);pointer-events:none;}
+  .venc-card .value{grid-area:v;color:#fff !important;font-size:40px;font-weight:800;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.12);position:relative;z-index:1;}
+  .venc-card .label{grid-area:l;color:rgba(255,255,255,.95);margin-top:12px;font-size:11px;letter-spacing:.06em;position:relative;z-index:1;}
+  .venc-card .kc-ic{grid-area:i;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.4);}
+  .venc-card.vc-red, .venc-card.vc-red.clickable-card:hover{background:linear-gradient(135deg,#C8202E 0%,#FF6B6B 100%);}
+  .venc-card.vc-orange, .venc-card.vc-orange.clickable-card:hover{background:var(--grad-orange);}
+  .venc-card.vc-green, .venc-card.vc-green.clickable-card:hover{background:var(--grad-green);}
+  .venc-card.vc-blue, .venc-card.vc-blue.clickable-card:hover{background:var(--grad-blue);}
+  .venc-card.vc-purple, .venc-card.vc-purple.clickable-card:hover{background:var(--grad-purple);}
+  .venc-card.vc-navy, .venc-card.vc-navy.clickable-card:hover{background:var(--grad-navy);}
+  .venc-card.clickable-card:hover{transform:translateY(-4px);box-shadow:0 20px 38px rgba(8,43,89,.28);}
+  body.anim-on .venc-grid > *, body.anim-on .status-grid > *, body.anim-on #kpiGrid > *, body.anim-on #prCardsGrid > *{animation:cardRise .45s ease both;}
+  body.anim-on .venc-grid > *:nth-child(2), body.anim-on .status-grid > *:nth-child(2){animation-delay:.05s;}
+  body.anim-on .venc-grid > *:nth-child(3), body.anim-on .status-grid > *:nth-child(3){animation-delay:.1s;}
+  body.anim-on .venc-grid > *:nth-child(4), body.anim-on .status-grid > *:nth-child(4){animation-delay:.15s;}
+  body.anim-on .venc-grid > *:nth-child(5), body.anim-on .status-grid > *:nth-child(5){animation-delay:.2s;}
+
+  /* Calculadora de Prazo: cartão "prazo geral do dia" em gradiente */
+  .cp-geral-card{background:var(--grad-navy) !important;border:none !important;color:#fff;position:relative;overflow:hidden;box-shadow:0 14px 30px rgba(8,43,89,.24);}
+  .cp-geral-card::before{content:"";position:absolute;right:-60px;top:-70px;width:200px;height:200px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,168,255,.35),transparent 72%);pointer-events:none;}
+  .cp-geral-card .cp-geral-label{color:rgba(255,255,255,.85) !important;font-weight:800;letter-spacing:.07em;position:relative;}
+  .cp-geral-card .cp-geral-value{color:#fff !important;font-size:64px;font-weight:800;letter-spacing:-.035em;position:relative;text-shadow:0 2px 12px rgba(0,0,0,.2);}
+  .cp-geral-card .cp-geral-foot, .cp-geral-card .cp-geral-tendencia{color:rgba(255,255,255,.88) !important;position:relative;}
+
+  /* barras de filtro / botões segmentados (Reincidências, Calculadora, Report, Prazos) */
+  .cp-status-bar, .tipo-filter-bar, .dp-tipo-bar{display:inline-flex;flex-wrap:wrap;gap:4px;background:var(--surface-3);padding:4px;border-radius:999px;border:1px solid var(--border-soft);}
+  .cp-status-btn, .dp-tipo-btn, .tipo-filter-btn{border:none !important;background:transparent !important;color:var(--text-dim) !important;border-radius:999px !important;padding:7px 14px !important;font-weight:700;font-size:12.5px;transition:background .15s,color .15s,box-shadow .15s;}
+  .cp-status-btn:hover, .dp-tipo-btn:hover, .tipo-filter-btn:hover{color:var(--accent) !important;background:rgba(8,102,217,.08) !important;}
+  .cp-status-btn.active, .dp-tipo-btn.active, .tipo-filter-btn.active{background:var(--grad-blue) !important;color:#fff !important;box-shadow:0 6px 14px rgba(8,102,217,.3);}
+  .cp-select, .pr-busca{border-radius:999px;border:1px solid var(--border);background:var(--surface);padding:9px 14px;font-size:13px;}
+  .pr-busca:focus, .cp-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(8,102,217,.14);}
+  .rc-amanha-banner{border-radius:var(--radius) !important;}
+
+  /* cabeçalhos de tela com botão (Gerar imagem etc.) */
+  .report-title-bar{display:flex;align-items:center;gap:12px;margin:14px 0 12px 0;}
+  .report-title-bar h3{font-size:16px;font-weight:800;color:var(--text);}
+  .pr-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;}
+  .pr-week-nav{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border-soft);border-radius:999px;padding:4px;box-shadow:var(--shadow-card);}
+  .pr-week-nav span{padding:0 10px;font-weight:700;font-size:13px;color:var(--text);}
+  .pr-status-filters label{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border-soft);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:650;color:var(--text-dim);margin-right:8px;}
+
+  /* painéis de empresa parceira, gestor e absenteísmo */
+  .empresa-block, .go-card, .hb-card, .evo-compare-card{background:var(--surface);}
+  .empresa-block{padding:18px 20px;}
+  .empresa-card{background:var(--surface-2);border:1px solid var(--border-soft);}
+  .empresa-card .value{font-weight:800;}
+
+  #kpiGrid .kpi-card .value, #prCardsGrid .kpi-card .value, .evo-kpi-row .kpi-card .value{color:var(--text);}
+  #kpiGrid .kpi-card.alert-red .value{color:var(--red);} #kpiGrid .kpi-card.alert-green .value{color:var(--green);} #kpiGrid .kpi-card.alert-yellow .value{color:var(--yellow);}
+  .empresa-block, .go-card, .hb-card, .evo-compare-card, .kpi-card, .status-card{color:var(--text);}
+  .empresa-block .empresa-nome, .empresa-block h3, .empresa-block h4{color:var(--text);}
+  #prCardsGrid{grid-template-columns:repeat(4,1fr);}
+  @media (max-width:1100px){#prCardsGrid{grid-template-columns:repeat(2,1fr);}}
+  #absenteismoGrid{grid-template-columns:repeat(auto-fit,minmax(310px,1fr));}
+  #btnGerarImagemReincidencias, #btnGerarImagem{white-space:nowrap;flex-shrink:0;}
+  #module-reincidencias > .section-title{flex-wrap:wrap;}
+  .baixa-producao-card{max-width:340px;}
+  #module-administracao > .section-title:first-child{display:none;}
+  #module-rede-externa > .section-title:first-child h2{display:none;}
+  #module-rede-externa > .section-title:first-child{margin-top:6px;}
+  .stub-panel{border-radius:var(--radius);border:1px dashed var(--border);background:var(--surface-2);color:var(--text-dim);}
 </style>
 </head>
 <body>
@@ -1334,7 +1430,7 @@
 
       <div class="section-title"><h2>Técnicos sem produção</h2><span class="hint">0 ordens concluídas e 0 iniciadas no recorte atual</span></div>
       <div class="kpi-card baixa-producao-card" id="baixaVolumeCard" onclick="toggleBaixaVolumeLista()">
-        <div class="label-row"><span class="label">TÉCNICOS SEM PRODUÇÃO</span><span class="label-ic">⚠️</span></div>
+        <div class="label-row"><span class="label">TÉCNICOS SEM PRODUÇÃO</span><span class="label-ic kc-ic kc-orange"><svg class="i"><use href="#i-alert"/></svg></span></div>
         <div>
           <div class="value" id="baixaVolumeValue">0</div>
           <div class="foot" id="baixaVolumeFoot"></div>
@@ -3797,18 +3893,21 @@ function renderStatusCards(rows){
   const count = s => rows.filter(r => r.status === s).length;
   const backlog = rows.filter(r => BACKLOG_STATUSES.includes(r.status)).length;
   const cards = [
-    { label:'Backlog', value: backlog },
-    { label:'Concluídas', value: count('concluído') },
-    { label:'Iniciadas', value: count('iniciado') },
-    { label:'Em rota', value: count('em rota') },
-    { label:'Não concluídas', value: count('não concluído') },
-    { label:'Suspensas', value: count('suspenso') },
-    { label:'Canceladas', value: count('cancelado') },
+    { label:'Backlog', value: backlog, ic:'box', tom:'purple' },
+    { label:'Concluídas', value: count('concluído'), ic:'check', tom:'green' },
+    { label:'Iniciadas', value: count('iniciado'), ic:'wrench', tom:'blue' },
+    { label:'Em rota', value: count('em rota'), ic:'arrow-r', tom:'cyan' },
+    { label:'Não concluídas', value: count('não concluído'), ic:'alert', tom:'orange' },
+    { label:'Suspensas', value: count('suspenso'), ic:'clock', tom:'navy' },
+    { label:'Canceladas', value: count('cancelado'), ic:'trash', tom:'red' },
   ];
   document.getElementById('statusGrid').innerHTML = cards.map(c => `
     <div class="status-card">
-      <div class="label">${c.label}</div>
-      <div class="value">${c.value}</div>
+      ${kcIc(c.ic, c.tom)}
+      <div>
+        <div class="label">${c.label}</div>
+        <div class="value">${c.value}</div>
+      </div>
     </div>`).join('');
 }
 
@@ -4793,13 +4892,13 @@ function prRenderTable(){
   const mediaGeral = mediasValidas.length ? (mediasValidas.reduce((a,b)=>a+b,0)/mediasValidas.length) : 0;
 
   document.getElementById('prCardsGrid').innerHTML = [
-    { label:'RECURSOS ATIVOS', value:linhas.length, icon:'👷', foot:regionalTxt },
-    { label:'ORDENS NO PERÍODO', value:totalOrdens, icon:'📋', foot:statusTxt },
-    { label:'MÉDIA GERAL', value:mediaGeral.toFixed(1).replace('.',',')+' OS/dia', icon:'📊', foot:'entre recursos com produção' },
-    { label:'PERÍODO', value:prViewMode==='mes'?'Mês':'Semana', icon:'📅', foot:periodoTxt },
+    { label:'RECURSOS ATIVOS', value:linhas.length, icon:kcIc('hardhat','blue'), foot:regionalTxt },
+    { label:'ORDENS NO PERÍODO', value:totalOrdens, icon:kcIc('list','purple'), foot:statusTxt },
+    { label:'MÉDIA GERAL', value:mediaGeral.toFixed(1).replace('.',',')+' OS/dia', icon:kcIc('trend','green'), foot:'entre recursos com produção' },
+    { label:'PERÍODO', value:prViewMode==='mes'?'Mês':'Semana', icon:kcIc('cal','orange'), foot:periodoTxt },
   ].map(c => `
     <div class="kpi-card">
-      <div class="label-row"><span class="label">${c.label}</span><span class="label-ic">${c.icon}</span></div>
+      <div class="label-row"><span class="label">${c.label}</span>${c.icon}</div>
       <div>
         <div class="value" style="font-size:26px;">${c.value}</div>
         <div class="foot"><span class="muted">${c.foot}</span></div>
@@ -4946,7 +5045,7 @@ function renderEvolucaoKpiCards(){
     }
     return `
     <div class="kpi-card">
-      <div class="label-row"><span class="label">${label}</span><span class="label-ic">${icon}</span></div>
+      <div class="label-row"><span class="label">${label}</span>${icon}</div>
       <div>
         <div class="value">${valorFmt}</div>
         <div class="foot">${footHtml}</div>
@@ -4971,9 +5070,9 @@ function renderEvolucaoKpiCards(){
       <div class="evo-gestor-group">
         <div class="evo-gestor-group-title">${GESTOR_NOME[gestorKey]}<span class="sub">${GESTOR_SUBTITULO[gestorKey]}</span></div>
         <div class="evo-kpi-row">
-          ${cardHTML('Concluídas hoje', '✅', concl, concl===null?'—':fmtInt(concl), tendConcl, true)}
-          ${cardHTML('Improdutivas hoje', '⚠️', improd, improd===null?'—':fmtInt(improd), tendImprod, false)}
-          ${cardHTML('Efetividade hoje', '📈', efet, efet===null?'—':fmtPct2(efet), tendEfet, true)}
+          ${cardHTML('Concluídas hoje', kcIc('check','green'), concl, concl===null?'—':fmtInt(concl), tendConcl, true)}
+          ${cardHTML('Improdutivas hoje', kcIc('alert','orange'), improd, improd===null?'—':fmtInt(improd), tendImprod, false)}
+          ${cardHTML('Efetividade hoje', kcIc('trend','blue'), efet, efet===null?'—':fmtPct2(efet), tendEfet, true)}
         </div>
       </div>`;
   }).join('');
@@ -5000,16 +5099,16 @@ function renderKPIs(rows, now){
   const pctAtiv = slaAtiv.pct===null ? null : Math.round(slaAtiv.pct);
 
   const cards = [
-    { label:'Total de OS', value: total, foot: 'no filtro atual' },
-    { label:'Backlog em aberto', value: backlog.length, foot: 'pendente + iniciado + em rota + suspenso' },
-    { label:'Concluídas', value: concluidas.length, foot: 'no filtro atual' },
-    { label:'SLA '+CONFIG.reparo.ideal+'h · Reparo Corretivo', value: pctReparo===null?'—':pctReparo+'%', foot: slaReparo.comDado+' reparos com prazo medido', cls: pctReparo===null?'':'alert-'+pctColor(pctReparo) },
-    { label:'SLA '+CONFIG.ativacao.ideal+'h · Ativação', value: pctAtiv===null?'—':pctAtiv+'%', foot: slaAtiv.comDado+' ativações com prazo medido', cls: pctAtiv===null?'':'alert-'+pctColor(pctAtiv) },
-    { label:'OS vencendo (≤ '+CONFIG.alertaVermelho+'h)', value: alertaVermelho.length, foot: 'reparo/ativação em backlog', cls: alertaVermelho.length>0?'alert-red':'alert-green', linhas: alertaVermelho },
+    { label:'Total de OS', value: total, foot: 'no filtro atual', ic:'list', tom:'blue' },
+    { label:'Backlog em aberto', value: backlog.length, foot: 'pendente + iniciado + em rota + suspenso', ic:'box', tom:'purple' },
+    { label:'Concluídas', value: concluidas.length, foot: 'no filtro atual', ic:'check', tom:'green' },
+    { label:'SLA '+CONFIG.reparo.ideal+'h · Reparo Corretivo', value: pctReparo===null?'—':pctReparo+'%', foot: slaReparo.comDado+' reparos com prazo medido', cls: pctReparo===null?'':'alert-'+pctColor(pctReparo), ic:'wrench', tom:'orange' },
+    { label:'SLA '+CONFIG.ativacao.ideal+'h · Ativação', value: pctAtiv===null?'—':pctAtiv+'%', foot: slaAtiv.comDado+' ativações com prazo medido', cls: pctAtiv===null?'':'alert-'+pctColor(pctAtiv), ic:'wifi', tom:'cyan' },
+    { label:'OS vencendo (≤ '+CONFIG.alertaVermelho+'h)', value: alertaVermelho.length, foot: 'reparo/ativação em backlog', cls: alertaVermelho.length>0?'alert-red':'alert-green', linhas: alertaVermelho, ic:'alert', tom:'red' },
   ];
   document.getElementById('kpiGrid').innerHTML = cards.map((c,i) => `
     <div class="kpi-card ${c.cls||''}${c.linhas&&c.linhas.length?' kpi-card-clickable':''}" ${c.linhas&&c.linhas.length?'data-kpi2-idx="'+i+'"':''}>
-      <div class="label">${c.label}</div>
+      <div class="label-row"><span class="label">${c.label}</span>${kcIc(c.ic, c.tom)}</div>
       <div class="value">${c.value}</div>
       <div class="foot">${c.foot}</div>
     </div>`).join('');
@@ -5603,15 +5702,15 @@ function renderReincidencias(rows, now){
   const nIFI = base.filter(it => it.tipo === 'IFI').length;
   const nInf = base.filter(ehInformada).length;
   const cards = [
-    { label:'Reincidências', valor: base.length, cor:'text', filtro:{ tipo:'TODOS', informada:'TODAS' } },
-    { label:'IRR · reparo em até 30d', valor: nIRR, cor:'red', filtro:{ tipo:'IRR', informada:'TODAS' } },
-    { label:'IFI · até 15d da ativação/mudança', valor: nIFI, cor:'yellow', filtro:{ tipo:'IFI', informada:'TODAS' } },
-    { label:'Falta informar ao gestor', valor: base.length - nInf, cor:'red', filtro:{ tipo:'TODOS', informada:'FALTA' } },
-    { label:'Já informadas', valor: nInf, cor:'green', filtro:{ tipo:'TODOS', informada:'INFORMADAS' } }
+    { label:'Reincidências', valor: base.length, vc:'blue', ic:'repeat', filtro:{ tipo:'TODOS', informada:'TODAS' } },
+    { label:'IRR · reparo em até 30d', valor: nIRR, vc:'red', ic:'wrench', filtro:{ tipo:'IRR', informada:'TODAS' } },
+    { label:'IFI · até 15d da ativação/mudança', valor: nIFI, vc:'orange', ic:'swap', filtro:{ tipo:'IFI', informada:'TODAS' } },
+    { label:'Falta informar ao gestor', valor: base.length - nInf, vc:'purple', ic:'bell', filtro:{ tipo:'TODOS', informada:'FALTA' } },
+    { label:'Já informadas', valor: nInf, vc:'green', ic:'check', filtro:{ tipo:'TODOS', informada:'INFORMADAS' } }
   ];
   const cardsEl = document.getElementById('rcCards');
   cardsEl.innerHTML = cards.map((c,i) => `
-    <div class="venc-card clickable-card" data-rc-card="${i}"><div class="value" style="color:var(--${c.cor})">${c.valor}</div><div class="label">${c.label}</div></div>
+    <div class="venc-card vc-${c.vc} clickable-card" data-rc-card="${i}"><div class="value">${c.valor}</div><div class="label">${c.label}</div>${kcIc(c.ic, 'navy').replace(/ kc-navy/, '')}</div>
   `).join('');
   cardsEl.querySelectorAll('[data-rc-card]').forEach(el => {
     el.addEventListener('click', () => rcAplicarFiltro(cards[+el.dataset.rcCard].filtro));
@@ -6283,14 +6382,14 @@ function renderVencimento(rows, now){
   const aplicavel = rows.filter(r => BACKLOG_STATUSES.includes(r.status) && (r.tipo === 'Reparo Corretivo' || r.tipo === 'Ativação'));
   const comAlerta = aplicavel.map(r => ({ r, a: slaAlertaAberto(r, now) })).filter(x => x.a);
   const cards = [
-    { label:'Vencidas', color:'red', linhas: comAlerta.filter(x => x.a.restante < 0).map(x=>x.r) },
-    { label:'Até 30 min', color:'red', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 0.5).map(x=>x.r) },
-    { label:'Até 1 hora', color:'yellow', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 1).map(x=>x.r) },
-    { label:'Até 2 horas', color:'yellow', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 2).map(x=>x.r) },
-    { label:'Até 4 horas', color:'green', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 4).map(x=>x.r) },
+    { label:'Vencidas', color:'red', ic:'alert', linhas: comAlerta.filter(x => x.a.restante < 0).map(x=>x.r) },
+    { label:'Até 30 min', color:'red', ic:'clock', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 0.5).map(x=>x.r) },
+    { label:'Até 1 hora', color:'yellow', ic:'clock', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 1).map(x=>x.r) },
+    { label:'Até 2 horas', color:'yellow', ic:'clock', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 2).map(x=>x.r) },
+    { label:'Até 4 horas', color:'green', ic:'clock', linhas: comAlerta.filter(x => x.a.restante >= 0 && x.a.restante <= 4).map(x=>x.r) },
   ];
   document.getElementById('vencGrid').innerHTML = cards.map((c,i) => `
-    <div class="venc-card${c.linhas.length?' clickable-card':''}" data-venc-idx="${i}"><div class="value" style="color:var(--${c.color})">${c.linhas.length}</div><div class="label">${c.label}</div></div>
+    <div class="venc-card vc-${c.color==='yellow'?'orange':c.color}${c.linhas.length?' clickable-card':''}" data-venc-idx="${i}"><div class="value">${c.linhas.length}</div><div class="label">${c.label}</div>${kcIc(c.ic, 'navy').replace(/ kc-navy/, '')}</div>
   `).join('');
   document.querySelectorAll('#vencGrid [data-venc-idx]').forEach(el => {
     const c = cards[+el.dataset.vencIdx];
@@ -7149,6 +7248,10 @@ function sparkSVG(serie){
 const MESES_CURTOS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 function rotuloDiaCurto(d){ return String(d.getDate()).padStart(2,'0') + '/' + MESES_CURTOS[d.getMonth()]; }
 
+// Ícone redondo dos cartões (usa o sprite do topo da página). tom: blue|purple|green|orange|red|navy|cyan
+function kcIc(icone, tom){
+  return '<span class="kc-ic kc-' + (tom || 'blue') + '"><svg class="i"><use href="#i-' + icone + '"/></svg></span>';
+}
 /* ============================= NAVEGAÇÃO (menu lateral) ============================= */
 let currentModule = 'visao-geral';
 let sidebarCollapsed = false;
