@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabaseClient.js"></script>
-<script src="js/predictPon.js"></script>
 <script src="js/vlanDados.js"></script>
 <script src="js/vlanMapa.js"></script>
 <style>
@@ -653,22 +652,6 @@
   .carga-bar-track{width:44px;height:7px;background:var(--border-soft);border-radius:3px;overflow:hidden;}
   .carga-bar-fill{height:100%;background:var(--accent);}
   .capacity-input{width:56px;text-align:center;padding:3px 4px;font-size:11px;}
-  /* ---------- Predict PON ---------- */
-  .pp-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px;}
-  @media (max-width:1100px){.pp-cards{grid-template-columns:repeat(3,1fr);}}
-  @media (max-width:640px){.pp-cards{grid-template-columns:repeat(2,1fr);}}
-  .pp-aviso{border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;border:1px solid var(--border-soft);}
-  .pp-aviso.pp-yellow{background:var(--yellow-bg);} .pp-aviso.pp-red{background:var(--red-bg);}
-  .pp-idade.pp-green{color:var(--green);} .pp-idade.pp-yellow{color:var(--yellow);} .pp-idade.pp-red{color:var(--red);font-weight:700;}
-  .pp-diag{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
-  .pp-dg{border:1px solid var(--border-soft);border-left:4px solid var(--c);border-radius:8px;padding:10px 12px;background:var(--surface-2);}
-  .pp-dg-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:13px;}
-  .pp-dg-h b{color:var(--c);}
-  .pp-dg-onde{color:var(--text-dim);font-family:var(--font-mono);font-size:11.5px;}
-  .pp-dg-t{font-size:12.5px;margin-top:4px;}
-  .pp-dg-a{font-size:12px;margin-top:6px;color:var(--text-dim);}
-  .pp-novo{background:var(--red);color:#fff;border-radius:4px;padding:0 6px;font-size:10.5px;font-weight:700;}
-  .pp-nota{font-size:11.5px;color:var(--text-faint);margin-top:10px;}
   .vm-filtros{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
   .vm-filtros label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-dim);font-weight:600;}
   .vm-filtros .vm-busca{flex:1;min-width:220px;}
@@ -685,81 +668,6 @@
   .vm-tag{font-size:11px;padding:2px 7px;border-radius:6px;white-space:nowrap;}
   .vm-red{background:var(--red-bg);color:var(--red);} .vm-peach{background:var(--peach-bg);color:var(--peach);}
   .vm-bairros{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;margin-top:8px;}
-  .pp-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-  .pp-sel,.pp-btn{background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:12.5px var(--font-ui);}
-  .pp-btn{cursor:pointer;} .pp-btn:hover{border-color:var(--accent);}
-  .pp-tag{display:inline-block;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:700;background:var(--gray-bg);color:var(--text-dim);white-space:nowrap;}
-  .pp-tag.pp-red{background:var(--red-bg);color:var(--red);} .pp-tag.pp-yellow{background:var(--yellow-bg);color:var(--yellow);} .pp-tag.pp-peach{background:var(--peach-bg);color:var(--peach);}
-  .pp-tab td.mono{font-family:var(--font-mono);}
-  .pp-tab a{color:var(--accent);} html:not([data-theme="light"]) .pp-tab a{color:#8FB0F5;}
-  .pp-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:10px;max-height:640px;overflow-y:auto;padding-right:4px;}
-  .pp-olt{border:1px solid var(--border-soft);border-radius:8px;padding:10px 12px;background:var(--surface-2);min-width:0;}
-  .pp-olt-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;margin-bottom:4px;}
-  .pp-olt-tag{background:var(--c);color:var(--on-accent);border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;}
-  .pp-olt-dx{font-size:12px;color:var(--text-dim);margin-bottom:8px;}
-  .pp-slot{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:4px;}
-  .pp-sl{width:68px;flex:none;font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
-  .pp-pq{min-width:40px;padding:3px 5px;border-radius:4px;background:var(--c);color:var(--on-accent);font-size:11px;font-weight:700;text-align:center;line-height:1.2;font-variant-numeric:tabular-nums;cursor:default;}
-  .pp-pq small{display:block;font-size:10px;font-weight:400;opacity:.9;}
-  @media (max-width:600px){.pp-grade{grid-template-columns:1fr;}}
-  .pp-sub{font-size:11px;color:var(--text-dim);margin-top:2px;}
-  .pp-pons{display:flex;flex-direction:column;gap:8px;max-height:760px;overflow-y:auto;padding-right:4px;}
-  .pp-pon{border:1px solid var(--border-soft);border-left:4px solid var(--c, var(--red));border-radius:8px;background:var(--surface-2);}
-  .pp-pon > summary{cursor:pointer;padding:9px 12px;list-style:none;}
-  .pp-pon > summary::-webkit-details-marker{display:none;}
-  .pp-pon > summary::before{content:'▸';float:left;margin-right:8px;color:var(--text-dim);}
-  .pp-pon[open] > summary::before{content:'▾';}
-  .pp-pon-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;}
-  .pp-pon-h .mono{font-family:var(--font-mono);}
-  .pp-pon-n{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-top:4px;}
-  .pp-pon-b{font-size:12px;color:var(--text-dim);margin-top:4px;}
-  .pp-pon .table-scroll{padding:0 12px 10px;max-height:none;}
-  .pp-rua td{background:var(--gray-bg);font-size:12px;}
-  .pp-dg-abrir{margin-top:8px;font-size:11.5px;padding:4px 10px;}
-  .pp-dolt{border:1px solid var(--border-soft);border-left:4px solid var(--red);border-radius:8px;background:var(--surface-2);margin-bottom:8px;}
-  .pp-dolt > summary, .pp-dslot > summary{cursor:pointer;list-style:none;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12.5px;}
-  .pp-dolt > summary{padding:10px 12px;font-size:13px;}
-  .pp-dolt > summary::-webkit-details-marker, .pp-dslot > summary::-webkit-details-marker{display:none;}
-  .pp-dolt > summary::before, .pp-dslot > summary::before{content:'▸';color:var(--text-dim);}
-  .pp-dolt[open] > summary::before, .pp-dslot[open] > summary::before{content:'▾';}
-  .pp-dolt .mono{font-family:var(--font-mono);}
-  .pp-dslot{margin:0 12px 6px 22px;border-top:1px solid var(--border-soft);padding-top:6px;}
-  .pp-dslot > summary{padding:4px 0;}
-  .pp-dpon{margin:6px 0 10px 18px;}
-  .pp-dpon-h{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12.5px;margin-bottom:4px;}
-  .pp-dpon .table-scroll{max-height:none;}
-  .pp-card{border-top:3px solid var(--c);}
-  .pp-abas{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px;border-bottom:1px solid var(--border);padding-bottom:0;}
-  .pp-aba-btn{background:none;border:none;border-bottom:3px solid transparent;color:var(--text-dim);font:inherit;font-size:13.5px;font-weight:650;padding:9px 14px 8px;cursor:pointer;display:flex;gap:8px;align-items:center;margin-bottom:-1px;}
-  .pp-aba-btn:hover{color:var(--text);}
-  .pp-aba-btn.active{color:var(--text);border-bottom-color:var(--accent);}
-  html:not([data-theme="light"]) .pp-aba-btn.active{border-bottom-color:#8FB0F5;}
-  .pp-aba-n{background:var(--red-bg);color:var(--red);border-radius:10px;padding:0 7px;font-size:11.5px;font-weight:750;}
-  .pp-i{display:inline-block;cursor:help;color:var(--text-faint);font-size:12px;margin-left:4px;}
-  .pp-alertas{display:flex;flex-direction:column;gap:8px;}
-  .pp-al{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;border:1px solid var(--border-soft);border-left:4px solid var(--c);border-radius:10px;padding:12px 16px;background:var(--surface-2);}
-  .pp-al-ic{width:40px;height:40px;border-radius:50%;background:var(--c);color:var(--on-accent);font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;letter-spacing:.02em;}
-  .pp-al-corpo{min-width:0;}
-  .pp-al-t{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:14px;}
-  .pp-al-t b{color:var(--c);}
-  .pp-al-onde{font-family:var(--font-mono);font-size:12.5px;font-weight:650;}
-  .pp-al-cid{font-family:var(--font-ui);font-weight:400;color:var(--text-dim);}
-  .pp-al-d{font-size:12.5px;color:var(--text-dim);margin-top:3px;}
-  .pp-al-chips{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px;}
-  .pp-al-chl{font-size:11.5px;font-weight:700;margin-right:4px;}
-  .pp-chip{font-family:var(--font-mono);font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--c);color:var(--c);}
-  .pp-al-a{font-size:12.5px;margin-top:6px;}
-  .pp-al-n{text-align:right;line-height:1.1;}
-  .pp-al-n b{display:block;font-size:24px;font-weight:800;color:var(--c);}
-  .pp-al-n span{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700;}
-  @media (max-width:640px){.pp-al{grid-template-columns:1fr auto;padding:10px 12px;}.pp-al-ic{display:none;}}
-  .pp-duas{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  .pp-duas > .panel{margin-bottom:16px;min-width:0;}
-  @media (max-width:1000px){.pp-duas{grid-template-columns:1fr;}}
-  .pp-mapa{height:380px;border-radius:8px;overflow:hidden;}
-  .pp-graf{width:100%;height:auto;}
-  .pp-leg{display:flex;gap:14px;font-size:11.5px;color:var(--text-dim);margin-top:4px;}
-  .pp-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
 
   /* ============================================================================
      REDESIGN 2026 — camada visual (sobrescreve o visual antigo; sem tocar em regra de negócio)
@@ -1232,8 +1140,88 @@
   #module-reincidencias > .section-title{flex-wrap:wrap;}
   .baixa-producao-card{max-width:340px;}
   #module-administracao > .section-title:first-child{display:none;}
-  #module-rede-externa > .section-title:first-child h2{display:none;}
-  #module-rede-externa > .section-title:first-child{margin-top:6px;}
+
+  /* ---------- Cumprimento de Agenda ---------- */
+  #module-cumprimento-agenda > .section-title:first-child h2{display:none;}
+  #module-cumprimento-agenda > .section-title:first-child{margin-top:0;}
+  .ca-toolbar{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin-bottom:16px;}
+  .ca-grupo{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .ca-grupo > span{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text-faint);}
+  .ca-prem-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);border-radius:999px;padding:7px 14px;font:700 12.5px var(--font-ui);cursor:pointer;transition:background .15s,color .15s,border-color .15s;}
+  .ca-prem-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .ca-prem-btn.on{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);}
+  .ca-prem-btn .i{width:15px;height:15px;transition:transform .2s;}
+  .ca-prem-btn.on .i{transform:rotate(180deg);}
+  #caPremissas.ca-oculto{display:none;}
+  .ca-fonte{margin-left:auto;font-size:12px;color:var(--text-faint);text-align:right;}
+  .ca-premissas{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  @media (max-width:900px){.ca-premissas{grid-template-columns:1fr;}}
+  .ca-prem{border-left:4px solid var(--c-blue);padding:2px 0 2px 14px;}
+  .ca-prem.p-green{border-color:var(--c-green);} .ca-prem.p-orange{border-color:var(--c-orange);}
+  .ca-prem b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;color:var(--text);}
+  .ca-prem p{margin:0;font-size:13px;line-height:1.5;color:var(--text-dim);}
+  .ca-formula{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;font-weight:700;color:var(--text);background:var(--surface-3);border-radius:12px;padding:10px 14px;}
+  .ca-formula .i{width:18px;height:18px;color:var(--accent);}
+  .ca-kpis .kpi-card .ca-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,.9);margin-top:8px;line-height:1.35;}
+  .ca-kpis .kpi-card .foot{margin-top:10px;}
+  .ca-kpis .kpi-card .value{font-size:54px;}
+  .ca-share{position:relative;z-index:1;display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+  .ca-share-barra{display:flex;height:16px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.12);}
+  .ca-share-barra i{display:block;height:100%;}
+  .ca-share-barra .a{background:linear-gradient(90deg,#00A8FF,#00D5E8);} .ca-share-barra .b{background:linear-gradient(90deg,#FF9900,#FFC85A);}
+  .ca-share-linha{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13px;color:rgba(255,255,255,.92);}
+  .ca-share-linha b{font-size:20px;color:#fff;font-weight:800;}
+  .ca-share-linha small{display:block;font-size:11px;opacity:.8;font-weight:600;}
+  .ca-share-linha .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;}
+  .ca-ctrl{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center;margin-bottom:10px;}
+  .ca-legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);margin:2px 0 8px 0;}
+  .ca-legenda i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+  .ca-chart svg{width:100%;height:auto;display:block;}
+  .ca-eixo{font-size:11px;fill:var(--text-faint);font-family:var(--font-ui);}
+  .ca-eixo-b{font-size:11px;fill:var(--text-dim);font-weight:700;font-family:var(--font-ui);}
+  .ca-grade{stroke:var(--border-soft);stroke-width:1;}
+  .ca-meta{stroke:var(--c-orange);stroke-width:1.6;stroke-dasharray:4 5;}
+  .ca-meta-txt{font-size:11px;font-weight:800;fill:var(--c-orange);font-family:var(--font-ui);}
+  .ca-b-total{fill:#5C7399;} .ca-b-ok{fill:url(#caGradVerde);}
+  .ca-linha{fill:none;stroke:var(--text);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+  .ca-linha-ref{fill:none;stroke:var(--c-purple);stroke-width:2;stroke-dasharray:2 5;stroke-linecap:round;}
+  .ca-pt{fill:var(--surface);stroke:var(--text);stroke-width:2.2;}
+  .ca-pct-txt{font-size:11px;font-weight:800;fill:var(--text);font-family:var(--font-ui);paint-order:stroke;stroke:var(--surface);stroke-width:3px;}
+  .ca-green{color:var(--green);font-weight:750;} .ca-yellow{color:var(--yellow);font-weight:750;} .ca-red{color:var(--red);font-weight:750;}
+  .ca-delta-up{color:var(--green);font-weight:700;} .ca-delta-down{color:var(--red);font-weight:700;}
+  .ca-chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:750;white-space:nowrap;}
+  .ca-chip.ag{background:var(--accent-glow);color:var(--accent);} .ca-chip.sla{background:var(--peach-bg);color:var(--peach);}
+  .ca-ok{color:var(--green);font-weight:800;} .ca-nok{color:var(--red);font-weight:800;}
+  .ca-mot{display:grid;grid-template-columns:minmax(120px,34%) 1fr auto;gap:12px;align-items:center;padding:7px 0;font-size:13px;}
+  .ca-mot-barra{height:10px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+  .ca-mot-barra i{display:block;height:100%;border-radius:999px;background:var(--grad-orange);}
+  .ca-mot:first-child .ca-mot-barra i{background:linear-gradient(90deg,#D92D3A,#FF6B6B);}
+  .ca-mot small{color:var(--text-faint);font-weight:600;}
+  #module-cumprimento-agenda td.num, #module-cumprimento-agenda th.num{white-space:nowrap;}
+  #module-cumprimento-agenda .ca-chip{white-space:nowrap;}
+
+  /* Cumprimento de Agenda · possíveis erros de apuração (versão compacta) */
+  #caErros{padding:16px 18px;}
+  #caErros .panel-head{margin-bottom:8px;}
+  #caErros .panel-head h3{font-size:15px;}
+  .ca-erros-resumo{font-size:12.5px;color:var(--text-dim);line-height:1.45;margin:0 0 12px 0;}
+  .ca-erros-resumo b{color:var(--text);}
+  .ca-erros-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
+  @media (max-width:1180px){.ca-erros-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+  @media (max-width:700px){.ca-erros-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  .ca-erro{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"n t" "i i";gap:4px 10px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--border-soft);border-left:4px solid var(--c);border-radius:12px;padding:10px 12px;cursor:pointer;font-family:inherit;color:var(--text);transition:transform .15s,box-shadow .15s;}
+  .ca-erro:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(8,43,89,.13);}
+  .ca-erro.ativo{box-shadow:0 0 0 2px var(--c);}
+  .ca-erro .n{grid-area:n;font-size:26px;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--c);}
+  .ca-erro .t{grid-area:t;font-size:11.5px;font-weight:750;line-height:1.25;}
+  .ca-erro .imp{grid-area:i;justify-self:start;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 9px;background:var(--gray-bg);color:var(--c);}
+  .ca-erro.vazio{opacity:.5;cursor:default;}
+  .ca-erro.vazio:hover{transform:none;box-shadow:none;}
+  .ca-erro-total{margin-top:10px;padding:8px 12px;border-radius:10px;background:var(--surface-3);font-size:12px;color:var(--text-dim);line-height:1.45;}
+  .ca-erro-total b{color:var(--text);}
+  .ca-aud{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:800;white-space:nowrap;background:var(--gray-bg);color:var(--c,var(--text-dim));}
+  .ca-vazio{text-align:center;padding:34px 20px;color:var(--text-dim);}
+  .ca-vazio b{display:block;font-size:17px;color:var(--text);margin-bottom:6px;}
   .stub-panel{border-radius:var(--radius);border:1px dashed var(--border);background:var(--surface-2);color:var(--text-dim);}
 </style>
 </head>
@@ -1292,13 +1280,12 @@
       <div class="sidebar-item" data-module="prazos"><span class="ic"><svg class="i"><use href="#i-clock"/></svg></span><span class="lbl">Prazos</span></div>
       <div class="sidebar-item" data-module="calc-prazo"><span class="ic"><svg class="i"><use href="#i-calc"/></svg></span><span class="lbl">Calculadora de Prazo</span></div>
       <div class="sidebar-item" data-module="reincidencias"><span class="ic"><svg class="i"><use href="#i-repeat"/></svg></span><span class="lbl">Reincidências</span></div>
-      <div class="sidebar-item" data-module="predict-pon"><span class="ic"><svg class="i"><use href="#i-wifi"/></svg></span><span class="lbl">Predict PON</span></div>
+      <div class="sidebar-item" data-module="cumprimento-agenda"><span class="ic"><svg class="i"><use href="#i-cal"/></svg></span><span class="lbl">Cumprimento de Agenda</span></div>
       <div class="sidebar-item" data-module="mapa-vlan"><span class="ic"><svg class="i"><use href="#i-swap"/></svg></span><span class="lbl">Mapa de VLANs</span></div>
       <div class="sidebar-item" data-module="improdutivas"><span class="ic"><svg class="i"><use href="#i-alert"/></svg></span><span class="lbl">Improdutivas</span></div>
       <div class="sidebar-item" data-module="backlog"><span class="ic"><svg class="i"><use href="#i-box"/></svg></span><span class="lbl">Backlog</span></div>
       <div class="sidebar-item" data-module="prod-recurso"><span class="ic"><svg class="i"><use href="#i-hardhat"/></svg></span><span class="lbl">Produção por Recurso</span></div>
       <div class="sidebar-item" data-module="pessoas"><span class="ic"><svg class="i"><use href="#i-users"/></svg></span><span class="lbl">Pessoas</span></div>
-      <div class="sidebar-item" data-module="rede-externa"><span class="ic"><svg class="i"><use href="#i-globe"/></svg></span><span class="lbl">Rede Externa</span></div>
       <div class="sidebar-item" data-module="report"><span class="ic"><svg class="i"><use href="#i-report"/></svg></span><span class="lbl">Report Executivo</span></div>
       <div class="sidebar-item" data-module="administracao"><span class="ic"><svg class="i"><use href="#i-gear"/></svg></span><span class="lbl">Administração</span></div>
     </nav>
@@ -1391,16 +1378,12 @@
         <label class="dz-label">Selecionar XLSX<input type="file" class="dz-file-input" accept=".xlsx" id="backlog-xlsx-input"></label>
       </div>
     </div>
-    <div class="upload-grid" style="grid-template-columns:320px 320px;margin-top:12px;">
-      <div class="dropzone" id="dz-REDEEXTERNAINFRA">
-        <div class="dz-head"><span class="dz-regional">🏗️ Infraestrutura POP (CSV diário)</span><button type="button" class="dz-clear-btn" data-clear-chave="Infraestrutura POP" title="Limpar dados de Infraestrutura POP">🗑</button></div>
-        <span class="dz-status" id="dz-status-REDEEXTERNAINFRA">Aguardando arquivo</span>
-        <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-infra-file-input"></label>
-      </div>
-      <div class="dropzone" id="dz-REDEEXTERNAREDES">
-        <div class="dz-head"><span class="dz-regional">🌐 Rede Externa (CSV diário)</span><button type="button" class="dz-clear-btn" data-clear-chave="Rede Externa" title="Limpar dados de Rede Externa">🗑</button></div>
-        <span class="dz-status" id="dz-status-REDEEXTERNAREDES">Aguardando arquivo</span>
-        <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-externa-redes-file-input"></label>
+
+    <div class="upload-grid" style="grid-template-columns:320px;margin-top:12px;">
+      <div class="dropzone" id="dz-AGENDA">
+        <div class="dz-head"><span class="dz-regional">📅 Cumprimento de Agenda (Analítico XLSX)</span></div>
+        <span class="dz-status" id="dz-status-AGENDA">Aguardando arquivo</span>
+        <label class="dz-label">Selecionar XLSX<input type="file" class="dz-file-input" accept=".xlsx" id="agenda-xlsx-input"></label>
       </div>
     </div>
 
@@ -1777,19 +1760,42 @@
       <div id="relatorioNominalContainer"></div>
     </div>
 
-    <div class="module" id="module-predict-pon">
-      <div class="section-title"><h2>Predict PON</h2><span class="hint" id="predictPonHint">sinal das PONs e dos clientes no AutoISP</span></div>
-      <div id="predictPonContainer"></div>
+    <div class="module" id="module-cumprimento-agenda">
+      <div class="section-title"><h2>Cumprimento de Agenda</h2><span class="hint" id="caHint">novo indicador: cumprimento de agenda + cumprimento de SLA</span></div>
+      <div id="caVazio"></div>
+      <div id="caCorpo">
+        <div class="ca-toolbar" id="caToolbar"></div>
+        <div class="panel ca-premissas" id="caPremissas"></div>
+        <div class="vg-row5 ca-kpis" id="caKpis"></div>
+        <div class="panel" id="caErros"></div>
+        <div class="panel" id="caEvolucao"></div>
+        <div class="two-col">
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-building"/></svg>Por cidade</h3><span class="desc">indicador atual × novo, por cidade</span></div><div class="table-scroll"><table class="compact-table" id="caPorCidade"></table></div></div>
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-users"/></svg>Por empresa terceirizada</h3><span class="desc">indicador atual × novo</span></div><div class="table-scroll"><table class="compact-table" id="caPorTerc"></table></div></div>
+        </div>
+        <div class="two-col">
+          <div class="panel"><div class="panel-head"><h3 class="h3-alert"><svg class="i"><use href="#i-alert"/></svg>Por que a agenda não foi cumprida</h3><span class="desc" id="caMotivosDesc"></span></div><div id="caMotivos"></div></div>
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-user"/></svg>Por operador CAT</h3><span class="desc">quem criou a agenda · só OS com agenda confirmada</span></div><div class="table-scroll" style="max-height:380px;overflow-y:auto;"><table class="compact-table" id="caPorOperador"></table></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3><svg class="i"><use href="#i-list"/></svg>OS do período</h3><span class="desc" id="caListaHint"></span></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+            <input type="text" id="caBusca" placeholder="🔎 Buscar OS, contrato, cidade ou operador..." class="pr-busca" style="min-width:260px;">
+            <div class="cp-status-bar" id="caListaFiltro">
+              <button type="button" class="cp-status-btn active" data-lista="NAO">Não cumpridas</button>
+              <button type="button" class="cp-status-btn" data-lista="ERRO">Possíveis erros</button>
+              <button type="button" class="cp-status-btn" data-lista="TODAS">Todas</button>
+            </div>
+            <button type="button" class="btn ghost" id="btnExportarAgenda" style="margin-left:auto;">⬇ Exportar Excel</button>
+          </div>
+          <div class="table-scroll" style="max-height:560px;overflow-y:auto;"><table class="pivot compact-table" id="caTabela"></table></div>
+        </div>
+      </div>
     </div>
 
     <div class="module" id="module-mapa-vlan">
       <div class="section-title"><h2>Mapa de VLANs</h2><span class="hint">bairro × VLAN × equipamento na Baixada Santista · busca de clientes</span></div>
       <div id="mapaVlanContainer"></div>
-    </div>
-
-    <div class="module" id="module-rede-externa">
-      <div class="section-title"><h2>Produção · Rede Externa</h2><span class="hint" id="redeExternaHint">Infraestrutura POP / Rede Externa / B2B — time nacional, dia vigente</span></div>
-      <div id="redeExternaContainer"></div>
     </div>
 
     <div class="module" id="module-report">
@@ -2073,22 +2079,6 @@ const ROSTER_SEED_VIRTUS = [
 let ROSTER = { C10:[...ROSTER_SEED_C10], C13:[...ROSTER_SEED_C13], C14:[...ROSTER_SEED_C14], JH:[...ROSTER_SEED_JH], VIRTUS:[...ROSTER_SEED_VIRTUS] };   // lista fixa de técnicos por regional/empresa (nome do CSV de equipe)
 let HISTORY = {};                          // history[data] = snapshot resumido daquele dia (para absenteísmo/evolução)
 
-/* Rede Externa — 2 CSVs diários separados (Infraestrutura POP e Rede Externa), cada um seu
-   próprio dia vigente + histórico. O grupo vem de qual arquivo foi importado (não precisa de
-   lista de técnicos). Escopo restrito às cidades de Litoral Sul/Norte/Vale do Paraíba. */
-const REDE_EXT_GRUPOS = ['Infraestrutura POP', 'Rede Externa'];
-let REDE_EXT_OPERACIONAL = { 'Infraestrutura POP': null, 'Rede Externa': null };   // grupo -> {data, rows, uploadedAt, filename} | null
-let REDE_EXT_HIST = { 'Infraestrutura POP': {}, 'Rede Externa': {} };             // grupo -> { 'DD/MM/YY': {rows, uploadedAt, filename, data} }
-// Lista de permissão: só técnicos cadastrados aqui aparecem nas tabelas do módulo (vem do
-// mesmo CSV de Equipe, nas linhas com rótulo "Rede Externa"/"Infraestrutura"/"B2B").
-let ROSTER_REDE_EXTERNA = []; // [{nome, grupo}]
-// Cidades de Litoral Sul (C10) / Litoral Norte (C14) / Vale do Paraíba (C13) — únicas
-// consideradas nesse módulo (o CSV de origem cobre um território bem mais amplo).
-const REDE_EXT_CIDADES_PERMITIDAS = new Set([
-  'BERTIOGA','CUBATAO','GUARUJA','ITANHAEM','PERUIBE','PRAIA GRANDE','SANTOS','SAO VICENTE','MONGAGUA',
-  'SAO SEBASTIAO','ILHABELA','CARAGUATATUBA','UBATUBA','BOICUCANGA',
-  'SAO JOSE DOS CAMPOS','JACAREI','TAUBATE','TREMEMBE','CACAPAVA','PINDAMONHANGABA'
-].map(c => semAcento(c)));
 let currentFilterType = 'all';   // 'all' | 'regional' | 'empresa'
 let currentFilterValue = '';     // 'C10'/'C13'/'C14' quando regional; 'JH'/'VIRTUS' quando empresa
 let importOpen = false;          // estado do painel recolhível (memória de sessão)
@@ -2253,36 +2243,6 @@ function normalizeRows(objs, regional, empresa){
       aberturaDate, inicioDate, fimDate
     };
   });
-}
-// Mesmo "formato-base" do CSV de OS normal, mas o export de Rede Externa não tem Bairro e usa
-// campos de data de abertura diferentes ("Horário de Criação/Acionamento" — igual formato
-// DD/MM/AA HH:MM da abertura de OS normal; cai pro formato antigo "Data Abertura Chamado" se
-// vier de um export diferente). Filtra só as cidades de Litoral Sul/Norte/Vale do Paraíba.
-function normalizeRedeExternaRows(objs, grupo){
-  const out = [];
-  objs.forEach(o => {
-    const cidade = (o['Cidade']||'').trim();
-    if (!REDE_EXT_CIDADES_PERMITIDAS.has(semAcento(cidade))) return; // fora do escopo (litoral SP)
-    const status = (o['Status da Atividade']||'').trim().toLowerCase();
-    const tipo = (o['Tipo de Atividade']||'').trim();
-    const aberturaDate = o['Horário de Criação/Acionamento']
-      ? parseAberturaOS(o['Horário de Criação/Acionamento'])
-      : parseAberturaChamado(o['Data Abertura Chamado'], o['Data de Abertura OS'] || o['Data']);
-    const inicioDate = o['Início'] ? parseDDMMYY(o['Data'], o['Início']) : null;
-    const fimDate = o['Fim'] ? parseDDMMYY(o['Data'], o['Fim']) : null;
-    out.push({
-      grupo,
-      os: o['Ordem de Serviço'] || '',
-      data: o['Data'] || '',
-      status,
-      cidade: cidade || '(sem cidade)',
-      tipo,
-      motivo: (o['Motivo de Encerramento das atividades']||'').trim() || '(sem motivo informado)',
-      recurso: limparSufixoRegionalDoNome(o['Recurso']) || '(sem recurso)',
-      aberturaDate, inicioDate, fimDate
-    });
-  });
-  return out;
 }
 function detectRegional(filename){
   const up = filename.toUpperCase();
@@ -2485,29 +2445,6 @@ async function recarregarEquipeRealtime(){
     render();
   }catch(e){ console.error('Falha ao recarregar equipe em tempo real', e); }
 }
-let redeRealtimeTimer = null;
-function recarregarRedeExternaRealtime(){
-  // Debounce + espera a importação local terminar (cada lote de linhas gravado dispara um evento;
-  // recarregar a cada um deles é lento e trocava a base no meio da importação).
-  if (importacaoEmAndamento > 0){ recargaRealtimePendente = true; return; }
-  clearTimeout(redeRealtimeTimer);
-  redeRealtimeTimer = setTimeout(async () => {
-    if (importacaoEmAndamento > 0){ recargaRealtimePendente = true; return; }
-    try{
-      await carregarRedeExternaDoSupabase();
-      updateDzStatusRedeExterna();
-      if (currentModule === 'rede-externa') renderRedeExterna();
-    }catch(e){ console.error('Falha ao recarregar Rede Externa em tempo real', e); }
-  }, 900);
-}
-async function recarregarRedeExternaEquipeRealtime(){
-  try{
-    const { data, error } = await supabaseClient.from('rede_externa_equipe').select('nome, grupo').eq('ativo', true).order('nome');
-    if (error) throw error;
-    ROSTER_REDE_EXTERNA = (data||[]).map(r => ({ nome: r.nome, grupo: r.grupo }));
-    if (currentModule === 'rede-externa') renderRedeExterna();
-  }catch(e){ console.error('Falha ao recarregar equipe de Rede Externa em tempo real', e); }
-}
 async function recarregarBacklogRealtime(){
   try{
     const { data, error } = await supabaseClient.from('backlog_atual').select('*').eq('id', true).maybeSingle();
@@ -2556,9 +2493,6 @@ function iniciarRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ausencias' }, recarregarAusenciasRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'configuracoes' }, recarregarConfigRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'equipe' }, recarregarEquipeRealtime)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_importacoes' }, recarregarRedeExternaRealtime)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_atividades' }, recarregarRedeExternaRealtime)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_externa_equipe' }, recarregarRedeExternaEquipeRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'prazo_sinalizacoes' }, recarregarSinalizacoesRealtime)
     .subscribe();
   // Canal separado: se a tabela ainda não existir (migração 0019 não rodou), só ESTE canal
@@ -2566,6 +2500,10 @@ function iniciarRealtime(){
   supabaseClient
     .channel('painel-realtime-reincidencias')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'reincidencia_informadas' }, recarregarReincidenciasInformadasRealtime)
+    .subscribe();
+  supabaseClient
+    .channel('painel-realtime-agenda')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cumprimento_agenda_os' }, recarregarCumprimentoAgendaRealtime)
     .subscribe();
 }
 
@@ -2619,7 +2557,7 @@ async function marcarComoHistorico(slot, data){
   if (error) throw error;
 }
 
-// Busca todas as linhas de uma tabela filha (ordens_servico / rede_externa_atividades) importação
+// Busca todas as linhas de uma tabela filha (ordens_servico) importação
 // por importação. Cada consulta usa o índice de importacao_id + ORDER BY id — paginar a tabela
 // inteira com range() sem ORDER BY (como era antes) deixa o Postgres livre pra repetir linhas
 // entre páginas (total inflado) ou pular outras (arquivo inteiro "sumindo"). Qualquer página que
@@ -2720,64 +2658,6 @@ async function carregarOrdensServicoDoSupabase(){
   BASE_HIST = novoHist;
 }
 
-// Recarrega REDE_EXT_OPERACIONAL/REDE_EXT_HIST a partir do Supabase — mesmo padrão de
-// carregarOrdensServicoDoSupabase, só que 1 bucket só (não por slot/regional).
-let cargaRedeSeq = 0;
-async function carregarRedeExternaDoSupabase(){
-  const minhaCarga = ++cargaRedeSeq;
-  const { data: importacoes, error: impErr } = await supabaseClient
-    .from('rede_externa_importacoes')
-    .select('id, grupo, vigente, data_referencia, uploaded_at, filename');
-  if (impErr){ console.error('Falha ao carregar importações de Rede Externa', impErr); return; }
-  const mapaImportacoes = {};
-  (importacoes || []).forEach(ic => { mapaImportacoes[ic.id] = ic; });
-
-  const COLUNAS = 'os, data, status, cidade, tipo, motivo, recurso, abertura_at, inicio_at, fim_at, importacao_id';
-  let todasLinhas;
-  try{
-    todasLinhas = await buscarLinhasPorImportacao('rede_externa_atividades', COLUNAS, (importacoes || []).map(ic => ic.id));
-  }catch(e){
-    console.error('Falha ao carregar atividades de Rede Externa — mantendo a base atual da tela', e);
-    return;
-  }
-  if (minhaCarga !== cargaRedeSeq) return;
-
-  const novoOperacional = { 'Infraestrutura POP': null, 'Rede Externa': null };
-  const novoHist = { 'Infraestrutura POP': {}, 'Rede Externa': {} };
-  const grupos = {}; // key = grupo + '|' + data_referencia -> { ...meta, rows:[] }
-  (importacoes || []).forEach(ic => {
-    if (!novoOperacional.hasOwnProperty(ic.grupo)) return;
-    grupos[ic.grupo + '|' + ic.data_referencia] = { id: ic.id, grupo: ic.grupo, vigente: ic.vigente, data: ic.data_referencia, uploadedAt: ic.uploaded_at, filename: ic.filename, rows: [] };
-  });
-  todasLinhas.forEach(row => {
-    const ic = mapaImportacoes[row.importacao_id];
-    if (!ic || !novoOperacional.hasOwnProperty(ic.grupo)) return;
-    const key = ic.grupo + '|' + ic.data_referencia;
-    if (!grupos[key]) return;
-    grupos[key].rows.push({
-      grupo: ic.grupo,
-      os: row.os || '', data: row.data || '', status: row.status || '',
-      cidade: row.cidade || '(sem cidade)',
-      tipo: row.tipo || '', motivo: row.motivo || '(sem motivo informado)',
-      recurso: row.recurso || '(sem recurso)',
-      aberturaDate: row.abertura_at ? new Date(row.abertura_at) : null,
-      inicioDate: row.inicio_at ? new Date(row.inicio_at) : null,
-      fimDate: row.fim_at ? new Date(row.fim_at) : null
-    });
-  });
-  const tempo = d => { const p = parseDDMMYY(d); return p ? p.getTime() : 0; };
-  Object.values(grupos).forEach(g => {
-    const entry = { id: g.id, rows: g.rows, uploadedAt: g.uploadedAt, filename: g.filename, data: g.data };
-    if (!g.vigente){ novoHist[g.grupo][g.data] = entry; return; }
-    const atual = novoOperacional[g.grupo];
-    if (!atual){ novoOperacional[g.grupo] = entry; return; }
-    if (tempo(g.data) > tempo(atual.data)){ novoHist[g.grupo][atual.data] = atual; novoOperacional[g.grupo] = entry; }
-    else novoHist[g.grupo][g.data] = entry;
-  });
-  REDE_EXT_OPERACIONAL = novoOperacional;
-  REDE_EXT_HIST = novoHist;
-}
-
 // Apaga TODA a base de ordens de serviço do Supabase (usado por "Limpar base" — afeta todo mundo).
 async function limparOrdensServicoDoSupabase(){
   const { error } = await supabaseClient.from('importacoes_csv').delete().neq('id', '00000000-0000-0000-0000-000000000000');
@@ -2788,20 +2668,15 @@ async function limparSlotDoSupabase(slot){
   const { error } = await supabaseClient.from('importacoes_csv').delete().eq('slot', slot);
   if (error) throw error;
 }
-async function limparRedeExternaGrupoDoSupabase(grupo){
-  const { error } = await supabaseClient.from('rede_externa_importacoes').delete().eq('grupo', grupo);
-  if (error) throw error;
-}
 // Botão 🗑 de cada dropzone — abre um modal listando os arquivos importados daquela regional/
 // grupo (vigente + cada dia do histórico), pra apagar só o arquivo escolhido, não tudo de uma vez.
-let limparArquivosContexto = null; // { chave, ehRede }
+let limparArquivosContexto = null; // { chave }
 function labelRegionalOuGrupo(chave){
-  const ehRede = REDE_EXT_GRUPOS.includes(chave);
-  return ehRede ? chave : (chave + ' — ' + (REGIONAL_LABEL[chave] || EMPRESA_LABEL[chave] || chave));
+  return chave + ' — ' + (REGIONAL_LABEL[chave] || EMPRESA_LABEL[chave] || chave);
 }
 function limparIndividual(chave){
   if (!ehAdministrador()){ showToast('Só administrador pode apagar arquivos importados.'); return; }
-  limparArquivosContexto = { chave, ehRede: REDE_EXT_GRUPOS.includes(chave) };
+  limparArquivosContexto = { chave };
   document.getElementById('limparArquivosTitulo').textContent = 'Arquivos importados — ' + labelRegionalOuGrupo(chave);
   renderListaArquivosParaLimpar();
   document.getElementById('limparArquivosModalBackdrop').classList.add('open');
@@ -2812,9 +2687,9 @@ function fecharModalLimparArquivos(){
 }
 function renderListaArquivosParaLimpar(){
   if (!limparArquivosContexto) return;
-  const { chave, ehRede } = limparArquivosContexto;
-  const op = ehRede ? REDE_EXT_OPERACIONAL[chave] : OPERACIONAL[chave];
-  const hist = ehRede ? (REDE_EXT_HIST[chave]||{}) : (BASE_HIST[chave]||{});
+  const { chave } = limparArquivosContexto;
+  const op = OPERACIONAL[chave];
+  const hist = BASE_HIST[chave]||{};
   const itens = [];
   if (op) itens.push({ ...op, vigente: true });
   Object.values(hist).forEach(h => itens.push({ ...h, vigente: false }));
@@ -2840,27 +2715,18 @@ function renderListaArquivosParaLimpar(){
 }
 async function apagarArquivoImportado(id, data){
   if (!limparArquivosContexto) return;
-  const { chave, ehRede } = limparArquivosContexto;
+  const { chave } = limparArquivosContexto;
   if (!id){ showToast('Esse arquivo ainda não tem id salvo — recarregue a página e tente de novo.'); return; }
   if (!confirm(`Apagar o arquivo de ${data} (${labelRegionalOuGrupo(chave)})? Essa ação não pode ser desfeita.`)) return;
   try{
-    if (ehRede){
-      const { error } = await supabaseClient.from('rede_externa_importacoes').delete().eq('id', id);
-      if (error) throw error;
-      if (REDE_EXT_OPERACIONAL[chave] && REDE_EXT_OPERACIONAL[chave].data === data) REDE_EXT_OPERACIONAL[chave] = null;
-      delete REDE_EXT_HIST[chave][data];
-      updateDzStatusRedeExterna(chave);
-      if (currentModule === 'rede-externa') renderRedeExterna();
-    } else {
-      const { error } = await supabaseClient.from('importacoes_csv').delete().eq('id', id);
-      if (error) throw error;
-      if (OPERACIONAL[chave] && OPERACIONAL[chave].data === data) OPERACIONAL[chave] = null;
-      delete BASE_HIST[chave][data];
-      updateDzStatus(chave);
-      await updateHistory();
-      refreshFilters();
-      render();
-    }
+    const { error } = await supabaseClient.from('importacoes_csv').delete().eq('id', id);
+    if (error) throw error;
+    if (OPERACIONAL[chave] && OPERACIONAL[chave].data === data) OPERACIONAL[chave] = null;
+    delete BASE_HIST[chave][data];
+    updateDzStatus(chave);
+    await updateHistory();
+    refreshFilters();
+    render();
     registrarAuditoria('apagar_arquivo_importado', { chave, data });
     showToast('Arquivo de ' + data + ' apagado.');
     renderListaArquivosParaLimpar();
@@ -2887,14 +2753,6 @@ async function loadPersisted(){
     (data||[]).forEach(r => { if (novo[r.slot]) novo[r.slot].push(r.nome); });
     SLOT_KEYS.forEach(slot => { if (novo[slot].length) ROSTER[slot] = novo[slot]; });
   }catch(e){ console.error('Falha ao carregar equipe do Supabase', e); }
-  try{
-    await carregarRedeExternaDoSupabase();
-  }catch(e){ console.error('Falha ao carregar Rede Externa do Supabase', e); }
-  try{
-    const { data, error } = await supabaseClient.from('rede_externa_equipe').select('nome, grupo').eq('ativo', true).order('nome');
-    if (error) throw error;
-    if ((data||[]).length) ROSTER_REDE_EXTERNA = data.map(r => ({ nome: r.nome, grupo: r.grupo }));
-  }catch(e){ console.error('Falha ao carregar equipe de Rede Externa do Supabase', e); }
   try{
     await carregarHistoricoDoSupabase();
   }catch(e){ console.error('Falha ao carregar histórico diário do Supabase', e); }
@@ -2934,6 +2792,9 @@ async function loadPersisted(){
   try{
     await carregarReincidenciasInformadasDoSupabase();
   }catch(e){ console.error('Falha ao carregar reincidências informadas do Supabase (migração 0019 rodou?)', e); }
+  try{
+    await carregarCumprimentoAgendaDoSupabase();
+  }catch(e){ console.error('Falha ao carregar Cumprimento de Agenda do Supabase (migração 0021 rodou?)', e); }
   // O painel sempre abre no tema claro — não guarda/lê preferência entre sessões
   // (dá pra alternar durante o uso, mas volta pro claro no próximo carregamento).
   await applyTheme('light');
@@ -2976,7 +2837,7 @@ async function parseUploadedCsv(file, expectedSlot){
   // independente dos demais: esse tipo de arquivo só pode alimentar ele, então a importação
   // normal recusa e orienta a usar a dropzone certa.
   if (objs.length && !('Bairro' in objs[0]) && ('Horário de Criação/Acionamento' in objs[0])){
-    showToast('"' + file.name + '" parece ser um CSV de Rede Externa/Infraestrutura — importe pelas dropzones de Rede Externa, não aqui.');
+    showToast('"' + file.name + '" parece ser um CSV de Rede Externa/Infraestrutura, que não é mais importado neste painel.');
     return null;
   }
   const rows = normalizeRows(objs, meta.regional, meta.empresa);
@@ -3085,207 +2946,6 @@ async function handleFilesBatchInterno(fileList, expectedSlot){
   showToast(`Importação concluída: ✔ ${okCount} arquivo(s) · ⚠ ${dupeSkipped} duplicado(s) · ❌ ${invalid} inválido(s)${erroTxt} · ${elapsed}s`);
 }
 
-/* ============================= REDE EXTERNA · importação (1 CSV nacional por dia) ============================= */
-async function upsertImportacaoRedeExterna(grupo, data, entry, vigente){
-  const { data: imp, error } = await supabaseClient
-    .from('rede_externa_importacoes')
-    .upsert({
-      grupo, data_referencia: data, vigente,
-      filename: entry.filename, total_linhas: entry.rows.length,
-      uploaded_by: CURRENT_USER.id, uploaded_at: entry.uploadedAt
-    }, { onConflict: 'data_referencia,grupo' })
-    .select('id')
-    .single();
-  if (error) throw error;
-
-  const { error: delErr } = await supabaseClient.from('rede_externa_atividades').delete().eq('importacao_id', imp.id);
-  if (delErr) throw delErr;
-
-  const linhas = entry.rows.map(r => ({
-    importacao_id: imp.id, os: r.os, data: r.data, status: r.status,
-    cidade: r.cidade, tipo: r.tipo, motivo: r.motivo, recurso: r.recurso,
-    abertura_at: r.aberturaDate ? r.aberturaDate.toISOString() : null,
-    inicio_at: r.inicioDate ? r.inicioDate.toISOString() : null,
-    fim_at: r.fimDate ? r.fimDate.toISOString() : null
-  }));
-  const LOTE = 500;
-  for (let i=0; i<linhas.length; i+=LOTE){
-    const { error: insErr } = await supabaseClient.from('rede_externa_atividades').insert(linhas.slice(i, i+LOTE));
-    if (insErr) throw insErr;
-  }
-  return imp.id;
-}
-async function marcarComoHistoricoRedeExterna(grupo, data){
-  const { error } = await supabaseClient.from('rede_externa_importacoes').update({ vigente: false }).eq('grupo', grupo).eq('data_referencia', data);
-  if (error) throw error;
-}
-async function handleRedeExternaCsv(file, grupo){
-  if (!/\.csv$/i.test(file.name)){ showToast('Selecione um arquivo .csv'); return; }
-  showProgress(true);
-  updateProgress(0, 1, file.name);
-  importacaoEmAndamento++;
-  try{
-    const text = await readFileAsText(file);
-    const objs = csvToObjects(text);
-    const rows = normalizeRedeExternaRows(objs, grupo);
-    if (!rows.length){ showToast('Nenhuma linha de Litoral Sul/Norte/Vale do Paraíba encontrada nesse CSV.'); showProgress(false); return; }
-    const dateCounts = {};
-    rows.forEach(r => { if (r.data) dateCounts[r.data] = (dateCounts[r.data]||0) + 1; });
-    const entries = Object.entries(dateCounts).sort((a,b) => b[1]-a[1]);
-    if (!entries.length){ showToast('Não consegui identificar a data desse arquivo.'); showProgress(false); return; }
-    const data = entries[0][0];
-    const entry = { rows, uploadedAt: new Date().toISOString(), filename: file.name, data };
-
-    const opAtual = REDE_EXT_OPERACIONAL[grupo];
-    if (!opAtual || data === opAtual.data){
-      entry.id = await upsertImportacaoRedeExterna(grupo, data, entry, true);
-      REDE_EXT_OPERACIONAL[grupo] = entry;
-    } else {
-      const opDate = parseDDMMYY(opAtual.data), newDate = parseDDMMYY(data);
-      if (newDate.getTime() > opDate.getTime()){
-        await marcarComoHistoricoRedeExterna(grupo, opAtual.data);
-        REDE_EXT_HIST[grupo][opAtual.data] = opAtual;
-        entry.id = await upsertImportacaoRedeExterna(grupo, data, entry, true);
-        REDE_EXT_OPERACIONAL[grupo] = entry;
-      } else {
-        entry.id = await upsertImportacaoRedeExterna(grupo, data, entry, false);
-        REDE_EXT_HIST[grupo][data] = entry;
-      }
-    }
-    updateDzStatusRedeExterna(grupo);
-    renderRedeExterna();
-    registrarAuditoria('importar_rede_externa', { grupo, data, linhas: rows.length, filename: file.name });
-    showToast(grupo + ' importado — ' + rows.length + ' linhas (' + data + ')');
-  }catch(err){
-    console.error('Erro ao importar CSV de Rede Externa', err);
-    showToast('Erro ao importar ' + grupo + ': ' + (err.message || err));
-  } finally {
-    showProgress(false);
-    importacaoEmAndamento--;
-    if (importacaoEmAndamento === 0 && recargaRealtimePendente){
-      recargaRealtimePendente = false;
-      agendarRecarregamentoRealtime();
-    }
-  }
-}
-const REDE_EXT_DZ_ID = { 'Infraestrutura POP': 'REDEEXTERNAINFRA', 'Rede Externa': 'REDEEXTERNAREDES' };
-function updateDzStatusRedeExterna(grupo){
-  const grupos = grupo ? [grupo] : REDE_EXT_GRUPOS;
-  grupos.forEach(g => {
-    const suf = REDE_EXT_DZ_ID[g];
-    const dz = document.getElementById('dz-'+suf);
-    const statusEl = document.getElementById('dz-status-'+suf);
-    if (!dz || !statusEl) return;
-    const op = REDE_EXT_OPERACIONAL[g];
-    const histDias = Object.keys(REDE_EXT_HIST[g]||{}).length;
-    if (!op && !histDias){ statusEl.innerHTML = 'Aguardando arquivo'; dz.classList.remove('filled'); return; }
-    dz.classList.add('filled');
-    let html = '';
-    if (op){
-      const dt = new Date(op.uploadedAt);
-      html += '<b>Operacional: '+op.data+'</b> · '+op.rows.length+' atividades · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    } else {
-      html += '<span class="muted">sem dia operacional aberto</span>';
-    }
-    if (histDias) html += '<br><span class="muted">'+histDias+' dia(s) no histórico</span>';
-    statusEl.innerHTML = html;
-  });
-}
-
-/* Painel do módulo Rede Externa: pivot consolidado (Tipo x Status) + quebra por
-   grupo (Infraestrutura POP/Rede Externa/B2B) -> técnico, igual ao report que já é
-   feito hoje. Só usa o dia vigente (mesmo espírito do print de referência). */
-// Desativado temporariamente: a lista de técnicos (rede_externa_equipe) ainda não foi aplicada
-// no banco (instabilidade de login no meio do processo). O código de baixo já está pronto —
-// é só virar pra "true" quando a lista estiver no ar.
-const REDE_EXTERNA_MODULO_ATIVO = true;
-function renderRedeExterna(){
-  const el = document.getElementById('redeExternaContainer');
-  if (!el) return;
-  const hintEl = document.getElementById('redeExternaHint');
-  if (!REDE_EXTERNA_MODULO_ATIVO){
-    if (hintEl) hintEl.textContent = 'em construção';
-    el.innerHTML = '<div class="panel muted" style="text-align:center;padding:44px 20px;">'
-      + '<div style="font-size:26px;margin-bottom:10px;">🚧</div>'
-      + '<b>Módulo em construção</b>'
-      + '<div style="font-size:12.5px;margin-top:6px;">Ainda estamos configurando a lista de técnicos. Volta em breve.</div>'
-      + '</div>';
-    return;
-  }
-
-  let rows = [];
-  const datasPorGrupo = [];
-  REDE_EXT_GRUPOS.forEach(g => {
-    const entry = REDE_EXT_OPERACIONAL[g];
-    if (entry && entry.rows.length){ rows.push(...entry.rows); datasPorGrupo.push(g + ': ' + entry.data); }
-  });
-
-  if (!rows.length){
-    if (hintEl) hintEl.textContent = 'Infraestrutura POP / Rede Externa — Litoral Sul/Norte/Vale do Paraíba, dia vigente';
-    el.innerHTML = '<div class="panel muted">Nenhum dado importado ainda. Carregue os CSVs de Rede Externa em Importar.</div>';
-    return;
-  }
-
-  // Lista de permissão: só entram técnicos cadastrados na Equipe (rótulo Rede Externa/
-  // Infraestrutura/B2B). Sem lista carregada ainda, mostra tudo (evita esconder tudo à toa).
-  if (ROSTER_REDE_EXTERNA.length){
-    const nomesPermitidos = new Set(ROSTER_REDE_EXTERNA.map(r => normNome(r.nome)));
-    rows = rows.filter(r => nomesPermitidos.has(normNome(r.recurso)));
-  }
-  if (!rows.length){
-    if (hintEl) hintEl.textContent = 'Litoral Sul/Norte/Vale do Paraíba — dia vigente: ' + datasPorGrupo.join(' · ');
-    el.innerHTML = '<div class="panel muted">Nenhuma atividade de técnico cadastrado na lista de equipe (Rede Externa/Infraestrutura) nesse dia.</div>';
-    return;
-  }
-  if (hintEl) hintEl.textContent = 'Litoral Sul/Norte/Vale do Paraíba — dia vigente: ' + datasPorGrupo.join(' · ')
-    + (ROSTER_REDE_EXTERNA.length ? '' : ' · ⚠ sem lista de equipe carregada, mostrando tudo');
-
-  let html = `<div class="panel">
-    <div class="panel-head"><h3>Consolidado</h3><span class="desc">${datasPorGrupo.join(' · ')}</span></div>
-    <div class="pivot-wrap">${buildTipoPivotTable(rows)}</div>
-  </div>`;
-
-  const porTecnico = {};
-  rows.forEach(r => {
-    if (!isRecursoTecnicoOuParceira(r.recurso)) return; // ignora placeholders tipo cidade/fila
-    const d = porTecnico[r.recurso] = porTecnico[r.recurso] || { recurso: r.recurso, grupo: r.grupo, byStatus:{}, total:0 };
-    d.total++;
-    d.byStatus[r.status] = (d.byStatus[r.status]||0) + 1;
-  });
-  const listaTecnicos = Object.values(porTecnico);
-  const totalTecnicos = listaTecnicos.length;
-  const totalConcluido = rows.filter(r => r.status === 'concluído').length;
-  const mediaMix = totalTecnicos ? (totalConcluido/totalTecnicos) : 0;
-
-  const porGrupo = {};
-  REDE_EXT_GRUPOS.forEach(g => porGrupo[g] = []);
-  listaTecnicos.forEach(t => { (porGrupo[t.grupo] = porGrupo[t.grupo] || []).push(t); });
-
-  let tbl = '<thead><tr><th>Técnico</th>' + STATUS_COLS.map(s => `<th class="num ${statusColClass(s)}">${STATUS_COL_LABEL[s]}</th>`).join('') + '<th class="num col-total">Total Geral</th></tr></thead><tbody>';
-  const gruposComGente = REDE_EXT_GRUPOS.filter(g => (porGrupo[g]||[]).length);
-  gruposComGente.forEach(g => {
-    const membros = (porGrupo[g]||[]).slice().sort((a,b) => a.recurso.localeCompare(b.recurso));
-    const gTotais = {}; STATUS_COLS.forEach(s => gTotais[s]=0); let gGrand = 0;
-    membros.forEach(t => { STATUS_COLS.forEach(s => gTotais[s] += t.byStatus[s]||0); gGrand += t.total; });
-    tbl += `<tr class="group-header"><td>${g} — ${membros.length} técnico(s)</td>` + STATUS_COLS.map(s => `<td class="num">${gTotais[s]||''}</td>`).join('') + `<td class="num">${gGrand}</td></tr>`;
-    membros.forEach(t => {
-      const cells = STATUS_COLS.map(s => `<td class="num ${statusColClass(s)}">${t.byStatus[s]||''}</td>`).join('');
-      tbl += `<tr><td class="recurso-name" style="padding-left:22px;">${t.recurso}</td>${cells}<td class="num col-total">${t.total}</td></tr>`;
-    });
-  });
-  tbl += '</tbody>';
-
-  html += `<div class="panel">
-    <div class="panel-head"><h3>Por técnico</h3><span class="desc">agrupado pelo arquivo de origem (Infraestrutura POP / Rede Externa)</span></div>
-    <div class="stat-strip">
-      <div class="stat-block"><div class="n">${totalTecnicos}</div><div class="l">Total técnicos</div></div>
-      <div class="stat-block"><div class="n">${mediaMix.toFixed(2).replace('.',',')}</div><div class="l">Média mix serviços</div></div>
-    </div>
-    <div class="table-scroll"><table class="pivot compact-table">${tbl}</table></div>
-  </div>`;
-
-  el.innerHTML = html;
-}
 
 function updateDzStatus(slot){
   const dz = document.getElementById('dz-'+slot);
@@ -3445,17 +3105,6 @@ async function sincronizarEquipeComSupabase(slots){
     }
   }
 }
-async function sincronizarRedeExternaEquipeComSupabase(){
-  const { error: delErr } = await supabaseClient.from('rede_externa_equipe').delete().not('id','is', null);
-  if (delErr) throw delErr;
-  if (!ROSTER_REDE_EXTERNA.length) return;
-  const linhas = ROSTER_REDE_EXTERNA.map(r => ({ nome: r.nome, grupo: r.grupo }));
-  const LOTE = 500;
-  for (let i=0; i<linhas.length; i+=LOTE){
-    const { error: insErr } = await supabaseClient.from('rede_externa_equipe').insert(linhas.slice(i, i+LOTE));
-    if (insErr) throw insErr;
-  }
-}
 function handleRosterFile(file){
   const reader = new FileReader();
   reader.onload = async (e) => {
@@ -3468,16 +3117,10 @@ function handleRosterFile(file){
       updateRosterDzStatus(file.name);
       await sincronizarEquipeComSupabase(slotsAlterados);
 
-      if (parsed.redeExterna && parsed.redeExterna.length){
-        ROSTER_REDE_EXTERNA = parsed.redeExterna;
-        await sincronizarRedeExternaEquipeComSupabase();
-      }
-
       render();
-      if (currentModule === 'rede-externa') renderRedeExterna();
       const total = ROSTER.C10.length + ROSTER.C13.length + ROSTER.C14.length + ROSTER.JH.length + ROSTER.VIRTUS.length;
-      registrarAuditoria('atualizar_equipe', { slots: slotsAlterados, total, redeExterna: ROSTER_REDE_EXTERNA.length, filename: file.name });
-      showToast('Equipe atualizada — ' + total + ' técnicos' + (ROSTER_REDE_EXTERNA.length ? ' + ' + ROSTER_REDE_EXTERNA.length + ' de Rede Externa' : ''));
+      registrarAuditoria('atualizar_equipe', { slots: slotsAlterados, total, filename: file.name });
+      showToast('Equipe atualizada — ' + total + ' técnicos');
     }catch(err){
       console.error(err);
       showToast('Erro ao ler a lista de equipe. Verifique as colunas (Nome, Regional/Empresa).');
@@ -3960,8 +3603,6 @@ function render(){
   document.getElementById('emptyState').style.display = hasAny ? 'none' : 'block';
   document.getElementById('dashboard').style.display = hasAny ? 'block' : 'none';
   SLOT_KEYS.forEach(updateDzStatus);
-  updateDzStatusRedeExterna();
-  if (currentModule === 'rede-externa') renderRedeExterna();
   renderHistoricoBase();
 
   // "Última atualização: dd/mm/aaaa às hh:mm" = o import mais recente entre as bases operacionais;
@@ -4008,6 +3649,7 @@ function render(){
   rc(() => renderBacklogTabela(), 'Evolução horária do backlog');
   rc(() => renderPessoas(), 'Pessoas');
   rc(() => renderReportExecutivo(), 'Report Executivo');
+  rc(() => renderCumprimentoAgenda(), 'Cumprimento de Agenda');
   rc(() => prRenderTable(), 'Produção por Recurso (módulo)');
 }
 
@@ -7275,13 +6917,12 @@ const PAGINAS = {
   'prazos':['Prazos','SLA e vencimento de Reparo Corretivo e Ativação'],
   'calc-prazo':['Calculadora de Prazo','Alerta de vencimento do Reparo Corretivo'],
   'reincidencias':['Reincidências','IRR e IFI por contrato'],
-  'predict-pon':['Predict PON','PONs críticas, massivas e alertas de rede'],
+  'cumprimento-agenda':['Cumprimento de Agenda','Novo indicador: agenda confirmada + SLA'],
   'mapa-vlan':['Mapa de VLANs','Bairro, VLAN e equipamento'],
   'improdutivas':['Improdutivas','Motivos de não conclusão'],
   'backlog':['Backlog','Carga, capacity e evolução do backlog'],
   'prod-recurso':['Produção por Recurso','Desempenho por técnico'],
   'pessoas':['Pessoas','Presença e absenteísmo'],
-  'rede-externa':['Rede Externa','Infraestrutura POP e Rede Externa'],
   'report':['Report Executivo','Consolidado por regional e empresa'],
   'administracao':['Administração','Gestão de usuários e acessos'],
 };
@@ -7376,6 +7017,609 @@ function rotuloDiaCurto(d){ return String(d.getDate()).padStart(2,'0') + '/' + M
 function kcIc(icone, tom){
   return '<span class="kc-ic kc-' + (tom || 'blue') + '"><svg class="i"><use href="#i-' + icone + '"/></svg></span>';
 }
+/* ============================= CUMPRIMENTO DE AGENDA =============================
+   Fonte: export "Analítico" do Power BI (Indicador de Cumprimento de Agenda), importado em XLSX.
+   O painel NÃO recalcula a regra — usa os flags que já vêm no arquivo:
+     flag_prazo  = cumpriu o prazo (24h reparos / 48h altas) desde a abertura  → indicador ATUAL
+     cumpriu     = coluna "Resolutividade" = Sim                                → NOVO indicador
+     marcacao    = AGENDA (cliente confirmou a agenda dentro do prazo) | AGENDA_SC (sem confirmação → vale o SLA)
+   Novo indicador = (OS cumpridas por agenda + OS cumpridas por SLA) ÷ total de OS. Meta: 85%. */
+const CA_META = 85;
+let CA_ROWS = [];
+let CA_TABELA_OK = true;
+let caIndicador = null;      // REPAROS_24H | ALTAS_48H (null = o primeiro que tiver dados)
+let caMes = 'ULTIMO';        // 'ULTIMO' | 'TODOS' | 'AAAA-MM'
+let caGran = 'MES';          // MES | SEMANA | DIA
+let caSerie = 'NOVO';        // NOVO | ATUAL | AGENDA | SLA
+let caListaFiltro = 'NAO';   // NAO (não cumpridas) | TODAS
+let caBusca = '';
+let caImportando = false;
+let caRealtimeTimer = null;
+const CA_COLUNAS = 'os,indicador,chamado,contrato,cidade,regional,cluster,terceirizada,marcacao,flag_prazo,cumpriu,data_abertura,data_evento,turno_evento,data_menor_agenda,turno_menor_agenda,data_primeira_visita,turno_primeira_visita,total_visitas,flag_antecipacao,flag_quebra_menor_agenda,motivo_quebra,submotivo_quebra,operador_cat,usuario_menor_agenda,importado_em';
+const CA_INDICADOR_INFO = {
+  REPAROS_24H: { label:'Reparos 24h', prazo:'24hrs', tipo:'reparos' },
+  ALTAS_48H:   { label:'Altas 48h',   prazo:'48hrs', tipo:'altas' }
+};
+const CA_CAMPOS = {
+  OS:'os', CHAMADO:'chamado', CONTRATO:'contrato', CIDADE:'cidade', REGIONAL:'regional', CLUSTER:'cluster', INDICADOR:'indicador',
+  TERCEIRIZADA:'terceirizada', MARCACAO:'marcacao', FLAGCONFIRMACAO:'flag_confirmacao', RESOLUTIVIDADE:'cumpriu',
+  DATAABERTURACHAMADO:'data_abertura', TURNOCHAMADO:'turno_chamado', DATAINICIOOS:'data_inicio_os', TURNOINICIO:'turno_inicio',
+  DATAEVENTO:'data_evento', TURNOEVENTO:'turno_evento', USUARIOCRIACAODAMENORAGENDA:'usuario_menor_agenda',
+  DATAMENORAGENDA:'data_menor_agenda', TURNOMENORAGENDA:'turno_menor_agenda', DATA1VISITA:'data_primeira_visita',
+  TURNO1VISITA:'turno_primeira_visita', TOTALVISITAS:'total_visitas', NCAANTESDA1VISITA:'nca_antes_visita',
+  TOTALNCA1VISITA:'total_nca', FLAGANTECIPACAOAGENDA:'flag_antecipacao', FLAGVISITAMENORAGENDA:'flag_visita_menor_agenda',
+  FLAGQUEBRAVISITAMENORAGENDA:'flag_quebra_menor_agenda', FLAGVISITA24H:'flag_visita_24h', MOTIVOQUEBRA1VISITA:'motivo_quebra',
+  SUBMOTIVOQUEBRA1VISITA:'submotivo_quebra', OPERADORCAT:'operador_cat', AGENDADENTRO24H:'agenda_dentro_24h', DIFERENCAMINUTOS:'diferenca_minutos'
+};
+const CA_DATAS = new Set(['data_abertura','data_inicio_os','data_evento','data_menor_agenda','data_primeira_visita']);
+const CA_BOOLS = new Set(['cumpriu','flag_prazo','flag_confirmacao','nca_antes_visita','flag_antecipacao','flag_visita_menor_agenda','flag_quebra_menor_agenda','flag_visita_24h','agenda_dentro_24h']);
+const CA_INTS = new Set(['total_visitas','total_nca','diferenca_minutos']);
+
+/* ---------- carga / tempo real ---------- */
+async function carregarCumprimentoAgendaDoSupabase(){
+  const PAGE = 1000, todas = [];
+  for (let from = 0; ; from += PAGE){
+    let r;
+    for (let t = 0; ; t++){
+      r = await supabaseClient.from('cumprimento_agenda_os').select(CA_COLUNAS).order('os').order('indicador').range(from, from + PAGE - 1);
+      if (!r.error) break;
+      if (t >= 2){ CA_TABELA_OK = false; throw r.error; }
+      await new Promise(res => setTimeout(res, 400 * (t + 1)));
+    }
+    (r.data || []).forEach(x => todas.push(x));
+    if ((r.data || []).length < PAGE) break;
+  }
+  CA_TABELA_OK = true;
+  CA_ROWS = todas;
+}
+function recarregarCumprimentoAgendaRealtime(){
+  clearTimeout(caRealtimeTimer);
+  caRealtimeTimer = setTimeout(async () => {
+    if (caImportando) return;
+    try{
+      await carregarCumprimentoAgendaDoSupabase();
+      render();
+    }catch(e){ console.error('Falha ao recarregar Cumprimento de Agenda em tempo real', e); }
+  }, 1500);
+}
+
+/* ---------- importação do XLSX ---------- */
+function caChave(h){ return semAcento(h).replace(/[^A-Z0-9]/g, ''); }
+function caData(v){
+  if (v === null || v === undefined || v === '') return null;
+  if (v instanceof Date) return isNaN(v) ? null : new Date(v.getTime() - v.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  if (typeof v === 'number'){ const d = new Date(Math.round((v - 25569) * 86400000)); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
+  const t = String(v).trim();
+  let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m){ let a = +m[3]; if (a < 100) a += 2000; return a + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0'); }
+  return null;
+}
+function caBool(v){
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v !== 0;
+  const t = semAcento(v);
+  return t === '1' || t === 'SIM' || t === 'S' || t === 'TRUE';
+}
+function caTxt(v){ const t = (v === null || v === undefined) ? '' : String(v).trim(); return t || null; }
+function caInt(v){ const n = Number(v); return (v === null || v === undefined || v === '' || isNaN(n)) ? null : Math.round(n); }
+
+async function handleAgendaXlsx(file){
+  if (!podeEditarDados()){ showToast('Seu perfil não pode importar dados.'); return; }
+  const statusEl = document.getElementById('dz-status-AGENDA');
+  statusEl.innerHTML = '⏳ Carregando leitor de planilha...';
+  if (!(await loadSheetJS())){
+    showToast('Não consegui carregar o leitor de XLSX — verifique a internet e tente de novo.');
+    statusEl.innerHTML = 'Falha ao carregar. Tente novamente.';
+    return;
+  }
+  caImportando = true;
+  showProgress(true);
+  updateProgress(0, 1, 'Lendo ' + file.name + '...');
+  try{
+    const wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const matriz = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null });
+    if (!matriz.length) throw new Error('planilha vazia');
+    const idx = {};
+    matriz[0].forEach((h, i) => {
+      const k = caChave(h);
+      let campo = CA_CAMPOS[k];
+      if (!campo && k.indexOf('FLAGPRAZO') === 0) campo = 'flag_prazo';
+      if (campo && !(campo in idx)) idx[campo] = i;
+    });
+    ['os', 'indicador', 'marcacao', 'cumpriu', 'data_evento'].forEach(c => {
+      if (!(c in idx)) throw new Error('não achei a coluna "' + c + '" no cabeçalho — esse é o Analítico de Cumprimento de Agenda?');
+    });
+    const agora = new Date().toISOString();
+    const unicas = new Map();
+    let ignoradas = 0;
+    for (let i = 1; i < matriz.length; i++){
+      const r = matriz[i];
+      const osNum = Number(r[idx.os]);
+      if (r[idx.os] === null || r[idx.os] === '' || isNaN(osNum)){ ignoradas++; continue; } // rodapé "Filtros aplicados..." etc.
+      const o = { importado_por: CURRENT_USER.id, importado_em: agora };
+      Object.keys(idx).forEach(campo => {
+        const v = r[idx[campo]];
+        if (CA_DATAS.has(campo)) o[campo] = caData(v);
+        else if (CA_BOOLS.has(campo)) o[campo] = caBool(v);
+        else if (CA_INTS.has(campo)) o[campo] = caInt(v);
+        else o[campo] = caTxt(v);
+      });
+      o.os = String(Math.round(osNum));
+      o.indicador = o.indicador ? semAcento(o.indicador).replace(/\s+/g, '_') : null;
+      o.marcacao = o.marcacao ? semAcento(o.marcacao) : null;
+      if (!o.indicador || !o.data_evento || !o.marcacao){ ignoradas++; continue; }
+      unicas.set(o.os + '|' + o.indicador, o);
+    }
+    const linhas = [...unicas.values()];
+    if (!linhas.length) throw new Error('nenhuma OS válida no arquivo');
+    const LOTE = 500;
+    for (let i = 0; i < linhas.length; i += LOTE){
+      updateProgress(i, linhas.length, 'Gravando ' + Math.min(i + LOTE, linhas.length) + ' de ' + linhas.length + ' OS...');
+      const { error } = await supabaseClient.from('cumprimento_agenda_os').upsert(linhas.slice(i, i + LOTE), { onConflict:'os,indicador' });
+      if (error) throw error;
+    }
+    await carregarCumprimentoAgendaDoSupabase();
+    const indicadores = [...new Set(linhas.map(l => l.indicador))];
+    if (!caIndicador || indicadores.indexOf(caIndicador) === -1) caIndicador = indicadores[0];
+    caMes = 'ULTIMO';
+    const datas = linhas.map(l => l.data_evento).sort();
+    showProgress(false);
+    render();
+    registrarAuditoria('importar_cumprimento_agenda', { filename:file.name, linhas:linhas.length, ignoradas, indicadores, de:datas[0], ate:datas[datas.length - 1] });
+    showToast('Cumprimento de Agenda: ' + linhas.length.toLocaleString('pt-BR') + ' OS importadas (' + caFmtData(datas[0]) + ' a ' + caFmtData(datas[datas.length - 1]) + ').');
+  }catch(err){
+    console.error(err);
+    showProgress(false);
+    atualizarDzAgenda();
+    showToast('Erro ao importar o Analítico: ' + (err.message || err));
+  }finally{
+    caImportando = false;
+  }
+}
+function atualizarDzAgenda(){
+  const el = document.getElementById('dz-status-AGENDA'), dz = document.getElementById('dz-AGENDA');
+  if (!el) return;
+  if (!CA_ROWS.length){ el.innerHTML = 'Aguardando arquivo'; if (dz) dz.classList.remove('filled'); return; }
+  if (dz) dz.classList.add('filled');
+  const datas = CA_ROWS.map(r => r.data_evento).filter(Boolean).sort();
+  const ult = CA_ROWS.reduce((m, r) => (r.importado_em && r.importado_em > m ? r.importado_em : m), '');
+  el.innerHTML = '<b>' + CA_ROWS.length.toLocaleString('pt-BR') + ' OS</b> · ' + caFmtData(datas[0]) + ' a ' + caFmtData(datas[datas.length - 1])
+    + (ult ? '<br><span class="muted">última importação ' + new Date(ult).toLocaleString('pt-BR') + '</span>' : '');
+}
+
+/* ---------- formatação e cálculo ---------- */
+function caEsc(t){ return String(t === null || t === undefined ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function caFmtData(iso){ if (!iso) return '—'; const p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0].slice(2); }
+function caFmtCurto(iso){ const p = iso.split('-'); return p[2] + '/' + p[1]; }
+function caRotuloMes(ym){ const p = ym.split('-'); return MESES_CURTOS[+p[1] - 1] + '/' + p[0].slice(2); }
+function caPct(v){ return v === null || v === undefined ? '—' : v.toFixed(1).replace('.', ',') + '%'; }
+function caPP(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1).replace('.', ',') + ' p.p.'; }
+function caCor(p){ if (p === null || p === undefined) return ''; return p >= CA_META ? 'ca-green' : (p >= GAUGE_YELLOW_MIN ? 'ca-yellow' : 'ca-red'); }
+function caSemanaISO(iso){
+  const d = new Date(iso + 'T00:00:00Z');
+  const seg = new Date(d.getTime() - ((d.getUTCDay() + 6) % 7) * 86400000);
+  const quin = new Date(seg.getTime() + 3 * 86400000);
+  const j4 = new Date(Date.UTC(quin.getUTCFullYear(), 0, 4));
+  const sem = 1 + Math.round(((quin - j4) / 86400000 - 3 + ((j4.getUTCDay() + 6) % 7)) / 7);
+  const dom = new Date(seg.getTime() + 6 * 86400000);
+  return { chave: seg.toISOString().slice(0, 10), rotulo: 'S' + sem, faixa: caFmtCurto(seg.toISOString().slice(0, 10)) + '–' + caFmtCurto(dom.toISOString().slice(0, 10)) };
+}
+function caRegionalDoCluster(c){
+  const t = semAcento(c);
+  if (/C\.?10/.test(t) || t.indexOf('SUL') >= 0) return 'C10';
+  if (/C\.?13/.test(t) || t.indexOf('VALE') >= 0) return 'C13';
+  if (/C\.?14/.test(t) || t.indexOf('NORTE') >= 0) return 'C14';
+  return null;
+}
+function caEmpresaDaTerceirizada(t){
+  const u = semAcento(t);
+  if (u.indexOf('JH') >= 0) return 'JH';
+  if (u.indexOf('VIRTUS') >= 0) return 'VIRTUS';
+  return 'GIGA';
+}
+function caFiltrarGlobal(rows){
+  if (currentFilterType === 'regional' && currentFilterValue) return rows.filter(r => caRegionalDoCluster(r.cluster) === currentFilterValue);
+  if (currentFilterType === 'empresa' && currentFilterValue) return rows.filter(r => caEmpresaDaTerceirizada(r.terceirizada) === currentFilterValue);
+  return rows;
+}
+function caMetricas(rows){
+  const m = { t:rows.length, atual:0, novo:0, ag:0, agOk:0, sc:0, scOk:0 };
+  rows.forEach(r => {
+    if (r.flag_prazo) m.atual++;
+    if (r.cumpriu) m.novo++;
+    if (r.marcacao === 'AGENDA'){ m.ag++; if (r.cumpriu) m.agOk++; }
+    else { m.sc++; if (r.cumpriu) m.scOk++; }
+  });
+  const p = (a, b) => b ? a / b * 100 : null;
+  m.pAtual = p(m.atual, m.t); m.pNovo = p(m.novo, m.t); m.pAg = p(m.agOk, m.ag); m.pSc = p(m.scOk, m.sc);
+  return m;
+}
+
+/* ---------- gráfico (barras = volume · linha = %) ---------- */
+function caPontos(rows, gran, serie, mesSel){
+  let base = rows;
+  if ((gran === 'SEMANA' || gran === 'DIA') && mesSel !== 'TODOS') base = rows.filter(r => r.data_evento.slice(0, 7) === mesSel);
+  const grupos = new Map();
+  base.forEach(r => {
+    let k, rot, faixa;
+    if (gran === 'MES'){ k = r.data_evento.slice(0, 7); rot = caRotuloMes(k); faixa = rot; }
+    else if (gran === 'SEMANA'){ const w = caSemanaISO(r.data_evento); k = w.chave; rot = w.rotulo; faixa = w.rotulo + ' (' + w.faixa + ')'; }
+    else { k = r.data_evento; rot = caFmtCurto(k); faixa = caFmtData(k); }
+    if (!grupos.has(k)) grupos.set(k, { k, rot, faixa, rs:[] });
+    grupos.get(k).rs.push(r);
+  });
+  let lista = [...grupos.values()].sort((a, b) => a.k < b.k ? -1 : 1);
+  if (mesSel === 'TODOS' && gran === 'DIA') lista = lista.slice(-31);
+  if (mesSel === 'TODOS' && gran === 'SEMANA') lista = lista.slice(-14);
+  return lista.map(g => {
+    const sub = serie === 'AGENDA' ? g.rs.filter(r => r.marcacao === 'AGENDA') : (serie === 'SLA' ? g.rs.filter(r => r.marcacao !== 'AGENDA') : g.rs);
+    const ok = serie === 'ATUAL' ? sub.filter(r => r.flag_prazo).length : sub.filter(r => r.cumpriu).length;
+    const mm = caMetricas(g.rs);
+    return {
+      rot: g.rot, faixa: g.faixa, total: sub.length, ok,
+      pct: sub.length ? ok / sub.length * 100 : null,
+      ref: serie === 'NOVO' ? mm.pAtual : (serie === 'ATUAL' ? mm.pNovo : null)
+    };
+  });
+}
+function caGraficoSVG(pontos, serie, rotuloOk, rotuloTotal, rotuloRef){
+  if (!pontos.length) return '<div class="ca-vazio">Sem dados nesse recorte.</div>';
+  const W = 960, H = 330, pl = 46, pr = 46, pt = 20, pb = 50, iw = W - pl - pr, ih = H - pt - pb;
+  const maxBruto = Math.max.apply(null, pontos.map(p => p.total).concat([1]));
+  const passo = Math.pow(10, Math.floor(Math.log10(maxBruto)));
+  const maxV = Math.ceil(maxBruto / passo) * passo;
+  const bw = iw / pontos.length, gw = Math.min(bw * 0.72, 54), meia = gw / 2;
+  const yPct = v => pt + ih - ih * v / 100;
+  let g = '<defs><linearGradient id="caGradVerde" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27D49B"/><stop offset="1" stop-color="#00A56F"/></linearGradient></defs>';
+  [0, 25, 50, 75, 100].forEach(v => {
+    g += '<line class="ca-grade" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yPct(v).toFixed(1) + '" y2="' + yPct(v).toFixed(1) + '"/>'
+      + '<text class="ca-eixo" x="' + (W - pr + 6) + '" y="' + (yPct(v) + 4).toFixed(1) + '">' + v + '%</text>';
+  });
+  [0, 0.5, 1].forEach(f => {
+    g += '<text class="ca-eixo" x="' + (pl - 6) + '" y="' + (pt + ih - ih * f + 4).toFixed(1) + '" text-anchor="end">' + Math.round(maxV * f).toLocaleString('pt-BR') + '</text>';
+  });
+  g += '<line class="ca-meta" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yPct(CA_META).toFixed(1) + '" y2="' + yPct(CA_META).toFixed(1) + '"/>'
+    + '<text class="ca-meta-txt" x="' + (pl + 4) + '" y="' + (yPct(CA_META) - 5).toFixed(1) + '">meta ' + CA_META + '%</text>';
+  const mostrarValores = pontos.length <= 14;
+  const passoRot = Math.ceil(pontos.length / 16);
+  let linha = '', ref = '', pts = '';
+  pontos.forEach((p, i) => {
+    const cx = pl + bw * (i + 0.5);
+    const hT = ih * p.total / maxV, hO = ih * p.ok / maxV;
+    const tip = p.faixa + '|' + rotuloTotal + ': ' + p.total.toLocaleString('pt-BR') + '|' + rotuloOk + ': ' + p.ok.toLocaleString('pt-BR') + '|' + (p.pct === null ? 'sem OS' : caPct(p.pct) + ' (meta ' + CA_META + '%)')
+      + (rotuloRef && p.ref !== null && p.ref !== undefined ? '|' + rotuloRef + ': ' + caPct(p.ref) : '');
+    g += '<g data-tip="' + caEsc(tip) + '">'
+      + '<rect x="' + (pl + bw * i).toFixed(1) + '" y="' + pt + '" width="' + bw.toFixed(1) + '" height="' + ih + '" fill="transparent"/>'
+      + '<rect class="ca-b-total" x="' + (cx - meia - 1).toFixed(1) + '" y="' + (pt + ih - hT).toFixed(1) + '" width="' + (meia - 0.5).toFixed(1) + '" height="' + hT.toFixed(1) + '" rx="4"/>'
+      + '<rect class="ca-b-ok" x="' + (cx + 0.5).toFixed(1) + '" y="' + (pt + ih - hO).toFixed(1) + '" width="' + (meia - 0.5).toFixed(1) + '" height="' + hO.toFixed(1) + '" rx="4"/></g>';
+    if (i % passoRot === 0) g += '<text class="ca-eixo-b" x="' + cx.toFixed(1) + '" y="' + (H - pb + 18) + '" text-anchor="middle">' + caEsc(p.rot) + '</text>';
+    if (p.pct !== null){
+      pts += (linha ? 'L' : 'M') + cx.toFixed(1) + ' ' + yPct(p.pct).toFixed(1) + ' ';
+      linha = pts;
+    }
+    if (p.ref !== null && p.ref !== undefined) ref += (ref ? 'L' : 'M') + cx.toFixed(1) + ' ' + yPct(p.ref).toFixed(1) + ' ';
+  });
+  if (ref) g += '<path class="ca-linha-ref" d="' + ref + '"/>';
+  if (linha) g += '<path class="ca-linha" d="' + linha + '"/>';
+  pontos.forEach((p, i) => {
+    if (p.pct === null) return;
+    const cx = pl + bw * (i + 0.5), cy = yPct(p.pct);
+    g += '<circle class="ca-pt" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="4.2"/>';
+    if (mostrarValores) g += '<text class="ca-pct-txt" x="' + cx.toFixed(1) + '" y="' + (cy - 10).toFixed(1) + '" text-anchor="middle">' + caPct(p.pct) + '</text>';
+  });
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Evolução do indicador">' + g + '</svg>';
+}
+
+/* ---------- tabelas ---------- */
+function caTabelaPor(rows, chaveFn, rotuloColuna, limite){
+  const mapa = new Map();
+  rows.forEach(r => { const k = chaveFn(r) || '(sem informação)'; if (!mapa.has(k)) mapa.set(k, []); mapa.get(k).push(r); });
+  let lista = [...mapa].map(([k, rs]) => ({ k, m: caMetricas(rs) })).sort((a, b) => b.m.t - a.m.t);
+  if (limite) lista = lista.slice(0, limite);
+  if (!lista.length) return '<tbody><tr><td class="muted">Sem dados nesse recorte.</td></tr></tbody>';
+  let h = '<thead><tr><th>' + rotuloColuna + '</th><th class="num">OS</th><th class="num">Atual</th><th class="num">Novo</th><th class="num">Δ</th><th class="num">Agenda</th><th class="num">SLA</th></tr></thead><tbody>';
+  lista.forEach(({ k, m }) => {
+    const d = (m.pNovo !== null && m.pAtual !== null) ? m.pNovo - m.pAtual : null;
+    h += '<tr><td>' + caEsc(k) + '</td><td class="num">' + m.t.toLocaleString('pt-BR') + '</td>'
+      + '<td class="num ' + caCor(m.pAtual) + '">' + caPct(m.pAtual) + '</td>'
+      + '<td class="num ' + caCor(m.pNovo) + '">' + caPct(m.pNovo) + '</td>'
+      + '<td class="num ' + (d === null ? '' : (d >= 0 ? 'ca-delta-up' : 'ca-delta-down')) + '">' + (d === null ? '—' : caPP(d)) + '</td>'
+      + '<td class="num ' + caCor(m.pAg) + '">' + caPct(m.pAg) + '</td>'
+      + '<td class="num ' + caCor(m.pSc) + '">' + caPct(m.pSc) + '</td></tr>';
+  });
+  return h + '</tbody>';
+}
+
+/* ---------- auditoria: possíveis erros de apuração ----------
+   Procura OS que, pelos dados do próprio arquivo, parecem ter sido atendidas dentro da agenda (ou do prazo)
+   mas ficaram como "não cumpridas". São INDÍCIOS pra conferir com a área do Power BI — o painel não
+   muda o resultado oficial. Cada OS cai em no máximo uma categoria. */
+let caErroCat = 'TODOS';
+let caPremissasAberto = false;   // premissas começam recolhidas pra os cartões aparecerem primeiro
+try{ caPremissasAberto = localStorage.getItem('caPremissasAberto') === '1'; }catch(e){}
+const CA_MOTIVOS_EXTERNOS = ['CLIENTE AUSENTE', 'SOLICITACAO DE REAGENDAMENTO', 'CHUVA', 'FALHA MASSIVA', 'ENTRADA NAO AUTORIZADA', 'PROBLEMA DE INFRAESTRUTURA', 'ABERTURA INDEVIDA'];
+const CA_ERROS = {
+  FINALIZOU_FORA: { cor:'#0866D9', titulo:'Visita na janela, finalizou fora', desc:'O técnico visitou no dia e turno da agenda, fez uma única visita e não há motivo de quebra — a OS terminou depois do turno combinado.', contra:true },
+  MOTIVO_EXTERNO: { cor:'#6D4BE0', titulo:'Visita na janela, causa externa', desc:'Visita no dia e turno da agenda, mas a quebra tem motivo fora do técnico: cliente ausente, reagendamento pedido pelo cliente, chuva, falha massiva, entrada não autorizada...', contra:true },
+  ANTECIPADA:     { cor:'#00A8FF', titulo:'Visita antecipada', desc:'O técnico foi antes do turno/dia da agenda (a premissa permite antecipar) e mesmo assim a OS ficou como não cumprida.', contra:true },
+  SLA_NO_PRAZO:   { cor:'#FF9900', titulo:'Sem confirmação, no prazo', desc:'Sem agenda confirmada vale o SLA (24h/48h). A OS cumpriu o prazo, mas o novo indicador a contou como não cumprida.', contra:true },
+  A_FAVOR:        { cor:'#00B87A', titulo:'Cumprida fora do prazo (a favor)', desc:'Sem agenda confirmada, estourou o prazo do SLA e mesmo assim entrou como cumprida (erro a favor do indicador).', contra:false }
+};
+function caOrdTurno(t){ const u = semAcento(t); return u === 'MANHA' ? 0 : (u === 'TARDE' ? 1 : null); }
+function caClassificaErro(r){
+  if (r.cumpriu) return (r.marcacao !== 'AGENDA' && r.flag_prazo === false) ? 'A_FAVOR' : null;
+  if (r.marcacao !== 'AGENDA') return r.flag_prazo ? 'SLA_NO_PRAZO' : null;
+  if (!r.data_menor_agenda || !r.data_primeira_visita) return null;
+  const mT = caOrdTurno(r.turno_menor_agenda), vT = caOrdTurno(r.turno_primeira_visita);
+  const mesmoDia = r.data_primeira_visita === r.data_menor_agenda;
+  if (mesmoDia && mT !== null && mT === vT){
+    const mot = semAcento(r.motivo_quebra || '');
+    if ((r.total_visitas || 0) <= 1 && !mot) return 'FINALIZOU_FORA';
+    if (CA_MOTIVOS_EXTERNOS.indexOf(mot) >= 0) return 'MOTIVO_EXTERNO';
+    return null;
+  }
+  const antes = r.data_primeira_visita < r.data_menor_agenda || (mesmoDia && mT !== null && vT !== null && vT < mT);
+  if (antes && r.flag_antecipacao) return 'ANTECIPADA';
+  return null;
+}
+function caChipErro(r){
+  const k = caClassificaErro(r);
+  if (!k) return '<span class="muted">—</span>';
+  const e = CA_ERROS[k];
+  return '<span class="ca-aud" style="--c:' + e.cor + '" title="' + caEsc(e.desc) + '">' + caEsc(e.titulo) + '</span>';
+}
+function caRenderErros(rowsPeriodo, m){
+  const cont = {}; Object.keys(CA_ERROS).forEach(k => cont[k] = 0);
+  rowsPeriodo.forEach(r => { const k = caClassificaErro(r); if (k) cont[k]++; });
+  const contra = Object.keys(CA_ERROS).filter(k => CA_ERROS[k].contra).reduce((a, k) => a + cont[k], 0);
+  const naoCumpridas = m.t - m.novo;
+  const pot = m.t ? (m.novo + contra) / m.t * 100 : null;
+  const gan = (pot !== null && m.pNovo !== null) ? pot - m.pNovo : null;
+  const el = document.getElementById('caErros');
+  const cards = Object.keys(CA_ERROS).map(k => {
+    const e = CA_ERROS[k], n = cont[k], imp = m.t ? n / m.t * 100 : 0;
+    return '<button type="button" class="ca-erro' + (n ? '' : ' vazio') + (caListaFiltro === 'ERRO' && caErroCat === k ? ' ativo' : '') + '" style="--c:' + e.cor + '" data-erro="' + k + '" title="' + caEsc(e.desc) + '"' + (n ? '' : ' disabled') + '>'
+      + '<span class="n">' + n.toLocaleString('pt-BR') + '</span><span class="t">' + e.titulo + '</span>'
+      + '<span class="imp">' + (e.contra ? '+' : '−') + imp.toFixed(1).replace('.', ',') + ' p.p.</span></button>';
+  }).join('');
+  el.innerHTML = '<div class="panel-head"><h3 class="h3-alert"><svg class="i"><use href="#i-alert"/></svg>Possíveis erros de apuração</h3><span class="desc">atendidas dentro da agenda/prazo, mas contadas como não cumpridas</span></div>'
+    + '<p class="ca-erros-resumo"><b>' + contra.toLocaleString('pt-BR') + ' de ' + naoCumpridas.toLocaleString('pt-BR') + '</b> OS não cumpridas ('
+    + (naoCumpridas ? (contra / naoCumpridas * 100).toFixed(0) : 0) + '%) têm indício de atendimento dentro da regra. Triagem automática — clique num grupo para listar e passe o mouse para ver o critério.</p>'
+    + '<div class="ca-erros-grid">' + cards + '</div>'
+    + '<div class="ca-erro-total">Se todos fossem cumpridos: Novo indicador de <b>' + caPct(m.pNovo) + '</b> para <b>' + caPct(pot) + '</b>'
+    + (gan !== null ? ' (<b>' + caPP(gan) + '</b>)' : '') + ' · meta ' + CA_META + '%. É um teto: parte pode ser descumprimento legítimo.'
+    + (cont.A_FAVOR ? ' Há <b>' + cont.A_FAVOR + '</b> OS contadas a favor fora do prazo.' : '') + '</div>';
+}
+
+/* ---------- tela ---------- */
+function caBotaoPill(ativo, attr, valor, texto){
+  return '<button type="button" class="cp-status-btn' + (ativo ? ' active' : '') + '" data-' + attr + '="' + caEsc(valor) + '">' + caEsc(texto) + '</button>';
+}
+function renderCumprimentoAgenda(){
+  atualizarDzAgenda();
+  if (currentModule !== 'cumprimento-agenda') return;
+  const vazio = document.getElementById('caVazio'), corpo = document.getElementById('caCorpo');
+  if (!CA_ROWS.length){
+    corpo.style.display = 'none';
+    vazio.innerHTML = '<div class="panel ca-vazio"><b>' + (CA_TABELA_OK ? 'Ainda não há dados de Cumprimento de Agenda' : 'Não consegui ler a tabela de Cumprimento de Agenda') + '</b>'
+      + (CA_TABELA_OK ? 'Importe o Analítico do Power BI (XLSX) em <b style="display:inline">Importar → Cumprimento de Agenda</b>.' : 'A migração 0021 foi aplicada no Supabase?') + '</div>';
+    return;
+  }
+  vazio.innerHTML = ''; corpo.style.display = '';
+
+  const indicadores = [...new Set(CA_ROWS.map(r => r.indicador))].sort();
+  if (!caIndicador || indicadores.indexOf(caIndicador) === -1) caIndicador = indicadores[0];
+  const info = CA_INDICADOR_INFO[caIndicador] || { label: caIndicador, prazo: '24hrs', tipo: 'OS' };
+  const baseInd = caFiltrarGlobal(CA_ROWS.filter(r => r.indicador === caIndicador && r.data_evento));
+  const meses = [...new Set(baseInd.map(r => r.data_evento.slice(0, 7)))].sort();
+  let mesSel = caMes;
+  if (mesSel === 'ULTIMO' || (mesSel !== 'TODOS' && meses.indexOf(mesSel) === -1)) mesSel = meses.length ? meses[meses.length - 1] : 'TODOS';
+  const rowsPeriodo = mesSel === 'TODOS' ? baseInd : baseInd.filter(r => r.data_evento.slice(0, 7) === mesSel);
+  const periodoTxt = mesSel === 'TODOS' ? 'todo o período' : caRotuloMes(mesSel);
+
+  // barra de filtros próprios do módulo (indicador + mês); regional/empresa vêm do topo do painel
+  const datasTodas = CA_ROWS.map(r => r.data_evento).filter(Boolean).sort();
+  let tb = '<div class="ca-grupo"><span>Indicador</span><div class="cp-status-bar" id="caBarInd">'
+    + indicadores.map(i => caBotaoPill(i === caIndicador, 'ind', i, (CA_INDICADOR_INFO[i] || { label:i }).label)).join('') + '</div></div>'
+    + '<div class="ca-grupo"><span>Mês de referência</span><div class="cp-status-bar" id="caBarMes">'
+    + meses.map(m => caBotaoPill(m === mesSel, 'mes', m, caRotuloMes(m))).join('')
+    + caBotaoPill(mesSel === 'TODOS', 'mes', 'TODOS', 'Todos') + '</div></div>'
+    + '<button type="button" class="ca-prem-btn' + (caPremissasAberto ? ' on' : '') + '" data-prem="1" aria-expanded="' + caPremissasAberto + '" title="Mostrar ou ocultar as premissas do indicador"><svg class="i"><use href="#i-chev"/></svg>Premissas</button>'
+    + '<div class="ca-fonte">' + CA_ROWS.length.toLocaleString('pt-BR') + ' OS importadas · ' + caFmtData(datasTodas[0]) + ' a ' + caFmtData(datasTodas[datasTodas.length - 1])
+    + '<br>o filtro de regional/empresa do topo vale aqui</div>';
+  document.getElementById('caToolbar').innerHTML = tb;
+  document.getElementById('caHint').textContent = info.label + ' · ' + periodoTxt + ' · dia de referência = data do evento';
+
+  // premissas (recolhíveis)
+  document.getElementById('caPremissas').classList.toggle('ca-oculto', !caPremissasAberto);
+  document.getElementById('caPremissas').innerHTML = `
+    <div class="ca-prem"><b>Novo indicador</b><p>Soma dos ${info.tipo} cumpridos por <b style="display:inline;text-transform:none;letter-spacing:0">agenda</b> mais os cumpridos por <b style="display:inline;text-transform:none;letter-spacing:0">SLA</b>, sobre o total de OS.</p></div>
+    <div class="ca-prem p-green"><b>Cumprimento de agenda</b><p>Cliente confirmou a agenda dentro do prazo: garantir o atendimento na primeira janela de conveniência acordada com ele.</p></div>
+    <div class="ca-prem p-orange"><b>Cumprimento de SLA</b><p>Sem a confirmação de agenda dentro do SLA, o cliente deve ser atendido dentro do prazo de ${info.prazo}, independentemente.</p></div>
+    <div class="ca-formula"><svg class="i"><use href="#i-trend"/></svg>OS de Agenda cumpridas + OS de SLA cumpridas = Novo indicador · meta ${CA_META}%</div>`;
+
+  // cartões
+  const m = caMetricas(rowsPeriodo);
+  const idxMes = meses.indexOf(mesSel);
+  const mAnt = (mesSel !== 'TODOS' && idxMes > 0) ? caMetricas(baseInd.filter(r => r.data_evento.slice(0, 7) === meses[idxMes - 1])) : null;
+  const cartao = (cls, icone, rotulo, pct, sub, antPct) => {
+    const gap = pct === null ? null : pct - CA_META;
+    const chip = gap === null ? '<span class="foot-note">sem OS no recorte</span>'
+      : '<span class="trend-chip ' + (gap >= 0 ? 'good' : 'bad') + '"><b>' + (gap >= 0 ? '↑' : '↓') + '</b> ' + caPP(gap) + ' vs meta ' + CA_META + '%</span>';
+    const ant = (antPct !== null && antPct !== undefined) ? ' · ' + caRotuloMes(meses[idxMes - 1]) + ': ' + caPct(antPct) : '';
+    return '<div class="kpi-card ' + cls + '"><div class="kpi-top"><span class="kpi-ic"><svg class="i"><use href="#' + icone + '"/></svg></span><span class="label">' + rotulo + '</span></div>'
+      + '<div class="kpi-main"><div class="value">' + caPct(pct) + '</div><div class="ca-sub">' + sub + ant + '</div><div class="foot">' + chip + '</div></div></div>';
+  };
+  const compartilhaA = m.t ? m.ag / m.t * 100 : 0, compartilhaB = m.t ? m.sc / m.t * 100 : 0;
+  document.getElementById('caKpis').innerHTML =
+    cartao('kpi-blue', 'i-check', 'NOVO INDICADOR', m.pNovo, m.novo.toLocaleString('pt-BR') + ' de ' + m.t.toLocaleString('pt-BR') + ' OS cumpridas', mAnt ? mAnt.pNovo : null)
+    + cartao('kpi-purple', 'i-clock', 'INDICADOR ATUAL · ' + info.prazo.toUpperCase(), m.pAtual, m.atual.toLocaleString('pt-BR') + ' de ' + m.t.toLocaleString('pt-BR') + ' dentro do prazo', mAnt ? mAnt.pAtual : null)
+    + cartao('kpi-green', 'i-cal', 'CUMPRIMENTO DA AGENDA', m.pAg, m.agOk.toLocaleString('pt-BR') + ' de ' + m.ag.toLocaleString('pt-BR') + ' OS com agenda confirmada', mAnt ? mAnt.pAg : null)
+    + cartao('kpi-orange', 'i-gauge', 'SLA SEM CONFIRMAÇÃO', m.pSc, m.scOk.toLocaleString('pt-BR') + ' de ' + m.sc.toLocaleString('pt-BR') + ' OS sem agenda confirmada', mAnt ? mAnt.pSc : null)
+    + '<div class="vg-strategic-card"><div class="vg-strategic-title"><svg class="i"><use href="#i-swap"/></svg>Share de ' + info.tipo + '</div><div class="ca-share">'
+    + '<div class="ca-share-barra"><i class="a" style="width:' + compartilhaA.toFixed(1) + '%"></i><i class="b" style="width:' + compartilhaB.toFixed(1) + '%"></i></div>'
+    + '<div class="ca-share-linha"><span><span class="dot" style="background:#00A8FF"></span>Agenda confirmada<small>cliente confirmou no prazo</small></span><b>' + m.ag.toLocaleString('pt-BR') + ' <small style="display:inline">(' + compartilhaA.toFixed(0) + '%)</small></b></div>'
+    + '<div class="ca-share-linha"><span><span class="dot" style="background:#FF9900"></span>Sem confirmação<small>vale o SLA de ' + info.prazo + '</small></span><b>' + m.sc.toLocaleString('pt-BR') + ' <small style="display:inline">(' + compartilhaB.toFixed(0) + '%)</small></b></div>'
+    + '<div class="ca-share-linha"><span>Total</span><b>' + m.t.toLocaleString('pt-BR') + '</b></div></div></div>';
+
+  caRenderErros(rowsPeriodo, m);
+
+  // evolução
+  const SERIES = {
+    NOVO:   { nome:'Novo indicador', ok:'Cumpridas', tot:'OS', ref:'Indicador atual' },
+    ATUAL:  { nome:'Indicador atual (' + info.prazo + ')', ok:'Dentro do prazo', tot:'OS', ref:'Novo indicador' },
+    AGENDA: { nome:'Cumprimento da agenda', ok:'Agenda cumprida', tot:'OS com agenda', ref:null },
+    SLA:    { nome:'SLA sem confirmação', ok:'SLA cumprido', tot:'OS sem confirmação', ref:null }
+  };
+  const sr = SERIES[caSerie] || SERIES.NOVO;
+  const pontos = caPontos(baseInd, caGran, caSerie, mesSel);
+  const granNome = { MES:'por mês', SEMANA:'por semana', DIA:'por dia' }[caGran];
+  document.getElementById('caEvolucao').innerHTML =
+    '<div class="panel-head"><h3><svg class="i"><use href="#i-trend"/></svg>Evolução · ' + sr.nome + '</h3><span class="desc">' + granNome + (caGran !== 'MES' ? ' · ' + (mesSel === 'TODOS' ? 'últimos períodos' : caRotuloMes(mesSel)) : '') + '</span></div>'
+    + '<div class="ca-ctrl"><div class="ca-grupo"><span>Visão</span><div class="cp-status-bar" id="caBarSerie">'
+    + Object.keys(SERIES).map(k => caBotaoPill(k === caSerie, 'serie', k, { NOVO:'Novo indicador', ATUAL:'Indicador atual', AGENDA:'Agenda', SLA:'SLA' }[k])).join('') + '</div></div>'
+    + '<div class="ca-grupo"><span>Período</span><div class="cp-status-bar" id="caBarGran">'
+    + caBotaoPill(caGran === 'MES', 'gran', 'MES', 'Mensal') + caBotaoPill(caGran === 'SEMANA', 'gran', 'SEMANA', 'Semanal') + caBotaoPill(caGran === 'DIA', 'gran', 'DIA', 'Diário') + '</div></div></div>'
+    + '<div class="ca-legenda"><span><i style="background:#5C7399"></i>' + sr.tot + '</span><span><i style="background:#00B87A"></i>' + sr.ok + '</span>'
+    + '<span><i style="background:var(--text);border-radius:50%"></i>' + sr.nome + ' (%)</span>'
+    + (sr.ref ? '<span><i style="background:var(--c-purple);border-radius:50%"></i>' + sr.ref + ' (%)</span>' : '')
+    + '<span><i style="background:var(--c-orange)"></i>meta ' + CA_META + '%</span></div>'
+    + '<div class="ca-chart">' + caGraficoSVG(pontos, caSerie, sr.ok, sr.tot, sr.ref) + '</div>';
+
+  // tabelas por cidade / terceirizada / operador
+  document.getElementById('caPorCidade').innerHTML = caTabelaPor(rowsPeriodo, r => r.cidade, 'Cidade');
+  document.getElementById('caPorTerc').innerHTML = caTabelaPor(rowsPeriodo, r => r.terceirizada, 'Empresa');
+  const doOperador = rowsPeriodo.filter(r => r.marcacao === 'AGENDA' && r.operador_cat);
+  const mapaOp = new Map();
+  doOperador.forEach(r => { if (!mapaOp.has(r.operador_cat)) mapaOp.set(r.operador_cat, []); mapaOp.get(r.operador_cat).push(r); });
+  const ops = [...mapaOp].map(([k, rs]) => ({ k, t: rs.length, ok: rs.filter(r => r.cumpriu).length })).sort((a, b) => b.t - a.t).slice(0, 25);
+  document.getElementById('caPorOperador').innerHTML = ops.length
+    ? '<thead><tr><th>Operador CAT</th><th class="num">OS c/ agenda</th><th class="num">Cumpridas</th><th class="num">% agenda</th></tr></thead><tbody>'
+      + ops.map(o => { const p = o.t ? o.ok / o.t * 100 : null; return '<tr><td>' + caEsc(o.k) + '</td><td class="num">' + o.t + '</td><td class="num">' + o.ok + '</td><td class="num ' + caCor(p) + '">' + caPct(p) + '</td></tr>'; }).join('') + '</tbody>'
+    : '<tbody><tr><td class="muted">Sem operador CAT informado nesse recorte.</td></tr></tbody>';
+
+  // motivos (OS com agenda confirmada que não cumpriram)
+  const naoCumpridas = rowsPeriodo.filter(r => !r.cumpriu);
+  const mapaMot = new Map();
+  naoCumpridas.forEach(r => { const k = r.motivo_quebra || '(sem motivo informado)'; mapaMot.set(k, (mapaMot.get(k) || 0) + 1); });
+  const mots = [...mapaMot].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const maxMot = mots.length ? mots[0][1] : 1;
+  document.getElementById('caMotivosDesc').textContent = naoCumpridas.length.toLocaleString('pt-BR') + ' OS não cumpridas no período';
+  document.getElementById('caMotivos').innerHTML = mots.length
+    ? mots.map(([k, n]) => '<div class="ca-mot"><span>' + caEsc(k) + '</span><div class="ca-mot-barra"><i style="width:' + (n / maxMot * 100).toFixed(0) + '%"></i></div><b>' + n + ' <small>(' + (n / naoCumpridas.length * 100).toFixed(0) + '%)</small></b></div>').join('')
+    : '<div class="muted">Nenhuma OS fora do cumprimento nesse recorte. 🎉</div>';
+
+  caRenderLista(rowsPeriodo, periodoTxt);
+}
+function caListaBase(rowsPeriodo){
+  let lista;
+  if (caListaFiltro === 'NAO') lista = rowsPeriodo.filter(r => !r.cumpriu);
+  else if (caListaFiltro === 'ERRO') lista = rowsPeriodo.filter(r => { const k = caClassificaErro(r); return k && (caErroCat === 'TODOS' || k === caErroCat); });
+  else lista = rowsPeriodo.slice();
+  const q = semAcento(caBusca);
+  if (q) lista = lista.filter(r => semAcento([r.os, r.contrato, r.cidade, r.operador_cat, r.terceirizada, r.motivo_quebra].join(' ')).indexOf(q) >= 0);
+  return lista.sort((a, b) => (a.data_evento < b.data_evento ? 1 : (a.data_evento > b.data_evento ? -1 : 0)));
+}
+function caRenderLista(rowsPeriodo, periodoTxt){
+  const lista = caListaBase(rowsPeriodo);
+  const LIM = 300;
+  document.getElementById('caListaHint').textContent = lista.length.toLocaleString('pt-BR') + ' OS · ' + periodoTxt + (caListaFiltro === 'ERRO' && caErroCat !== 'TODOS' ? ' · ' + CA_ERROS[caErroCat].titulo : '') + (lista.length > LIM ? ' · mostrando as ' + LIM + ' mais recentes (o Excel leva todas)' : '');
+  const agenda = r => (r.data_menor_agenda ? caFmtData(r.data_menor_agenda) + (r.turno_menor_agenda ? ' ' + String(r.turno_menor_agenda).toLowerCase() : '') : '—');
+  const visita = r => (r.data_primeira_visita ? caFmtData(r.data_primeira_visita) + (r.turno_primeira_visita ? ' ' + String(r.turno_primeira_visita).toLowerCase() : '') : '—');
+  let h = '<thead><tr><th>OS</th><th>Contrato</th><th>Cidade</th><th>Empresa</th><th>Marcação</th><th class="num">Abertura</th><th class="num">Evento</th><th>Menor agenda</th><th>1ª visita</th><th class="num">Visitas</th><th>Motivo</th><th>Operador CAT</th><th>Auditoria</th><th class="num">Atual</th><th class="num">Novo</th></tr></thead><tbody>';
+  if (!lista.length) h += '<tr><td colspan="15" class="muted">Nenhuma OS nesse filtro.</td></tr>';
+  lista.slice(0, LIM).forEach(r => {
+    h += '<tr><td class="mono">' + caEsc(r.os) + '</td><td>' + caEsc(r.contrato || '—') + '</td><td>' + caEsc(r.cidade || '—') + '</td><td>' + caEsc(r.terceirizada || '—') + '</td>'
+      + '<td><span class="ca-chip ' + (r.marcacao === 'AGENDA' ? 'ag' : 'sla') + '">' + (r.marcacao === 'AGENDA' ? 'Agenda' : 'SLA') + '</span></td>'
+      + '<td class="num">' + caFmtData(r.data_abertura) + '</td><td class="num">' + caFmtData(r.data_evento) + '</td>'
+      + '<td>' + agenda(r) + '</td><td>' + visita(r) + '</td><td class="num">' + (r.total_visitas === null || r.total_visitas === undefined ? '—' : r.total_visitas) + '</td>'
+      + '<td>' + caEsc(r.motivo_quebra || '—') + (r.submotivo_quebra ? ' <span class="muted">· ' + caEsc(r.submotivo_quebra) + '</span>' : '') + '</td>'
+      + '<td>' + caEsc(r.operador_cat || '—') + '</td>'
+      + '<td>' + caChipErro(r) + '</td>'
+      + '<td class="num ' + (r.flag_prazo ? 'ca-ok' : 'ca-nok') + '">' + (r.flag_prazo ? '✓' : '✗') + '</td>'
+      + '<td class="num ' + (r.cumpriu ? 'ca-ok' : 'ca-nok') + '">' + (r.cumpriu ? '✓' : '✗') + '</td></tr>';
+  });
+  document.getElementById('caTabela').innerHTML = h + '</tbody>';
+}
+// recorte atual (indicador + mês + filtros do topo), recalculado sob demanda por busca/exportação
+function caRowsDoPeriodo(){
+  const indicadores = [...new Set(CA_ROWS.map(r => r.indicador))].sort();
+  const ind = (caIndicador && indicadores.indexOf(caIndicador) >= 0) ? caIndicador : indicadores[0];
+  const baseInd = caFiltrarGlobal(CA_ROWS.filter(r => r.indicador === ind && r.data_evento));
+  const meses = [...new Set(baseInd.map(r => r.data_evento.slice(0, 7)))].sort();
+  let mesSel = caMes;
+  if (mesSel === 'ULTIMO' || (mesSel !== 'TODOS' && meses.indexOf(mesSel) === -1)) mesSel = meses.length ? meses[meses.length - 1] : 'TODOS';
+  return { rows: mesSel === 'TODOS' ? baseInd : baseInd.filter(r => r.data_evento.slice(0, 7) === mesSel), periodoTxt: mesSel === 'TODOS' ? 'todo o período' : caRotuloMes(mesSel), mesSel, ind };
+}
+async function exportarCumprimentoAgenda(){
+  if (!(await loadSheetJS())){ showToast('Não consegui carregar o gerador de Excel — verifique a internet.'); return; }
+  const { rows, ind, mesSel } = caRowsDoPeriodo();
+  const lista = caListaBase(rows);
+  if (!lista.length){ showToast('Nada para exportar nesse filtro.'); return; }
+  const dados = lista.map(r => ({
+    'OS': r.os, 'Chamado': r.chamado || '', 'Contrato': r.contrato || '', 'Cidade': r.cidade || '', 'Cluster': r.cluster || '', 'Empresa': r.terceirizada || '',
+    'Marcação': r.marcacao, 'Abertura': caFmtData(r.data_abertura), 'Data evento': caFmtData(r.data_evento), 'Turno evento': r.turno_evento || '',
+    'Menor agenda': caFmtData(r.data_menor_agenda), 'Turno menor agenda': r.turno_menor_agenda || '', '1ª visita': caFmtData(r.data_primeira_visita), 'Turno 1ª visita': r.turno_primeira_visita || '',
+    'Total de visitas': r.total_visitas === null ? '' : r.total_visitas, 'Motivo da quebra': r.motivo_quebra || '', 'Submotivo': r.submotivo_quebra || '', 'Operador CAT': r.operador_cat || '',
+    'Dentro do prazo (indicador atual)': r.flag_prazo ? 'Sim' : 'Não', 'Cumpriu (novo indicador)': r.cumpriu ? 'Sim' : 'Não',
+    'Possível erro de apuração': (CA_ERROS[caClassificaErro(r)] || {}).titulo || '', 'Por que é suspeito': (CA_ERROS[caClassificaErro(r)] || {}).desc || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cumprimento de Agenda');
+  XLSX.writeFile(wb, 'cumprimento_agenda_' + ind.toLowerCase() + '_' + mesSel + '.xlsx');
+  registrarAuditoria('exportar_cumprimento_agenda', { linhas: dados.length, indicador: ind, mes: mesSel });
+}
+function iniciarCumprimentoAgenda(){
+  const mod = document.getElementById('module-cumprimento-agenda');
+  if (!mod) return;
+  // botões do topo (indicador/mês/visão/período) são redesenhados a cada render → clique delegado
+  mod.addEventListener('click', e => {
+    const pb = e.target.closest ? e.target.closest('button[data-prem]') : null;
+    if (pb){
+      caPremissasAberto = !caPremissasAberto;
+      try{ localStorage.setItem('caPremissasAberto', caPremissasAberto ? '1' : '0'); }catch(err){}
+      pb.classList.toggle('on', caPremissasAberto);
+      pb.setAttribute('aria-expanded', caPremissasAberto);
+      document.getElementById('caPremissas').classList.toggle('ca-oculto', !caPremissasAberto);
+      return;
+    }
+    const er = e.target.closest ? e.target.closest('button[data-erro]') : null;
+    if (er && !er.disabled){
+      caErroCat = er.dataset.erro; caListaFiltro = 'ERRO';
+      document.querySelectorAll('#caListaFiltro button').forEach(x => x.classList.toggle('active', x.dataset.lista === 'ERRO'));
+      renderCumprimentoAgenda();
+      document.getElementById('caListaFiltro').scrollIntoView({ behavior:'smooth', block:'center' });
+      return;
+    }
+    const b = e.target.closest ? e.target.closest('button[data-ind],button[data-mes],button[data-serie],button[data-gran]') : null;
+    if (!b) return;
+    if (b.dataset.ind) caIndicador = b.dataset.ind;
+    if (b.dataset.mes) caMes = b.dataset.mes;
+    if (b.dataset.serie) caSerie = b.dataset.serie;
+    if (b.dataset.gran) caGran = b.dataset.gran;
+    tocarAnimacoesDosGraficos();
+    renderCumprimentoAgenda();
+  });
+  document.getElementById('caListaFiltro').addEventListener('click', e => {
+    const b = e.target.closest ? e.target.closest('button[data-lista]') : null;
+    if (!b) return;
+    caListaFiltro = b.dataset.lista;
+    if (caListaFiltro === 'ERRO') caErroCat = 'TODOS';
+    document.querySelectorAll('#caListaFiltro button').forEach(x => x.classList.toggle('active', x === b));
+    const p = caRowsDoPeriodo(); caRenderLista(p.rows, p.periodoTxt);
+    renderCumprimentoAgenda();
+  });
+  document.getElementById('caBusca').addEventListener('input', e => {
+    caBusca = e.target.value;
+    const p = caRowsDoPeriodo(); caRenderLista(p.rows, p.periodoTxt);
+  });
+  document.getElementById('btnExportarAgenda').addEventListener('click', exportarCumprimentoAgenda);
+}
+
 /* ============================= NAVEGAÇÃO (menu lateral) ============================= */
 let currentModule = 'visao-geral';
 let sidebarCollapsed = false;
@@ -7386,9 +7630,8 @@ function setModule(mod){
   atualizarCabecalhoDaPagina(mod);
   tocarAnimacoesDosGraficos();
   if (mod === 'administracao') renderAdministracao();
-  if (mod === 'rede-externa') renderRedeExterna();
-  if (mod === 'predict-pon') renderPredictPon();
   if (mod === 'mapa-vlan') renderMapaVlan();
+  if (mod === 'cumprimento-agenda') renderCumprimentoAgenda();
 }
 function toggleSidebar(){
   sidebarCollapsed = !sidebarCollapsed;
@@ -7813,8 +8056,8 @@ async function init(){
   document.getElementById('btnSidebarToggle').addEventListener('click', toggleSidebar);
   document.getElementById('roster-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRosterFile(e.target.files[0]); });
   document.getElementById('backlog-xlsx-input').addEventListener('change', e => { if (e.target.files[0]) handleBacklogXlsx(e.target.files[0]); });
-  document.getElementById('rede-externa-infra-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRedeExternaCsv(e.target.files[0], 'Infraestrutura POP'); });
-  document.getElementById('rede-externa-redes-file-input').addEventListener('change', e => { if (e.target.files[0]) handleRedeExternaCsv(e.target.files[0], 'Rede Externa'); });
+  document.getElementById('agenda-xlsx-input').addEventListener('change', e => { if (e.target.files[0]) handleAgendaXlsx(e.target.files[0]); e.target.value = ''; });
+  iniciarCumprimentoAgenda();
   document.querySelectorAll('.sidebar-item').forEach(item => item.addEventListener('click', () => setModule(item.dataset.module)));
   document.querySelectorAll('.reg-tab').forEach(btn => btn.addEventListener('click', () => setRegional(btn.dataset.ftype, btn.dataset.fvalue)));
   document.getElementById('btnHoje').addEventListener('click', () => quickPeriodo('hoje'));
@@ -7866,7 +8109,6 @@ async function init(){
   await updateHistory();
   refreshFilters();
   render();
-  ppIniciarRealtime();
   tocarAnimacoesDosGraficos();
   iniciarRealtime(); // sincroniza com o que outros usuários importarem/mudarem, ao vivo
 
