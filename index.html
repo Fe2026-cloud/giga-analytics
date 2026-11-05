@@ -1147,6 +1147,12 @@
   .ca-toolbar{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin-bottom:16px;}
   .ca-grupo{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
   .ca-grupo > span{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text-faint);}
+  .ca-prem-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);border-radius:999px;padding:7px 14px;font:700 12.5px var(--font-ui);cursor:pointer;transition:background .15s,color .15s,border-color .15s;}
+  .ca-prem-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .ca-prem-btn.on{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);}
+  .ca-prem-btn .i{width:15px;height:15px;transition:transform .2s;}
+  .ca-prem-btn.on .i{transform:rotate(180deg);}
+  #caPremissas.ca-oculto{display:none;}
   .ca-fonte{margin-left:auto;font-size:12px;color:var(--text-faint);text-align:right;}
   .ca-premissas{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
   @media (max-width:900px){.ca-premissas{grid-template-columns:1fr;}}
@@ -7332,6 +7338,8 @@ function caTabelaPor(rows, chaveFn, rotuloColuna, limite){
    mas ficaram como "não cumpridas". São INDÍCIOS pra conferir com a área do Power BI — o painel não
    muda o resultado oficial. Cada OS cai em no máximo uma categoria. */
 let caErroCat = 'TODOS';
+let caPremissasAberto = false;   // premissas começam recolhidas pra os cartões aparecerem primeiro
+try{ caPremissasAberto = localStorage.getItem('caPremissasAberto') === '1'; }catch(e){}
 const CA_MOTIVOS_EXTERNOS = ['CLIENTE AUSENTE', 'SOLICITACAO DE REAGENDAMENTO', 'CHUVA', 'FALHA MASSIVA', 'ENTRADA NAO AUTORIZADA', 'PROBLEMA DE INFRAESTRUTURA', 'ABERTURA INDEVIDA'];
 const CA_ERROS = {
   FINALIZOU_FORA: { cor:'#0866D9', titulo:'Visita na janela, finalizou fora', desc:'O técnico visitou no dia e turno da agenda, fez uma única visita e não há motivo de quebra — a OS terminou depois do turno combinado.', contra:true },
@@ -7419,12 +7427,14 @@ function renderCumprimentoAgenda(){
     + '<div class="ca-grupo"><span>Mês de referência</span><div class="cp-status-bar" id="caBarMes">'
     + meses.map(m => caBotaoPill(m === mesSel, 'mes', m, caRotuloMes(m))).join('')
     + caBotaoPill(mesSel === 'TODOS', 'mes', 'TODOS', 'Todos') + '</div></div>'
+    + '<button type="button" class="ca-prem-btn' + (caPremissasAberto ? ' on' : '') + '" data-prem="1" aria-expanded="' + caPremissasAberto + '" title="Mostrar ou ocultar as premissas do indicador"><svg class="i"><use href="#i-chev"/></svg>Premissas</button>'
     + '<div class="ca-fonte">' + CA_ROWS.length.toLocaleString('pt-BR') + ' OS importadas · ' + caFmtData(datasTodas[0]) + ' a ' + caFmtData(datasTodas[datasTodas.length - 1])
     + '<br>o filtro de regional/empresa do topo vale aqui</div>';
   document.getElementById('caToolbar').innerHTML = tb;
   document.getElementById('caHint').textContent = info.label + ' · ' + periodoTxt + ' · dia de referência = data do evento';
 
-  // premissas
+  // premissas (recolhíveis)
+  document.getElementById('caPremissas').classList.toggle('ca-oculto', !caPremissasAberto);
   document.getElementById('caPremissas').innerHTML = `
     <div class="ca-prem"><b>Novo indicador</b><p>Soma dos ${info.tipo} cumpridos por <b style="display:inline;text-transform:none;letter-spacing:0">agenda</b> mais os cumpridos por <b style="display:inline;text-transform:none;letter-spacing:0">SLA</b>, sobre o total de OS.</p></div>
     <div class="ca-prem p-green"><b>Cumprimento de agenda</b><p>Cliente confirmou a agenda dentro do prazo: garantir o atendimento na primeira janela de conveniência acordada com ele.</p></div>
@@ -7568,6 +7578,15 @@ function iniciarCumprimentoAgenda(){
   if (!mod) return;
   // botões do topo (indicador/mês/visão/período) são redesenhados a cada render → clique delegado
   mod.addEventListener('click', e => {
+    const pb = e.target.closest ? e.target.closest('button[data-prem]') : null;
+    if (pb){
+      caPremissasAberto = !caPremissasAberto;
+      try{ localStorage.setItem('caPremissasAberto', caPremissasAberto ? '1' : '0'); }catch(err){}
+      pb.classList.toggle('on', caPremissasAberto);
+      pb.setAttribute('aria-expanded', caPremissasAberto);
+      document.getElementById('caPremissas').classList.toggle('ca-oculto', !caPremissasAberto);
+      return;
+    }
     const er = e.target.closest ? e.target.closest('button[data-erro]') : null;
     if (er && !er.disabled){
       caErroCat = er.dataset.erro; caListaFiltro = 'ERRO';
