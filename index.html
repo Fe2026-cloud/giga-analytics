@@ -1193,6 +1193,23 @@
   .ca-mot small{color:var(--text-faint);font-weight:600;}
   #module-cumprimento-agenda td.num, #module-cumprimento-agenda th.num{white-space:nowrap;}
   #module-cumprimento-agenda .ca-chip{white-space:nowrap;}
+
+  /* Cumprimento de Agenda · possíveis erros de apuração */
+  .ca-erros-resumo{font-size:13.5px;color:var(--text-dim);line-height:1.55;margin:0 0 14px 0;}
+  .ca-erros-resumo b{color:var(--text);}
+  .ca-erros-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;}
+  .ca-erro{position:relative;text-align:left;background:var(--surface);border:1px solid var(--border-soft);border-left:5px solid var(--c);border-radius:14px;padding:14px 16px;cursor:pointer;font-family:inherit;color:var(--text);box-shadow:var(--shadow-card);transition:transform .15s,box-shadow .15s;}
+  .ca-erro:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(8,43,89,.14);}
+  .ca-erro.ativo{box-shadow:0 0 0 2px var(--c),0 14px 28px rgba(8,43,89,.14);}
+  .ca-erro .n{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--c);}
+  .ca-erro .t{font-size:12.5px;font-weight:800;margin:8px 0 4px 0;line-height:1.3;}
+  .ca-erro .d{font-size:12px;color:var(--text-dim);line-height:1.45;}
+  .ca-erro .imp{display:inline-block;margin-top:9px;font-size:11.5px;font-weight:800;border-radius:999px;padding:3px 10px;background:var(--gray-bg);color:var(--c);}
+  .ca-erro.vazio{opacity:.55;cursor:default;}
+  .ca-erro.vazio:hover{transform:none;box-shadow:var(--shadow-card);}
+  .ca-erro-total{margin-top:14px;padding:12px 16px;border-radius:12px;background:var(--surface-3);font-size:13px;color:var(--text-dim);line-height:1.5;}
+  .ca-erro-total b{color:var(--text);}
+  .ca-aud{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:800;white-space:nowrap;background:var(--gray-bg);color:var(--c,var(--text-dim));}
   .ca-vazio{text-align:center;padding:34px 20px;color:var(--text-dim);}
   .ca-vazio b{display:block;font-size:17px;color:var(--text);margin-bottom:6px;}
   .stub-panel{border-radius:var(--radius);border:1px dashed var(--border);background:var(--surface-2);color:var(--text-dim);}
@@ -1740,6 +1757,7 @@
         <div class="ca-toolbar" id="caToolbar"></div>
         <div class="panel ca-premissas" id="caPremissas"></div>
         <div class="vg-row5 ca-kpis" id="caKpis"></div>
+        <div class="panel" id="caErros"></div>
         <div class="panel" id="caEvolucao"></div>
         <div class="two-col">
           <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-building"/></svg>Por cidade</h3><span class="desc">indicador atual × novo, por cidade</span></div><div class="table-scroll"><table class="compact-table" id="caPorCidade"></table></div></div>
@@ -1755,6 +1773,7 @@
             <input type="text" id="caBusca" placeholder="🔎 Buscar OS, contrato, cidade ou operador..." class="pr-busca" style="min-width:260px;">
             <div class="cp-status-bar" id="caListaFiltro">
               <button type="button" class="cp-status-btn active" data-lista="NAO">Não cumpridas</button>
+              <button type="button" class="cp-status-btn" data-lista="ERRO">Possíveis erros</button>
               <button type="button" class="cp-status-btn" data-lista="TODAS">Todas</button>
             </div>
             <button type="button" class="btn ghost" id="btnExportarAgenda" style="margin-left:auto;">⬇ Exportar Excel</button>
@@ -7304,6 +7323,65 @@ function caTabelaPor(rows, chaveFn, rotuloColuna, limite){
   return h + '</tbody>';
 }
 
+/* ---------- auditoria: possíveis erros de apuração ----------
+   Procura OS que, pelos dados do próprio arquivo, parecem ter sido atendidas dentro da agenda (ou do prazo)
+   mas ficaram como "não cumpridas". São INDÍCIOS pra conferir com a área do Power BI — o painel não
+   muda o resultado oficial. Cada OS cai em no máximo uma categoria. */
+let caErroCat = 'TODOS';
+const CA_MOTIVOS_EXTERNOS = ['CLIENTE AUSENTE', 'SOLICITACAO DE REAGENDAMENTO', 'CHUVA', 'FALHA MASSIVA', 'ENTRADA NAO AUTORIZADA', 'PROBLEMA DE INFRAESTRUTURA', 'ABERTURA INDEVIDA'];
+const CA_ERROS = {
+  FINALIZOU_FORA: { cor:'#0866D9', titulo:'Visita na janela, finalizou fora dela', desc:'O técnico visitou no dia e turno da agenda, fez uma única visita e não há motivo de quebra — a OS terminou depois do turno combinado.', contra:true },
+  MOTIVO_EXTERNO: { cor:'#6D4BE0', titulo:'Visita na janela, falhou por causa externa', desc:'Visita no dia e turno da agenda, mas a quebra tem motivo fora do técnico: cliente ausente, reagendamento pedido pelo cliente, chuva, falha massiva, entrada não autorizada...', contra:true },
+  ANTECIPADA:     { cor:'#00A8FF', titulo:'Visita antecipada', desc:'O técnico foi antes do turno/dia da agenda (a premissa permite antecipar) e mesmo assim a OS ficou como não cumprida.', contra:true },
+  SLA_NO_PRAZO:   { cor:'#FF9900', titulo:'Sem confirmação, dentro do prazo', desc:'Sem agenda confirmada vale o SLA (24h/48h). A OS cumpriu o prazo, mas o novo indicador a contou como não cumprida.', contra:true },
+  A_FAVOR:        { cor:'#00B87A', titulo:'Contada como cumprida fora do prazo', desc:'Sem agenda confirmada, estourou o prazo do SLA e mesmo assim entrou como cumprida (erro a favor do indicador).', contra:false }
+};
+function caOrdTurno(t){ const u = semAcento(t); return u === 'MANHA' ? 0 : (u === 'TARDE' ? 1 : null); }
+function caClassificaErro(r){
+  if (r.cumpriu) return (r.marcacao !== 'AGENDA' && r.flag_prazo === false) ? 'A_FAVOR' : null;
+  if (r.marcacao !== 'AGENDA') return r.flag_prazo ? 'SLA_NO_PRAZO' : null;
+  if (!r.data_menor_agenda || !r.data_primeira_visita) return null;
+  const mT = caOrdTurno(r.turno_menor_agenda), vT = caOrdTurno(r.turno_primeira_visita);
+  const mesmoDia = r.data_primeira_visita === r.data_menor_agenda;
+  if (mesmoDia && mT !== null && mT === vT){
+    const mot = semAcento(r.motivo_quebra || '');
+    if ((r.total_visitas || 0) <= 1 && !mot) return 'FINALIZOU_FORA';
+    if (CA_MOTIVOS_EXTERNOS.indexOf(mot) >= 0) return 'MOTIVO_EXTERNO';
+    return null;
+  }
+  const antes = r.data_primeira_visita < r.data_menor_agenda || (mesmoDia && mT !== null && vT !== null && vT < mT);
+  if (antes && r.flag_antecipacao) return 'ANTECIPADA';
+  return null;
+}
+function caChipErro(r){
+  const k = caClassificaErro(r);
+  if (!k) return '<span class="muted">—</span>';
+  const e = CA_ERROS[k];
+  return '<span class="ca-aud" style="--c:' + e.cor + '" title="' + caEsc(e.desc) + '">' + caEsc(e.titulo) + '</span>';
+}
+function caRenderErros(rowsPeriodo, m){
+  const cont = {}; Object.keys(CA_ERROS).forEach(k => cont[k] = 0);
+  rowsPeriodo.forEach(r => { const k = caClassificaErro(r); if (k) cont[k]++; });
+  const contra = Object.keys(CA_ERROS).filter(k => CA_ERROS[k].contra).reduce((a, k) => a + cont[k], 0);
+  const naoCumpridas = m.t - m.novo;
+  const pot = m.t ? (m.novo + contra) / m.t * 100 : null;
+  const gan = (pot !== null && m.pNovo !== null) ? pot - m.pNovo : null;
+  const el = document.getElementById('caErros');
+  const cards = Object.keys(CA_ERROS).map(k => {
+    const e = CA_ERROS[k], n = cont[k], imp = m.t ? n / m.t * 100 : 0;
+    return '<button type="button" class="ca-erro' + (n ? '' : ' vazio') + (caListaFiltro === 'ERRO' && caErroCat === k ? ' ativo' : '') + '" style="--c:' + e.cor + '" data-erro="' + k + '"' + (n ? '' : ' disabled') + '>'
+      + '<div class="n">' + n.toLocaleString('pt-BR') + '</div><div class="t">' + e.titulo + '</div><div class="d">' + e.desc + '</div>'
+      + '<span class="imp">' + (e.contra ? '+' : '−') + imp.toFixed(1).replace('.', ',') + ' p.p. no indicador</span></button>';
+  }).join('');
+  el.innerHTML = '<div class="panel-head"><h3 class="h3-alert"><svg class="i"><use href="#i-alert"/></svg>Possíveis erros de apuração</h3><span class="desc">OS que parecem ter sido atendidas dentro da agenda ou do prazo, mas ficaram como não cumpridas</span></div>'
+    + '<p class="ca-erros-resumo">De <b>' + naoCumpridas.toLocaleString('pt-BR') + ' OS não cumpridas</b> no período, <b>' + contra.toLocaleString('pt-BR') + '</b> ('
+    + (naoCumpridas ? (contra / naoCumpridas * 100).toFixed(0) : 0) + '%) têm indício de que o atendimento aconteceu dentro da regra. É uma triagem automática a partir dos dados do arquivo: clique num grupo para ver as OS e confirme os casos com a área do Power BI.</p>'
+    + '<div class="ca-erros-grid">' + cards + '</div>'
+    + '<div class="ca-erro-total">Se <b>todos</b> esses casos fossem cumpridos, o Novo indicador iria de <b>' + caPct(m.pNovo) + '</b> para <b>' + caPct(pot) + '</b>'
+    + (gan !== null ? ' (<b>' + caPP(gan) + '</b>)' : '') + ' — meta ' + CA_META + '%. É um teto: alguns casos podem ser descumprimento legítimo.'
+    + (cont.A_FAVOR ? ' Há ainda <b>' + cont.A_FAVOR + '</b> OS contadas a favor sem cumprir o prazo.' : '') + '</div>';
+}
+
 /* ---------- tela ---------- */
 function caBotaoPill(ativo, attr, valor, texto){
   return '<button type="button" class="cp-status-btn' + (ativo ? ' active' : '') + '" data-' + attr + '="' + caEsc(valor) + '">' + caEsc(texto) + '</button>';
@@ -7373,6 +7451,8 @@ function renderCumprimentoAgenda(){
     + '<div class="ca-share-linha"><span><span class="dot" style="background:#FF9900"></span>Sem confirmação<small>vale o SLA de ' + info.prazo + '</small></span><b>' + m.sc.toLocaleString('pt-BR') + ' <small style="display:inline">(' + compartilhaB.toFixed(0) + '%)</small></b></div>'
     + '<div class="ca-share-linha"><span>Total</span><b>' + m.t.toLocaleString('pt-BR') + '</b></div></div></div>';
 
+  caRenderErros(rowsPeriodo, m);
+
   // evolução
   const SERIES = {
     NOVO:   { nome:'Novo indicador', ok:'Cumpridas', tot:'OS', ref:'Indicador atual' },
@@ -7421,7 +7501,10 @@ function renderCumprimentoAgenda(){
   caRenderLista(rowsPeriodo, periodoTxt);
 }
 function caListaBase(rowsPeriodo){
-  let lista = caListaFiltro === 'NAO' ? rowsPeriodo.filter(r => !r.cumpriu) : rowsPeriodo.slice();
+  let lista;
+  if (caListaFiltro === 'NAO') lista = rowsPeriodo.filter(r => !r.cumpriu);
+  else if (caListaFiltro === 'ERRO') lista = rowsPeriodo.filter(r => { const k = caClassificaErro(r); return k && (caErroCat === 'TODOS' || k === caErroCat); });
+  else lista = rowsPeriodo.slice();
   const q = semAcento(caBusca);
   if (q) lista = lista.filter(r => semAcento([r.os, r.contrato, r.cidade, r.operador_cat, r.terceirizada, r.motivo_quebra].join(' ')).indexOf(q) >= 0);
   return lista.sort((a, b) => (a.data_evento < b.data_evento ? 1 : (a.data_evento > b.data_evento ? -1 : 0)));
@@ -7429,11 +7512,11 @@ function caListaBase(rowsPeriodo){
 function caRenderLista(rowsPeriodo, periodoTxt){
   const lista = caListaBase(rowsPeriodo);
   const LIM = 300;
-  document.getElementById('caListaHint').textContent = lista.length.toLocaleString('pt-BR') + ' OS · ' + periodoTxt + (lista.length > LIM ? ' · mostrando as ' + LIM + ' mais recentes (o Excel leva todas)' : '');
+  document.getElementById('caListaHint').textContent = lista.length.toLocaleString('pt-BR') + ' OS · ' + periodoTxt + (caListaFiltro === 'ERRO' && caErroCat !== 'TODOS' ? ' · ' + CA_ERROS[caErroCat].titulo : '') + (lista.length > LIM ? ' · mostrando as ' + LIM + ' mais recentes (o Excel leva todas)' : '');
   const agenda = r => (r.data_menor_agenda ? caFmtData(r.data_menor_agenda) + (r.turno_menor_agenda ? ' ' + String(r.turno_menor_agenda).toLowerCase() : '') : '—');
   const visita = r => (r.data_primeira_visita ? caFmtData(r.data_primeira_visita) + (r.turno_primeira_visita ? ' ' + String(r.turno_primeira_visita).toLowerCase() : '') : '—');
-  let h = '<thead><tr><th>OS</th><th>Contrato</th><th>Cidade</th><th>Empresa</th><th>Marcação</th><th class="num">Abertura</th><th class="num">Evento</th><th>Menor agenda</th><th>1ª visita</th><th class="num">Visitas</th><th>Motivo</th><th>Operador CAT</th><th class="num">Atual</th><th class="num">Novo</th></tr></thead><tbody>';
-  if (!lista.length) h += '<tr><td colspan="14" class="muted">Nenhuma OS nesse filtro.</td></tr>';
+  let h = '<thead><tr><th>OS</th><th>Contrato</th><th>Cidade</th><th>Empresa</th><th>Marcação</th><th class="num">Abertura</th><th class="num">Evento</th><th>Menor agenda</th><th>1ª visita</th><th class="num">Visitas</th><th>Motivo</th><th>Operador CAT</th><th>Auditoria</th><th class="num">Atual</th><th class="num">Novo</th></tr></thead><tbody>';
+  if (!lista.length) h += '<tr><td colspan="15" class="muted">Nenhuma OS nesse filtro.</td></tr>';
   lista.slice(0, LIM).forEach(r => {
     h += '<tr><td class="mono">' + caEsc(r.os) + '</td><td>' + caEsc(r.contrato || '—') + '</td><td>' + caEsc(r.cidade || '—') + '</td><td>' + caEsc(r.terceirizada || '—') + '</td>'
       + '<td><span class="ca-chip ' + (r.marcacao === 'AGENDA' ? 'ag' : 'sla') + '">' + (r.marcacao === 'AGENDA' ? 'Agenda' : 'SLA') + '</span></td>'
@@ -7441,6 +7524,7 @@ function caRenderLista(rowsPeriodo, periodoTxt){
       + '<td>' + agenda(r) + '</td><td>' + visita(r) + '</td><td class="num">' + (r.total_visitas === null || r.total_visitas === undefined ? '—' : r.total_visitas) + '</td>'
       + '<td>' + caEsc(r.motivo_quebra || '—') + (r.submotivo_quebra ? ' <span class="muted">· ' + caEsc(r.submotivo_quebra) + '</span>' : '') + '</td>'
       + '<td>' + caEsc(r.operador_cat || '—') + '</td>'
+      + '<td>' + caChipErro(r) + '</td>'
       + '<td class="num ' + (r.flag_prazo ? 'ca-ok' : 'ca-nok') + '">' + (r.flag_prazo ? '✓' : '✗') + '</td>'
       + '<td class="num ' + (r.cumpriu ? 'ca-ok' : 'ca-nok') + '">' + (r.cumpriu ? '✓' : '✗') + '</td></tr>';
   });
@@ -7466,7 +7550,8 @@ async function exportarCumprimentoAgenda(){
     'Marcação': r.marcacao, 'Abertura': caFmtData(r.data_abertura), 'Data evento': caFmtData(r.data_evento), 'Turno evento': r.turno_evento || '',
     'Menor agenda': caFmtData(r.data_menor_agenda), 'Turno menor agenda': r.turno_menor_agenda || '', '1ª visita': caFmtData(r.data_primeira_visita), 'Turno 1ª visita': r.turno_primeira_visita || '',
     'Total de visitas': r.total_visitas === null ? '' : r.total_visitas, 'Motivo da quebra': r.motivo_quebra || '', 'Submotivo': r.submotivo_quebra || '', 'Operador CAT': r.operador_cat || '',
-    'Dentro do prazo (indicador atual)': r.flag_prazo ? 'Sim' : 'Não', 'Cumpriu (novo indicador)': r.cumpriu ? 'Sim' : 'Não'
+    'Dentro do prazo (indicador atual)': r.flag_prazo ? 'Sim' : 'Não', 'Cumpriu (novo indicador)': r.cumpriu ? 'Sim' : 'Não',
+    'Possível erro de apuração': (CA_ERROS[caClassificaErro(r)] || {}).titulo || '', 'Por que é suspeito': (CA_ERROS[caClassificaErro(r)] || {}).desc || ''
   }));
   const ws = XLSX.utils.json_to_sheet(dados);
   const wb = XLSX.utils.book_new();
@@ -7479,6 +7564,14 @@ function iniciarCumprimentoAgenda(){
   if (!mod) return;
   // botões do topo (indicador/mês/visão/período) são redesenhados a cada render → clique delegado
   mod.addEventListener('click', e => {
+    const er = e.target.closest ? e.target.closest('button[data-erro]') : null;
+    if (er && !er.disabled){
+      caErroCat = er.dataset.erro; caListaFiltro = 'ERRO';
+      document.querySelectorAll('#caListaFiltro button').forEach(x => x.classList.toggle('active', x.dataset.lista === 'ERRO'));
+      renderCumprimentoAgenda();
+      document.getElementById('caListaFiltro').scrollIntoView({ behavior:'smooth', block:'center' });
+      return;
+    }
     const b = e.target.closest ? e.target.closest('button[data-ind],button[data-mes],button[data-serie],button[data-gran]') : null;
     if (!b) return;
     if (b.dataset.ind) caIndicador = b.dataset.ind;
@@ -7492,8 +7585,10 @@ function iniciarCumprimentoAgenda(){
     const b = e.target.closest ? e.target.closest('button[data-lista]') : null;
     if (!b) return;
     caListaFiltro = b.dataset.lista;
+    if (caListaFiltro === 'ERRO') caErroCat = 'TODOS';
     document.querySelectorAll('#caListaFiltro button').forEach(x => x.classList.toggle('active', x === b));
     const p = caRowsDoPeriodo(); caRenderLista(p.rows, p.periodoTxt);
+    renderCumprimentoAgenda();
   });
   document.getElementById('caBusca').addEventListener('input', e => {
     caBusca = e.target.value;
