@@ -7810,7 +7810,8 @@ async function handleRedeCsv(file, cluster){
       else if (k === 'ENDERECO') poe('endereco');
       else if (k === 'BAIRRO') poe('bairro');
       else if (k === 'CIDADE') poe('cidade');
-      else if (k === 'DATADEABERTURAOS') poe('aberta');
+      else if (k === 'HORARIODECRIACAOACIONAMENTO') poe('aberta', true);   // layout atual do export
+      else if (k === 'DATADEABERTURAOS') poe('aberta');                    // layout antigo (só vale se não houver a coluna acima)
       else if (k === 'INICIO') poe('inicio');
       else if (k === 'FIM') poe('fim');
       else if (k === 'TIPODEATIVIDADE') poe('tipo', true);   // a 1ª coluna é só "Normal"; o tipo real é a última
@@ -7819,8 +7820,9 @@ async function handleRedeCsv(file, cluster){
       else if (k === 'UNIDADE') poe('unidade');
       else if (k === 'JANELADESERVICO') poe('janela');
     });
+    const NOME_COL = { recurso:'Recurso', status:'Status da Atividade', os:'Ordem de Serviço', aberta:'Horário de Criação/Acionamento', tipo:'Tipo de Atividade' };
     ['recurso', 'status', 'os', 'aberta', 'tipo'].forEach(c => {
-      if (!(c in idx)) throw new Error('não achei a coluna "' + c + '" — esse é o CSV de Atividades do cluster?');
+      if (!(c in idx)) throw new Error('não achei a coluna "' + NOME_COL[c] + '" — esse é o CSV de Atividades do cluster?');
     });
     const val = (r, c) => { const v = (c in idx) ? r[idx[c]] : ''; const t = (v === undefined || v === null) ? '' : String(v).trim(); return /^n\/?a$/i.test(t) ? '' : t; };
     const agora = new Date().toISOString();
