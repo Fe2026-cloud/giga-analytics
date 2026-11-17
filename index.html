@@ -1266,6 +1266,51 @@
   tr.at-total-geral td{border-top:2px solid var(--border);font-weight:800;background:var(--surface-3);}
   #atvMotivos .pareto-row{grid-template-columns:minmax(160px,300px) 1fr 40px 110px;}
 
+  /* ---------- Eficiência de Altas ---------- */
+  #module-eficiencia > .section-title:first-child h2{display:none;}
+  #module-eficiencia > .section-title:first-child{margin-top:0;}
+  .ef-kpis{grid-template-columns:repeat(5,1fr);}
+  @media (max-width:1300px){.ef-kpis{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:640px){.ef-kpis{grid-template-columns:1fr;}}
+  .ef-kpis .kpi-card .ca-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,.9);margin-top:8px;line-height:1.35;}
+  .ef-kpis .kpi-card .foot{margin-top:10px;}
+  .ef-kpis .kpi-card .value{font-size:46px;}
+  .ef-kpi{cursor:pointer;}
+  .ef-row3{display:grid;grid-template-columns:1fr 2fr 1fr;gap:16px;}
+  @media (max-width:1250px){.ef-row3{grid-template-columns:1fr;}}
+  .ef-row3 .panel{min-width:0;}
+  .ef-mom-bar{fill:var(--c-blue);opacity:.5;} .ef-mom-bar.sel{opacity:1;}
+  .ef-mom-bar.parcial{stroke:var(--c-blue);stroke-width:1.6;stroke-dasharray:4 3;fill-opacity:.55;}
+  .ef-nota{font-size:11px;color:var(--text-faint);line-height:1.4;margin-top:6px;}
+  .ef-linha{fill:none;stroke:var(--accent);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
+  .ef-pt{fill:var(--surface);stroke:var(--accent);stroke-width:2.4;}
+  .ef-linha-navy{fill:none;stroke:#1B2F8F;stroke-width:2.4;stroke-dasharray:1 5;stroke-linecap:round;stroke-linejoin:round;}
+  .ef-pt-navy{fill:#1B2F8F;}
+  .ef-val{font-size:10px;}
+  .ef-list{max-height:430px;overflow-y:auto;padding-right:8px;}
+  .ef-bar{display:grid;grid-template-columns:minmax(120px,38%) 1fr 118px;align-items:center;gap:10px;padding:4px 6px;border-radius:6px;font-size:12px;cursor:pointer;transition:background .12s;}
+  .ef-bar:hover{background:var(--surface-3);}
+  .ef-bar.ef-rank{grid-template-columns:minmax(130px,38%) 1fr 150px;}
+  .ef-bar.ef-compacta{grid-template-columns:1fr auto;row-gap:4px;padding:7px 6px;}
+  .ef-bar.ef-compacta .ef-bar-l{grid-column:1/-1;font-size:12.5px;color:var(--text);}
+  .ef-bar-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim);font-weight:600;}
+  .ef-bar-t{display:block;height:15px;border-radius:5px;background:var(--surface-3);overflow:hidden;}
+  .ef-bar-t i{display:block;height:100%;border-radius:5px;}
+  .ef-bar-t i.ef-ok{background:linear-gradient(90deg,#00B87A,#00D5E8);} .ef-bar-t i.ef-mid{background:linear-gradient(90deg,#FF9900,#FFC85A);}
+  .ef-bar-t i.ef-bad{background:linear-gradient(90deg,#EF4444,#FF8E8E);}
+  .ef-bar-t i.ef-azul{background:linear-gradient(90deg,#0866D9,#00A8FF);} .ef-bar-t i.ef-cinza{background:linear-gradient(90deg,#8599B8,#B7C4DA);}
+  .ef-bar-v{font-weight:800;white-space:nowrap;color:var(--text);}
+  .ef-bar-v small{font-weight:600;color:var(--text-faint);font-size:10.5px;}
+  .ef-bar-v.ef-ok{color:var(--green);} .ef-bar-v.ef-mid{color:var(--yellow);} .ef-bar-v.ef-bad{color:var(--red);}
+  b.ef-ok{color:var(--green);} b.ef-mid{color:var(--yellow);} b.ef-bad{color:var(--red);}
+  .ef-na-head{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  .ef-sub{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin:2px 0 8px;}
+  .ef-chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:750;background:var(--yellow-bg);color:var(--yellow);}
+  .cp-status-btn small{opacity:.65;font-weight:700;margin-left:2px;}
+  #efTabela th.ef-col-imp, #efTabela td.ef-col-imp{background:var(--accent-glow);}
+  #efTabela th.ef-col-bl, #efTabela td.ef-col-bl{background:var(--green-bg);}
+  #module-eficiencia td.num, #module-eficiencia th.num{white-space:nowrap;}
+
   /* Cumprimento de Agenda · possíveis erros de apuração (versão compacta) */
   #caErros{padding:16px 18px;}
   #caErros .panel-head{margin-bottom:8px;}
@@ -1350,6 +1395,7 @@
       <div class="sidebar-item" data-module="rede"><span class="ic"><svg class="i"><use href="#i-wifi"/></svg></span><span class="lbl">Rede</span></div>
       <div class="sidebar-item" data-module="mapa-vlan"><span class="ic"><svg class="i"><use href="#i-swap"/></svg></span><span class="lbl">Mapa de VLANs</span></div>
       <div class="sidebar-item" data-module="ativacoes"><span class="ic"><svg class="i"><use href="#i-check"/></svg></span><span class="lbl">Ativações</span></div>
+      <div class="sidebar-item" data-module="eficiencia"><span class="ic"><svg class="i"><use href="#i-trend"/></svg></span><span class="lbl">Eficiência de Altas</span></div>
       <div class="sidebar-item" data-module="improdutivas"><span class="ic"><svg class="i"><use href="#i-alert"/></svg></span><span class="lbl">Improdutivas</span></div>
       <div class="sidebar-item" data-module="backlog"><span class="ic"><svg class="i"><use href="#i-box"/></svg></span><span class="lbl">Backlog</span></div>
       <div class="sidebar-item" data-module="prod-recurso"><span class="ic"><svg class="i"><use href="#i-hardhat"/></svg></span><span class="lbl">Produção por Recurso</span></div>
@@ -1470,6 +1516,14 @@
         <div class="dz-head"><span class="dz-regional">📡 Rede — C14 (Atividades CSV)</span></div>
         <span class="dz-status" id="dz-status-REDE-C14">Aguardando arquivo</span>
         <label class="dz-label">Selecionar CSV<input type="file" class="dz-file-input" accept=".csv" id="rede-csv-input-C14"></label>
+      </div>
+    </div>
+
+    <div class="upload-grid" style="grid-template-columns:320px;margin-top:12px;">
+      <div class="dropzone" id="dz-EFIC">
+        <div class="dz-head"><span class="dz-regional">📈 Eficiência de Altas (export Power BI XLSX)</span></div>
+        <span class="dz-status" id="dz-status-EFIC">Aguardando arquivo</span>
+        <label class="dz-label">Selecionar XLSX<input type="file" class="dz-file-input" accept=".xlsx" id="efic-xlsx-input"></label>
       </div>
     </div>
 
@@ -1931,6 +1985,50 @@
       </div>
     </div>
 
+    <div class="module" id="module-eficiencia">
+      <div class="section-title"><h2>Eficiência de Altas</h2><span class="hint" id="efHint">vendas × ativações por cluster, cidade e bairro</span></div>
+      <div id="efVazio"></div>
+      <div id="efCorpo">
+        <div class="ca-toolbar" id="efToolbar"></div>
+        <div class="vg-row5 ef-kpis" id="efKpis"></div>
+
+        <div class="ef-row3">
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-cal"/></svg>Evolução mensal</h3><span class="desc">% eficiência · só meses importados</span></div><div class="ca-chart" id="efMom"></div></div>
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-trend"/></svg>Evolução diária da eficiência acumulada</h3><span class="desc">altas acumuladas ÷ vendas acumuladas</span></div><div class="ca-chart" id="efDiaria"></div></div>
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-building"/></svg>Eficiência × cluster</h3><span class="desc">clique para ver</span></div><div id="efClusters"></div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3><svg class="i"><use href="#i-bars"/></svg>Vendas e altas por dia × eficiência acumulada</h3><span class="desc">relação entre vendas do mês e ativações acumuladas</span></div>
+          <div class="ca-legenda"><span><i style="background:#5C7399"></i>Vendas do dia</span><span><i style="background:#00A56F"></i>Altas do dia</span><span><i style="background:#1B2F8F"></i>Eficiência acumulada</span><span><i style="background:var(--c-orange)"></i>meta 80%</span></div>
+          <div class="ca-chart" id="efDiaVol"></div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-building"/></svg>Eficiência por cidade</h3><span class="desc" id="efCidDesc"></span></div><div class="ef-list" id="efCidades"></div></div>
+          <div class="panel"><div class="panel-head"><h3><svg class="i"><use href="#i-building"/></svg>Eficiência por bairro</h3><span class="desc" id="efBaiDesc"></span></div><div class="ef-list" id="efBairros"></div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3 class="h3-alert"><svg class="i"><use href="#i-alert"/></svg>Contratos não ativados</h3><span class="desc" id="efNADesc"></span></div>
+          <div class="ef-na-head"><span class="ca-grupo"><span>Status</span></span><div class="cp-status-bar" id="efStatusNA"></div></div>
+          <div class="two-col">
+            <div><div class="ef-sub">Motivos de baixa · responsável</div><div class="ef-list" id="efResp"></div></div>
+            <div><div class="ef-sub">Canal de venda</div><div class="ef-list" id="efCanal"></div></div>
+          </div>
+          <div class="two-col" style="margin-top:18px;">
+            <div><div class="ef-sub">Último motivo de baixa</div><div class="ef-list" id="efUMot"></div></div>
+            <div><div class="ef-sub">Último submotivo de baixa</div><div class="ef-list" id="efUSub"></div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3><svg class="i"><use href="#i-list"/></svg>Eficiência × classificação das improdutivas</h3><span class="desc">contratos não ativados de cada cluster por responsável da baixa · clique no número para ver os contratos</span></div>
+          <div class="table-scroll"><table class="pivot compact-table" id="efTabela"></table></div>
+        </div>
+      </div>
+    </div>
+
     <div class="module" id="module-mapa-vlan">
       <div class="section-title"><h2>Mapa de VLANs</h2><span class="hint">bairro × VLAN × equipamento na Baixada Santista · busca de clientes</span></div>
       <div id="mapaVlanContainer"></div>
@@ -2054,6 +2152,18 @@
     <div class="modal-actions">
       <button type="button" class="btn ghost" id="btnExportarDetalheMotivo">⬇ Exportar Excel</button>
       <button type="button" class="btn ghost" id="btnFecharDetalheMotivo">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="efDetBackdrop">
+  <div class="modal" style="max-width:1180px;">
+    <h3 id="efDetTitulo">Contratos</h3>
+    <div class="desc" id="efDetDesc"></div>
+    <div class="table-scroll" style="max-height:60vh;"><table class="pivot compact-table" id="efDetTable"></table></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="btnExportarEfDet">⬇ Exportar Excel</button>
+      <button type="button" class="btn ghost" id="btnFecharEfDet">Fechar</button>
     </div>
   </div>
 </div>
@@ -2648,6 +2758,11 @@ function iniciarRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_atividades' }, recarregarRedeRealtime)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rede_importacoes' }, recarregarRedeRealtime)
     .subscribe();
+  supabaseClient
+    .channel('painel-realtime-eficiencia')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'eficiencia_contratos' }, recarregarEficienciaRealtime)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'eficiencia_importacoes' }, recarregarEficienciaRealtime)
+    .subscribe();
 }
 
 /* ============================= ORDENS DE SERVIÇO (Supabase) =============================
@@ -2941,6 +3056,9 @@ async function loadPersisted(){
   try{
     await carregarRedeDoSupabase();
   }catch(e){ console.error('Falha ao carregar Rede do Supabase (migração 0022 rodou?)', e); }
+  try{
+    await carregarEficienciaDoSupabase();
+  }catch(e){ console.error('Falha ao carregar Eficiência de Altas do Supabase (migração 0023 rodou?)', e); }
   // O painel sempre abre no tema claro — não guarda/lê preferência entre sessões
   // (dá pra alternar durante o uso, mas volta pro claro no próximo carregamento).
   await applyTheme('light');
@@ -3792,6 +3910,7 @@ function render(){
   rc(() => renderProducaoPorRecurso(rows), 'Produção por recurso (pivot)');
   rc(() => renderImprodutivas(rows), 'Improdutivas');
   rc(() => renderAtivacoes(rows), 'Ativações');
+  rc(() => renderEficiencia(), 'Eficiência de Altas');
   rc(() => renderBacklogReport(rows), 'Backlog report');
   rc(() => renderBacklogTabela(), 'Evolução horária do backlog');
   rc(() => renderPessoas(), 'Pessoas');
@@ -7074,6 +7193,7 @@ const PAGINAS = {
   'cumprimento-agenda':['Cumprimento de Agenda','Novo indicador: agenda confirmada + SLA'],
   'rede':['Rede','Ordens de rede abertas e há quanto tempo'],
   'ativacoes':['Ativações','Volumetria e improdutivas por regional, cidade e bairro'],
+  'eficiencia':['Eficiência de Altas','Vendas × ativações por cluster, cidade e bairro'],
   'mapa-vlan':['Mapa de VLANs','Bairro, VLAN e equipamento'],
   'improdutivas':['Improdutivas','Motivos de não conclusão'],
   'backlog':['Backlog','Carga, capacity e evolução do backlog'],
@@ -8442,6 +8562,578 @@ function iniciarAtivacoes(){
   document.getElementById('btnExportarAtv').addEventListener('click', exportarAtivacoes);
 }
 
+/* ============================= EFICIÊNCIA DE ALTAS (módulo dedicado) =============================
+   Fonte: export "data" do Power BI (XLSX), 1 linha por contrato vendido. Regras (conferidas contra o Power BI):
+     • Vendas do mês  = contratos com Data Venda no mês            (inclui os marcados como expurgo)
+     • Altas do mês   = contratos com Data Ativação no mês         (inclui ativação de vendas de meses anteriores)
+     • Eficiência     = altas ÷ vendas  ·  acumulada dia a dia no gráfico diário  ·  meta 80%
+     • Não ativados   = contratos "Não Ativado" (abertos, a cancelar e cancelados) · responsável vem da coluna "Responsavel Ação"
+     • Cancelados     = pré-ativação (status Cancelados) + pós-ativação (cancelou depois de ativar)
+   Cada importação faz upsert por contrato (o estado mais recente prevalece) e registra o mês de referência (o mês com mais
+   vendas no arquivo) — só os meses importados entram no comparativo mensal. Os filtros de regional/empresa do topo
+   não se aplicam aqui (a base não tem OS); o filtro próprio é por cluster (coluna Território). */
+const EF_META = 80, EF_ALERTA = 70;
+const EF_COLUNAS = 'contrato,cliente,area,territorio,uf,cidade,bairro,canal,equipe,aprov_sydle,data_venda,data_ativacao,habilitado,data_cancelamento,motivo1,submotivo1,ultimo_motivo,ultimo_submotivo,tipo_motivo,responsavel,status,expurgo,tipo_expurgo,semana,ftta,importado_em';
+const EF_CAMPOS = {
+  CONTRATO:'contrato', CLIENTE:'cliente', AREA:'area', TERRITORIO:'territorio', UF:'uf', CIDADE:'cidade', BAIRRO:'bairro',
+  CANALDEVENDA:'canal', EQUIPE:'equipe', APROVSYDLE:'aprov_sydle', DATAVENDA:'data_venda', DATAATIVACAO:'data_ativacao',
+  CONTRATOHABILITADO:'habilitado', DATACANCELAMENTO:'data_cancelamento', '1MOTIVO':'motivo1', '1SUBMOTIVO':'submotivo1',
+  ULTIMOMOTIVOOS:'ultimo_motivo', ULTIMOSUBMOTIVOOS:'ultimo_submotivo', TIPOMOTIVO:'tipo_motivo', RESPONSAVELACAO:'responsavel',
+  STATUS:'status', SEMANADESC:'semana', AUXEXPURGO:'expurgo', TIPOEXPURGO:'tipo_expurgo', FLAGFTTA:'ftta'
+};
+const EF_DATAS = new Set(['data_venda', 'data_ativacao', 'data_cancelamento']);
+// classificação das improdutivas (coluna "Responsavel Ação") — ordem = ordem das colunas da tabela
+const EF_RESP_IMPROD = [
+  { k:'REDE', t:'Improd. Rede' }, { k:'TECNICO', t:'Improd. Técnico' }, { k:'COMERCIAL', t:'Improd. Comercial' },
+  { k:'CLIENTE', t:'Improd. Cliente' }, { k:'RISCO', t:'Improd. Risco' }
+];
+let EF_ROWS = [];
+let EF_IMPS = [];
+let EF_TABELA_OK = true;
+let EF_DET = {};
+let efMes = 'ULTIMO', efCluster = 'TODOS', efStNA = 'TODOS', efMinVendas = 3;
+let efImportando = false;
+let efRealtimeTimer = null;
+
+/* ---------- carga / tempo real ---------- */
+async function carregarEficienciaDoSupabase(){
+  const PAGE = 1000, todas = [];
+  for (let from = 0; ; from += PAGE){
+    let r;
+    for (let t = 0; ; t++){
+      r = await supabaseClient.from('eficiencia_contratos').select(EF_COLUNAS).order('contrato').range(from, from + PAGE - 1);
+      if (!r.error) break;
+      if (t >= 2){ EF_TABELA_OK = false; throw r.error; }
+      await new Promise(res => setTimeout(res, 400 * (t + 1)));
+    }
+    (r.data || []).forEach(x => todas.push(x));
+    if ((r.data || []).length < PAGE) break;
+  }
+  const imp = await supabaseClient.from('eficiencia_importacoes').select('mes,arquivo,linhas,vendas,altas,importado_em');
+  if (imp.error){ EF_TABELA_OK = false; throw imp.error; }
+  EF_TABELA_OK = true;
+  EF_ROWS = todas;
+  EF_IMPS = imp.data || [];
+}
+function recarregarEficienciaRealtime(){
+  clearTimeout(efRealtimeTimer);
+  efRealtimeTimer = setTimeout(async () => {
+    if (efImportando) return;
+    try{
+      await carregarEficienciaDoSupabase();
+      render();
+    }catch(e){ console.error('Falha ao recarregar Eficiência em tempo real', e); }
+  }, 1200);
+}
+
+/* ---------- importação do XLSX ---------- */
+async function handleEficienciaXlsx(file){
+  if (!podeEditarDados()){ showToast('Seu perfil não pode importar dados.'); return; }
+  const statusEl = document.getElementById('dz-status-EFIC');
+  statusEl.innerHTML = '⏳ Carregando leitor de planilha...';
+  if (!(await loadSheetJS())){
+    showToast('Não consegui carregar o leitor de XLSX — verifique a internet e tente de novo.');
+    statusEl.innerHTML = 'Falha ao carregar. Tente novamente.';
+    return;
+  }
+  efImportando = true;
+  showProgress(true);
+  updateProgress(0, 1, 'Lendo ' + file.name + '...');
+  try{
+    const wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const matriz = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null });
+    if (!matriz.length) throw new Error('planilha vazia');
+    const idx = {};
+    matriz[0].forEach((h, i) => {
+      const campo = EF_CAMPOS[caChave(h)];
+      if (campo && !(campo in idx)) idx[campo] = i;
+    });
+    const NOME = { contrato:'Contrato', data_venda:'Data Venda', data_ativacao:'Data Ativacao', habilitado:'Contrato Habilitado?', status:'Status', territorio:'Território' };
+    Object.keys(NOME).forEach(c => {
+      if (!(c in idx)) throw new Error('não achei a coluna "' + NOME[c] + '" — esse é o export de Eficiência de Altas do Power BI?');
+    });
+    const agora = new Date().toISOString();
+    const unicas = new Map();
+    let ignoradas = 0;
+    for (let i = 1; i < matriz.length; i++){
+      const r = matriz[i];
+      const bruto = r[idx.contrato];
+      const contrato = (bruto === null || bruto === undefined) ? '' : String(bruto).trim();
+      if (!/^\d+$/.test(contrato)){ ignoradas++; continue; }      // linhas em branco, rodapé de filtros etc.
+      const o = { importado_em: agora };
+      Object.keys(idx).forEach(campo => {
+        const v = r[idx[campo]];
+        if (EF_DATAS.has(campo)) o[campo] = caData(v);
+        else if (campo === 'habilitado') o[campo] = semAcento(v) === 'ATIVADO';
+        else if (campo === 'expurgo' || campo === 'ftta') o[campo] = caBool(v) === true;
+        else if (campo === 'cliente') o[campo] = (v === null || v === undefined || v === '') ? null : String(Math.round(Number(v)) || v);
+        else o[campo] = caTxt(v);
+      });
+      o.contrato = contrato;
+      if (!o.data_venda){ ignoradas++; continue; }
+      if (!o.territorio) o.territorio = 'Sem território';
+      if (!o.habilitado) o.data_ativacao = null;                  // não ativado não conta como alta, mesmo que venha data
+      unicas.set(contrato, o);
+    }
+    const linhas = [...unicas.values()];
+    if (!linhas.length) throw new Error('nenhum contrato válido no arquivo');
+    // mês de referência = mês com mais vendas no arquivo (o arquivo traz também vendas de meses anteriores que ativaram agora)
+    // meses de referência = meses com vendas "de verdade" no arquivo (≥ 25% do maior mês) + o mês mais recente (mesmo em andamento);
+    // sobras de meses anteriores (ex.: as 35 vendas de outubro que só vieram por terem ativado em novembro) não contam como mês
+    const porMes = {}, altasMes = {};
+    linhas.forEach(l => {
+      const m = l.data_venda.slice(0, 7); porMes[m] = (porMes[m] || 0) + 1;
+      if (l.data_ativacao){ const a = l.data_ativacao.slice(0, 7); altasMes[a] = (altasMes[a] || 0) + 1; }
+    });
+    const mesesArq = Object.keys(porMes).sort();
+    const maxVendas = Math.max.apply(null, mesesArq.map(m => porMes[m]));
+    const refs = mesesArq.filter(m => porMes[m] >= maxVendas * 0.25 || m === mesesArq[mesesArq.length - 1]);
+    const ref = refs[refs.length - 1];
+    const LOTE = 500;
+    for (let i = 0; i < linhas.length; i += LOTE){
+      updateProgress(i, linhas.length, 'Gravando ' + Math.min(i + LOTE, linhas.length) + ' de ' + linhas.length + ' contratos...');
+      const { error } = await supabaseClient.from('eficiencia_contratos').upsert(linhas.slice(i, i + LOTE), { onConflict:'contrato' });
+      if (error) throw error;
+    }
+    const altasRef = altasMes[ref] || 0;
+    const imp = await supabaseClient.from('eficiencia_importacoes').upsert(refs.map(m => ({
+      mes: m + '-01', arquivo: file.name, linhas: linhas.length, vendas: porMes[m], altas: altasMes[m] || 0,
+      importado_por: CURRENT_USER.id, importado_em: agora
+    })), { onConflict:'mes' });
+    if (imp.error) throw imp.error;
+    await carregarEficienciaDoSupabase();
+    efMes = ref;
+    showProgress(false);
+    render();
+    registrarAuditoria('importar_eficiencia', { filename:file.name, linhas:linhas.length, ignoradas, meses:refs, vendas:porMes[ref], altas:altasRef });
+    showToast('Eficiência de Altas: ' + linhas.length.toLocaleString('pt-BR') + ' contratos · ' + refs.map(caRotuloMes).join(', ') + ' · ' + caRotuloMes(ref) + ': ' + porMes[ref].toLocaleString('pt-BR') + ' vendas, ' + altasRef.toLocaleString('pt-BR') + ' altas = ' + caPct(porMes[ref] ? altasRef / porMes[ref] * 100 : null) + '.');
+  }catch(err){
+    console.error(err);
+    showProgress(false);
+    atualizarDzEficiencia();
+    showToast('Erro ao importar a Eficiência de Altas: ' + (err.message || err));
+  }finally{
+    efImportando = false;
+  }
+}
+function atualizarDzEficiencia(){
+  const el = document.getElementById('dz-status-EFIC'), dz = document.getElementById('dz-EFIC');
+  if (!el) return;
+  if (!EF_IMPS.length){ el.innerHTML = 'Aguardando arquivo'; if (dz) dz.classList.remove('filled'); return; }
+  if (dz) dz.classList.add('filled');
+  const ult = EF_IMPS.slice().sort((a, b) => a.importado_em < b.importado_em ? 1 : -1)[0];
+  el.innerHTML = '<b>' + EF_ROWS.length.toLocaleString('pt-BR') + ' contratos</b> · ' + EF_IMPS.length + ' mês(es): ' + efMesesRef().map(caRotuloMes).join(', ')
+    + '<br><span class="muted">' + caEsc(ult.arquivo || '') + ' · ' + new Date(ult.importado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) + '</span>';
+}
+
+/* ---------- apoio ---------- */
+function efMesDe(iso){ return iso ? iso.slice(0, 7) : ''; }
+function efFaixa(p){ return p === null || p === undefined ? '' : (p >= EF_META ? 'ef-ok' : (p >= EF_ALERTA ? 'ef-mid' : 'ef-bad')); }
+const EF_NOTA_PARCIAL = 'a base começa nesse mês: ativações de vendas de meses anteriores não estão no arquivo, então a eficiência fica subestimada (importe um arquivo com vendas desde o mês anterior para corrigir)';
+function efMesInicial(){ return EF_ROWS.reduce((m, r) => (!m || r.data_venda < m ? r.data_venda : m), '').slice(0, 7); }
+function efMesesRef(){ return [...new Set(EF_IMPS.map(i => String(i.mes).slice(0, 7)))].sort(); }
+function efBase(){ return efCluster === 'TODOS' ? EF_ROWS : EF_ROWS.filter(r => r.territorio === efCluster); }
+function efNum(n){ return n.toLocaleString('pt-BR'); }
+function efPct1(a, b){ return b ? a / b * 100 : null; }
+function efRotuloResp(r){
+  const t = (r || '').trim();
+  return (!t || t === '-') ? '(sem classificação)' : t;
+}
+// agrupa os contratos do mês (vendas OU altas no mês) por uma chave; cada grupo guarda v (vendas), a (altas) e as linhas
+function efGrupos(rows, mes, chaveFn){
+  const m = new Map();
+  rows.forEach(r => {
+    const dv = efMesDe(r.data_venda) === mes, da = efMesDe(r.data_ativacao) === mes;
+    if (!dv && !da) return;
+    const k = chaveFn(r);
+    let g = m.get(k.key);
+    if (!g){ g = { key:k.key, label:k.label, v:0, a:0, rows:[] }; m.set(k.key, g); }
+    if (dv) g.v++;
+    if (da) g.a++;
+    g.rows.push(r);
+  });
+  m.forEach(g => { g.pct = efPct1(g.a, g.v); });
+  return [...m.values()];
+}
+function efReg(id, titulo, linhas){ EF_DET[id] = { titulo, linhas }; return id; }
+function efDet(id, extra){ return ' data-efdet="' + caEsc(id) + '"' + (extra || ''); }
+
+/* ---------- gráficos (SVG) ---------- */
+function efEixoDia(iso){
+  const d = new Date(iso + 'T00:00:00Z');
+  return { sem: 'DSTQQSS'.charAt(d.getUTCDay()), dm: iso.slice(8, 10) + '/' + iso.slice(5, 7) };
+}
+function efSvgMom(pontos, sel){
+  if (!pontos.length) return '<div class="ca-vazio">Sem meses importados.</div>';
+  const W = 380, H = 300, pl = 16, pr = 16, pt = 38, pb = 38, iw = W - pl - pr, ih = H - pt - pb;
+  const bw = iw / pontos.length, gw = Math.min(bw * 0.7, 84);
+  const y = v => pt + ih - ih * Math.min(v, 110) / 110;
+  let g = '<line class="ca-meta" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(EF_META).toFixed(1) + '" y2="' + y(EF_META).toFixed(1) + '"/>'
+    + '<text class="ca-meta-txt" x="' + (pl + 2) + '" y="' + (y(EF_META) - 6).toFixed(1) + '">meta ' + EF_META + '%</text>';
+  pontos.forEach((p, i) => {
+    const cx = pl + bw * (i + 0.5);
+    const tip = p.rot + (p.parcial ? '*' : '') + '|Vendas: ' + efNum(p.v) + '|Altas: ' + efNum(p.a) + '|Eficiência: ' + caPct(p.pct) + (p.parcial ? '|* ' + EF_NOTA_PARCIAL : '');
+    if (p.pct !== null){
+      const hh = ih * Math.min(p.pct, 110) / 110;
+      g += '<g data-tip="' + caEsc(tip) + '"><rect x="' + (cx - gw / 2).toFixed(1) + '" y="' + (pt + ih - hh).toFixed(1) + '" width="' + gw.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="5" class="ef-mom-bar' + (p.mes === sel ? ' sel' : '') + (p.parcial ? ' parcial' : '') + '"/>'
+        + '<text class="ca-pct-txt" x="' + cx.toFixed(1) + '" y="' + (pt + ih - hh - 8).toFixed(1) + '" text-anchor="middle">' + caPct(p.pct) + '</text></g>';
+    }
+    g += '<text class="ca-eixo-b" x="' + cx.toFixed(1) + '" y="' + (H - pb + 20) + '" text-anchor="middle">' + caEsc(p.rot) + (p.parcial ? '*' : '') + '</text>';
+  });
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Evolução mensal da eficiência">' + g + '</svg>'
+    + (pontos.some(p => p.parcial) ? '<div class="ef-nota">* ' + EF_NOTA_PARCIAL + '</div>' : '');
+}
+// linha da eficiência acumulada dia a dia (com área e meta)
+function efSvgDiaria(dias){
+  const pts = dias.filter(d => d.pct !== null);
+  if (!pts.length) return '<div class="ca-vazio">Sem dados nesse recorte.</div>';
+  const W = 760, H = 300, pl = 14, pr = 44, pt = 26, pb = 52, iw = W - pl - pr, ih = H - pt - pb;
+  const maxV = Math.max.apply(null, pts.map(d => d.pct)), minV = Math.min.apply(null, pts.map(d => d.pct));
+  const topo = Math.max(100, Math.ceil(maxV / 10) * 10);
+  const base = Math.max(0, Math.floor(Math.min(minV, EF_META) / 10) * 10 - 10);
+  const y = v => pt + ih - ih * (v - base) / (topo - base);
+  const bw = iw / dias.length;
+  let g = '<defs><linearGradient id="efGradArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".03"/></linearGradient></defs>';
+  for (let v = base; v <= topo; v += 10){
+    g += '<line class="ca-grade" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '"/>'
+      + '<text class="ca-eixo" x="' + (W - pr + 6) + '" y="' + (y(v) + 4).toFixed(1) + '">' + v + '%</text>';
+  }
+  g += '<line class="ca-meta" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(EF_META).toFixed(1) + '" y2="' + y(EF_META).toFixed(1) + '"/>'
+    + '<text class="ca-meta-txt" x="' + (pl + 4) + '" y="' + (y(EF_META) - 5).toFixed(1) + '">meta ' + EF_META + '%</text>';
+  let linha = '', area = '', primeiro = null, ultimo = null;
+  dias.forEach((d, i) => {
+    const cx = pl + bw * (i + 0.5);
+    d.cx = cx;
+    if (d.pct === null) return;
+    const cy = y(d.pct);
+    linha += (linha ? 'L' : 'M') + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ';
+    if (primeiro === null) primeiro = cx;
+    ultimo = cx;
+  });
+  area = linha + 'L' + ultimo.toFixed(1) + ' ' + (pt + ih) + ' L' + primeiro.toFixed(1) + ' ' + (pt + ih) + ' Z';
+  g += '<path d="' + area + '" fill="url(#efGradArea)"/><path class="ef-linha" d="' + linha + '"/>';
+  const passoRot = Math.ceil(dias.length / 17), passoVal = dias.length > 18 ? 2 : 1;
+  dias.forEach((d, i) => {
+    const e = efEixoDia(d.dia);
+    const tip = caFmtData(d.dia) + '|Vendas acumuladas: ' + efNum(d.cumV) + '|Altas acumuladas: ' + efNum(d.cumA) + '|Eficiência acumulada: ' + caPct(d.pct);
+    g += '<g data-tip="' + caEsc(tip) + '"><rect x="' + (pl + bw * i).toFixed(1) + '" y="' + pt + '" width="' + bw.toFixed(1) + '" height="' + ih + '" fill="transparent"/>';
+    if (d.pct !== null){
+      const cy = y(d.pct);
+      g += '<circle class="ef-pt" cx="' + d.cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.8"/>';
+      if (i % passoVal === 0 || i === dias.length - 1) g += '<text class="ca-pct-txt ef-val" x="' + d.cx.toFixed(1) + '" y="' + (cy - 10).toFixed(1) + '" text-anchor="middle">' + caPct(d.pct) + '</text>';
+    }
+    g += '</g>';
+    if (i % passoRot === 0) g += '<text class="ca-eixo" x="' + d.cx.toFixed(1) + '" y="' + (H - pb + 16) + '" text-anchor="middle">' + e.sem + '</text><text class="ca-eixo-b" x="' + d.cx.toFixed(1) + '" y="' + (H - pb + 30) + '" text-anchor="middle">' + e.dm + '</text>';
+  });
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Evolução diária da eficiência acumulada">' + g + '</svg>';
+}
+// barras = vendas e altas de cada dia · linha = eficiência acumulada
+function efSvgDiaVol(dias){
+  if (!dias.length) return '<div class="ca-vazio">Sem dados nesse recorte.</div>';
+  const W = 1000, H = 300, pl = 46, pr = 46, pt = 28, pb = 46, iw = W - pl - pr, ih = H - pt - pb;
+  const maxBruto = Math.max.apply(null, dias.map(d => Math.max(d.dayV, d.dayA)).concat([1]));
+  const passo = Math.pow(10, Math.floor(Math.log10(maxBruto)));
+  const maxV = Math.ceil(maxBruto / passo) * passo;
+  const bw = iw / dias.length, gw = Math.min(bw * 0.78, 40), meia = gw / 2;
+  const yPct = v => pt + ih - ih * Math.min(v, 100) / 100;
+  let g = '<defs><linearGradient id="efGradVerde" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27D49B"/><stop offset="1" stop-color="#00A56F"/></linearGradient></defs>';
+  [0, 25, 50, 75, 100].forEach(v => {
+    g += '<line class="ca-grade" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yPct(v).toFixed(1) + '" y2="' + yPct(v).toFixed(1) + '"/>'
+      + '<text class="ca-eixo" x="' + (W - pr + 6) + '" y="' + (yPct(v) + 4).toFixed(1) + '">' + v + '%</text>';
+  });
+  [0, 0.5, 1].forEach(f => { g += '<text class="ca-eixo" x="' + (pl - 6) + '" y="' + (pt + ih - ih * f + 4).toFixed(1) + '" text-anchor="end">' + Math.round(maxV * f).toLocaleString('pt-BR') + '</text>'; });
+  g += '<line class="ca-meta" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yPct(EF_META).toFixed(1) + '" y2="' + yPct(EF_META).toFixed(1) + '"/>';
+  const passoRot = Math.ceil(dias.length / 20), passoVal = dias.length > 18 ? 2 : 1;
+  let linha = '';
+  dias.forEach((d, i) => {
+    const cx = pl + bw * (i + 0.5), hV = ih * d.dayV / maxV, hA = ih * d.dayA / maxV, e = efEixoDia(d.dia);
+    const tip = caFmtData(d.dia) + '|Vendas do dia: ' + efNum(d.dayV) + '|Altas do dia: ' + efNum(d.dayA) + '|Eficiência acumulada: ' + caPct(d.pct);
+    g += '<g data-tip="' + caEsc(tip) + '"><rect x="' + (pl + bw * i).toFixed(1) + '" y="' + pt + '" width="' + bw.toFixed(1) + '" height="' + ih + '" fill="transparent"/>'
+      + '<rect class="ca-b-total" x="' + (cx - meia - 1).toFixed(1) + '" y="' + (pt + ih - hV).toFixed(1) + '" width="' + (meia - 0.5).toFixed(1) + '" height="' + hV.toFixed(1) + '" rx="3"/>'
+      + '<rect x="' + (cx + 0.5).toFixed(1) + '" y="' + (pt + ih - hA).toFixed(1) + '" width="' + (meia - 0.5).toFixed(1) + '" height="' + hA.toFixed(1) + '" rx="3" fill="url(#efGradVerde)"/></g>';
+    if (i % passoRot === 0) g += '<text class="ca-eixo" x="' + cx.toFixed(1) + '" y="' + (H - pb + 15) + '" text-anchor="middle">' + e.sem + '</text><text class="ca-eixo-b" x="' + cx.toFixed(1) + '" y="' + (H - pb + 28) + '" text-anchor="middle">' + e.dm + '</text>';
+    if (d.pct !== null) linha += (linha ? 'L' : 'M') + cx.toFixed(1) + ' ' + yPct(d.pct).toFixed(1) + ' ';
+  });
+  if (linha) g += '<path class="ef-linha-navy" d="' + linha + '"/>';
+  dias.forEach((d, i) => {
+    if (d.pct === null) return;
+    const cx = pl + bw * (i + 0.5), cy = yPct(d.pct);
+    g += '<circle class="ef-pt-navy" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.4"/>';
+    if (i % passoVal === 0 || i === dias.length - 1) g += '<text class="ca-pct-txt ef-val" x="' + cx.toFixed(1) + '" y="' + (cy - 9).toFixed(1) + '" text-anchor="middle">' + caPct(d.pct) + '</text>';
+  });
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Vendas e altas por dia">' + g + '</svg>';
+}
+
+/* ---------- listas de barras (HTML) ---------- */
+function efLinhaPct(it, compacta){
+  const cls = efFaixa(it.pct), w = Math.max(0, Math.min(100, it.pct || 0));
+  return '<div class="ef-bar' + (compacta ? ' ef-compacta' : '') + '" ' + efDet(it.id) + ' title="' + caEsc(it.label + ' — ' + it.a + ' altas de ' + it.v + ' vendas · clique para ver os contratos') + '">'
+    + '<span class="ef-bar-l">' + caEsc(it.label) + '</span><span class="ef-bar-t"><i class="' + cls + '" style="width:' + w.toFixed(1) + '%"></i></span>'
+    + '<span class="ef-bar-v ' + cls + '">' + caPct(it.pct) + ' <small>' + it.a + '/' + it.v + '</small></span></div>';
+}
+function efRank(itens, total, cinza){
+  if (!itens.length) return '<div class="muted" style="padding:10px 0;">Nada nesse recorte.</div>';
+  const max = itens[0].n;
+  return itens.map(it => {
+    const pct = total ? it.n / total * 100 : 0;
+    return '<div class="ef-bar ef-rank" ' + efDet(it.id) + ' title="' + caEsc(it.label + ' — ' + it.n + ' contratos · clique para ver') + '">'
+      + '<span class="ef-bar-l">' + caEsc(it.label) + '</span><span class="ef-bar-t"><i class="' + (cinza && cinza(it) ? 'ef-cinza' : 'ef-azul') + '" style="width:' + (max ? it.n / max * 100 : 0).toFixed(1) + '%"></i></span>'
+      + '<span class="ef-bar-v">' + efNum(it.n) + ' <small>' + pct.toFixed(0) + '%' + (it.extra ? ' · ' + it.extra : '') + '</small></span></div>';
+  }).join('');
+}
+
+/* ---------- render ---------- */
+function renderEficiencia(){
+  atualizarDzEficiencia();
+  if (currentModule !== 'eficiencia') return;
+  const vazio = document.getElementById('efVazio'), corpo = document.getElementById('efCorpo');
+  if (!EF_ROWS.length){
+    corpo.style.display = 'none';
+    vazio.innerHTML = '<div class="panel ca-vazio"><b>' + (EF_TABELA_OK ? 'Ainda não há dados de Eficiência de Altas' : 'Não consegui ler as tabelas de Eficiência de Altas') + '</b>'
+      + (EF_TABELA_OK ? 'Importe o export do Power BI (XLSX) em <b style="display:inline">Importar → Eficiência de Altas</b>.' : 'A migração 0023 foi aplicada no Supabase?') + '</div>';
+    return;
+  }
+  vazio.innerHTML = ''; corpo.style.display = '';
+  EF_DET = {};
+
+  // ----- recorte (mês + cluster)
+  let meses = efMesesRef();
+  if (!meses.length){ const c = {}; EF_ROWS.forEach(r => { const m = efMesDe(r.data_venda); c[m] = (c[m] || 0) + 1; }); meses = [Object.keys(c).sort((a, b) => c[b] - c[a])[0]]; }
+  let mes = efMes;
+  if (mes === 'ULTIMO' || meses.indexOf(mes) === -1) mes = meses[meses.length - 1];
+  const clusters = [...new Set(EF_ROWS.map(r => r.territorio))].sort();
+  if (efCluster !== 'TODOS' && clusters.indexOf(efCluster) === -1) efCluster = 'TODOS';
+  const base = efBase();
+  const mesIni = efMesInicial();
+  const noMes = base.filter(r => efMesDe(r.data_venda) === mes || efMesDe(r.data_ativacao) === mes);
+  const vendas = noMes.filter(r => efMesDe(r.data_venda) === mes);
+  const altas = noMes.filter(r => efMesDe(r.data_ativacao) === mes);
+  const naoAt = vendas.filter(r => !r.habilitado);
+  const pct = efPct1(altas.length, vendas.length);
+  const rotMes = caRotuloMes(mes);
+  const ult = EF_IMPS.length ? EF_IMPS.slice().sort((a, b) => a.importado_em < b.importado_em ? 1 : -1)[0] : null;
+
+  document.getElementById('efToolbar').innerHTML =
+    '<div class="ca-grupo"><span>Mês</span><div class="cp-status-bar">' + meses.map(m => caBotaoPill(m === mes, 'efmes', m, caRotuloMes(m) + (m === mesIni ? '*' : ''))).join('') + '</div></div>'
+    + '<div class="ca-grupo"><span>Cluster</span><div class="cp-status-bar">' + caBotaoPill(efCluster === 'TODOS', 'efcl', 'TODOS', 'Todos')
+    + clusters.map(c => caBotaoPill(efCluster === c, 'efcl', c, c)).join('') + '</div></div>'
+    + '<div class="ca-grupo" title="Cidades e bairros com menos vendas que isso ficam fora dos rankings (1 venda e 0 altas vira 0%)"><span>Mín. de vendas</span><div class="cp-status-bar">'
+    + [1, 3, 5, 10].map(n => caBotaoPill(efMinVendas === n, 'efmin', n, String(n))).join('') + '</div></div>'
+    + '<button type="button" class="btn ghost" data-efexp="1" style="margin-left:auto;">⬇ Exportar Excel</button>'
+    + '<div class="ca-fonte" style="margin-left:0;">' + efNum(EF_ROWS.length) + ' contratos importados' + (ult ? '<br>última importação ' + new Date(ult.importado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '') + '</div>';
+  document.getElementById('efHint').textContent = rotMes + (efCluster === 'TODOS' ? '' : ' · ' + efCluster) + ' · ' + efNum(vendas.length) + ' vendas · ' + efNum(altas.length) + ' altas · eficiência ' + caPct(pct);
+
+  // ----- cartões
+  const sa = k => naoAt.filter(r => semAcento(r.status) === k);
+  const abertos = sa('ABERTOS'), aCanc = sa('A CANCELAR');
+  const cancPre = vendas.filter(r => semAcento(r.status) === 'CANCELADOS');
+  const cancPos = vendas.filter(r => r.habilitado && r.data_cancelamento && r.data_ativacao && r.data_cancelamento > r.data_ativacao);
+  const cancTodos = cancPre.concat(cancPos);
+  const altasDoMes = altas.filter(r => efMesDe(r.data_venda) === mes), altasOutros = altas.filter(r => efMesDe(r.data_venda) !== mes);
+  const tit = t => t + ' · ' + rotMes + (efCluster === 'TODOS' ? '' : ' · ' + efCluster);
+  const cartao = (cls, icone, rotulo, valor, sub, foot, id) =>
+    '<div class="kpi-card ' + cls + ' ef-kpi" ' + efDet(id) + ' title="Clique para ver os contratos"><div class="kpi-top"><span class="kpi-ic"><svg class="i"><use href="#' + icone + '"/></svg></span><span class="label">' + rotulo + '</span></div>'
+    + '<div class="kpi-main"><div class="value">' + valor + '</div><div class="ca-sub">' + sub + '</div><div class="foot">' + foot + '</div></div></div>';
+  const gap = pct === null ? null : pct - EF_META;
+  const chipMeta = gap === null ? '<span class="foot-note">sem vendas no recorte</span>'
+    : '<span class="trend-chip ' + (gap >= 0 ? 'good' : 'bad') + '"><b>' + (gap >= 0 ? '↑' : '↓') + '</b> ' + caPP(gap) + ' vs meta ' + EF_META + '%</span>';
+  const idxMes = meses.indexOf(mes);
+  let antTxt = '';
+  if (idxMes > 0){
+    const ma = meses[idxMes - 1], vv = base.filter(r => efMesDe(r.data_venda) === ma).length, aa = base.filter(r => efMesDe(r.data_ativacao) === ma).length;
+    if (vv) antTxt = ' · ' + caRotuloMes(ma) + (ma === mesIni ? '*' : '') + ': ' + caPct(efPct1(aa, vv));
+  }
+  document.getElementById('efKpis').innerHTML =
+    cartao('kpi-blue', 'i-gauge', 'EFICIÊNCIA', caPct(pct), efNum(altas.length) + ' altas ÷ ' + efNum(vendas.length) + ' vendas' + antTxt, chipMeta, efReg('k|ef', tit('Contratos'), noMes))
+    + cartao('kpi-purple', 'i-trend', 'VENDAS DO MÊS', efNum(vendas.length), 'contratos vendidos em ' + rotMes + (vendas.filter(r => r.expurgo).length ? ' · ' + vendas.filter(r => r.expurgo).length + ' em expurgo' : ''), '<span class="foot-note">base da eficiência</span>', efReg('k|v', tit('Vendas'), vendas))
+    + cartao('kpi-green', 'i-check', 'ATIVAÇÕES (ALTAS)', efNum(altas.length), efNum(altasDoMes.length) + ' de vendas do mês · ' + efNum(altasOutros.length) + ' de meses anteriores', '<span class="foot-note">ativados em ' + rotMes + '</span>', efReg('k|a', tit('Altas'), altas))
+    + cartao('kpi-orange', 'i-clock', 'NÃO ATIVADOS', efNum(naoAt.length), efNum(abertos.length) + ' em aberto · ' + efNum(aCanc.length) + ' a cancelar (+10 dias) · ' + efNum(cancPre.length) + ' cancelados', '<span class="foot-note">' + caPct(efPct1(naoAt.length, vendas.length)) + ' das vendas</span>', efReg('k|n', tit('Não ativados'), naoAt))
+    + cartao('kpi-red', 'i-alert', 'VENDAS CANCELADAS', efNum(cancTodos.length), efNum(cancPre.length) + ' pré-ativação · ' + efNum(cancPos.length) + ' pós-ativação', '<span class="foot-note">' + caPct(efPct1(cancTodos.length, vendas.length)) + ' das vendas</span>', efReg('k|c', tit('Canceladas'), cancTodos));
+
+  // ----- evolução mensal (só meses importados), respeitando o cluster
+  const pontosMes = meses.slice(-6).map(m => {
+    const v = base.filter(r => efMesDe(r.data_venda) === m).length, a = base.filter(r => efMesDe(r.data_ativacao) === m).length;
+    return { mes:m, rot:caRotuloMes(m), v, a, pct:efPct1(a, v), parcial: m === mesIni };
+  });
+  document.getElementById('efMom').innerHTML = efSvgMom(pontosMes, mes);
+
+  // ----- dia a dia (acumulado)
+  const dv = {}, da = {};
+  vendas.forEach(r => { dv[r.data_venda] = (dv[r.data_venda] || 0) + 1; });
+  altas.forEach(r => { da[r.data_ativacao] = (da[r.data_ativacao] || 0) + 1; });
+  const todasDatas = Object.keys(dv).concat(Object.keys(da)).sort();
+  const dias = [];
+  if (todasDatas.length){
+    const fim = todasDatas[todasDatas.length - 1];
+    let cumV = 0, cumA = 0;
+    for (let d = new Date(mes + '-01T00:00:00Z'); ; d = new Date(d.getTime() + 86400000)){
+      const iso = d.toISOString().slice(0, 10);
+      if (iso > fim) break;
+      const dayV = dv[iso] || 0, dayA = da[iso] || 0;
+      cumV += dayV; cumA += dayA;
+      dias.push({ dia:iso, dayV, dayA, cumV, cumA, pct:efPct1(cumA, cumV) });
+    }
+  }
+  document.getElementById('efDiaria').innerHTML = efSvgDiaria(dias);
+  document.getElementById('efDiaVol').innerHTML = efSvgDiaVol(dias);
+
+  // ----- por cluster
+  const gCl = efGrupos(noMes, mes, r => ({ key:r.territorio, label:r.territorio })).sort((a, b) => (a.pct === null ? 1e9 : a.pct) - (b.pct === null ? 1e9 : b.pct));
+  document.getElementById('efClusters').innerHTML = gCl.map(g => efLinhaPct({ id: efReg('cl|' + g.key, tit('Cluster ' + g.label), g.rows), label:g.label, pct:g.pct, v:g.v, a:g.a }, true)).join('') || '<div class="muted">Sem dados.</div>';
+
+  // ----- por cidade / bairro (os piores primeiro, como no Power BI)
+  const rank = (grupos, pref, rot) => grupos.filter(g => g.v >= efMinVendas).sort((a, b) => a.pct - b.pct || b.v - a.v)
+    .map(g => efLinhaPct({ id: efReg(pref + '|' + g.key, tit(rot + ' ' + g.label), g.rows), label:g.label, pct:g.pct, v:g.v, a:g.a }));
+  const gCid = efGrupos(noMes, mes, r => { const c = r.cidade || '(sem cidade)'; return { key:c, label:c }; });
+  const gBai = efGrupos(noMes, mes, r => { const c = r.cidade || '(sem cidade)', b = r.bairro || '(sem bairro)'; return { key:c + '|' + b, label:c + ' ' + b }; });
+  const lCid = rank(gCid, 'cid', 'Cidade'), lBai = rank(gBai, 'bai', 'Bairro');
+  const ocultaCid = gCid.length - gCid.filter(g => g.v >= efMinVendas).length, ocultaBai = gBai.length - gBai.filter(g => g.v >= efMinVendas).length;
+  document.getElementById('efCidades').innerHTML = lCid.join('') || '<div class="muted">Nenhuma cidade com ' + efMinVendas + '+ vendas.</div>';
+  document.getElementById('efBairros').innerHTML = lBai.join('') || '<div class="muted">Nenhum bairro com ' + efMinVendas + '+ vendas.</div>';
+  document.getElementById('efCidDesc').textContent = lCid.length + ' cidades' + (ocultaCid ? ' · ' + ocultaCid + ' fora do ranking (menos de ' + efMinVendas + ' venda' + (efMinVendas > 1 ? 's' : '') + ')' : '');
+  document.getElementById('efBaiDesc').textContent = lBai.length + ' bairros' + (ocultaBai ? ' · ' + ocultaBai + ' fora do ranking (menos de ' + efMinVendas + ' venda' + (efMinVendas > 1 ? 's' : '') + ')' : '');
+
+  // ----- não ativados: responsável, canal, último motivo e submotivo
+  const stNA = [['TODOS', 'Todos', naoAt.length], ['ABERTOS', 'Abertos', abertos.length], ['A CANCELAR', 'A cancelar', aCanc.length], ['CANCELADOS', 'Cancelados', cancPre.length]];
+  if (!stNA.some(s => s[0] === efStNA)) efStNA = 'TODOS';
+  document.getElementById('efStatusNA').innerHTML = stNA.map(s => '<button type="button" class="cp-status-btn' + (efStNA === s[0] ? ' active' : '') + '" data-efst="' + s[0] + '">' + s[1] + ' <small>' + efNum(s[2]) + '</small></button>').join('');
+  const naSel = efStNA === 'TODOS' ? naoAt : naoAt.filter(r => semAcento(r.status) === efStNA);
+  document.getElementById('efNADesc').textContent = efNum(naSel.length) + ' contratos não ativados de ' + rotMes + (efStNA === 'TODOS' ? '' : ' · só ' + stNA.find(s => s[0] === efStNA)[1].toLowerCase());
+  const contar = (rows, chaveFn, pref, rotulo, extraFn) => {
+    const m = new Map();
+    rows.forEach(r => {
+      const k = chaveFn(r);
+      let g = m.get(k.key); if (!g){ g = { key:k.key, label:k.label, n:0, rows:[] }; m.set(k.key, g); }
+      g.n++; g.rows.push(r);
+    });
+    return [...m.values()].sort((a, b) => b.n - a.n || (a.label < b.label ? -1 : 1)).map(g => {
+      g.id = efReg(pref + '|' + g.key + '|' + efStNA, tit(rotulo + ': ' + g.label), g.rows);
+      g.extra = extraFn ? extraFn(g) : '';
+      return g;
+    });
+  };
+  const txt = (v, vazio) => { const t = (v || '').trim(); return t && t !== '-' ? { key:semAcento(t), label:t } : { key:'(vazio)', label:vazio }; };
+  const resp = contar(naSel, r => txt(r.responsavel, '(sem classificação)'), 'rp', 'Responsável');
+  const grCanal = {}; efGrupos(noMes, mes, r => ({ key:r.canal || '(sem canal)', label:r.canal || '(sem canal)' })).forEach(g => { grCanal[g.key] = g; });
+  const canal = contar(naSel, r => txt(r.canal, '(sem canal)'), 'cn', 'Canal', g => { const c = grCanal[g.label] || grCanal[g.rows[0].canal]; return c && c.pct !== null ? 'efic. ' + c.pct.toFixed(0) + '%' : ''; });
+  const umot = contar(naSel, r => txt(r.ultimo_motivo, '(Em branco)'), 'um', 'Último motivo');
+  const usub = contar(naSel, r => txt(r.ultimo_submotivo, '(Em branco)'), 'us', 'Último submotivo');
+  const cinzaResp = it => /BACKLOG/.test(semAcento(it.label));
+  document.getElementById('efResp').innerHTML = efRank(resp, naSel.length, cinzaResp);
+  document.getElementById('efCanal').innerHTML = efRank(canal, naSel.length);
+  document.getElementById('efUMot').innerHTML = efRank(umot, naSel.length);
+  document.getElementById('efUSub').innerHTML = efRank(usub, naSel.length);
+
+  // ----- tabela: eficiência × classificação das improdutivas, por cluster
+  const gTab = efGrupos(noMes, mes, r => ({ key:r.territorio, label:r.territorio })).sort((a, b) => b.v - a.v);
+  const colunas = EF_RESP_IMPROD.map(c => ({ t:c.t, fn: r => semAcento(r.responsavel) === c.k }))
+    .concat([
+      { t:'Impacto total', fn: r => EF_RESP_IMPROD.some(c => semAcento(r.responsavel) === c.k), cls:'ef-col-imp' },
+      { t:'Backlog limpo', fn: r => semAcento(r.responsavel) === 'BACKLOG LIMPO', cls:'ef-col-bl' },
+      { t:'Cancel. s/ marcação', fn: r => semAcento(r.responsavel) === 'CANCELADO SEM MARCACAO' },
+      { t:'Outros', fn: r => { const k = semAcento(r.responsavel); return !(EF_RESP_IMPROD.some(c => c.k === k) || k === 'BACKLOG LIMPO' || k === 'CANCELADO SEM MARCACAO'); } }
+    ]);
+  const linhaTab = (nome, g, idp) => {
+    const na = g.rows.filter(r => efMesDe(r.data_venda) === mes && !r.habilitado);
+    return '<td><b>' + caEsc(nome) + '</b></td><td class="num">' + efNum(g.v) + '</td><td class="num">' + efNum(g.a) + '</td><td class="num"><b class="' + efFaixa(g.pct) + '">' + caPct(g.pct) + '</b></td>'
+      + colunas.map(c => {
+        const rs = na.filter(c.fn);
+        return '<td class="num ' + (c.cls || '') + '">' + (rs.length ? '<span class="at-num"' + efDet(efReg('tb|' + idp + '|' + c.t, tit(nome + ' · ' + c.t), rs)) + '>' + rs.length + '</span>' : '<span class="muted">·</span>') + '</td>';
+      }).join('');
+  };
+  const total = { v:vendas.length, a:altas.length, pct, rows:noMes };
+  document.getElementById('efTabela').innerHTML = '<thead><tr><th>Cluster</th><th class="num">Total vendas</th><th class="num">Total altas</th><th class="num">% Eficiência</th>'
+    + colunas.map(c => '<th class="num ' + (c.cls || '') + '">' + c.t + '</th>').join('') + '</tr></thead><tbody>'
+    + gTab.map(g => '<tr>' + linhaTab(g.label, g, g.key) + '</tr>').join('')
+    + '<tr class="at-total-geral">' + linhaTab('Total', total, '__tot') + '</tr></tbody>';
+}
+
+/* ---------- detalhe e exportação ---------- */
+let efDetAtual = null;
+function efFmtStatus(r){ return caEsc(r.status || '—') + (r.expurgo ? ' <span class="ef-chip">expurgo</span>' : ''); }
+function efAbreDetalhe(id){
+  const d = EF_DET[id];
+  if (!d) return;
+  const linhas = d.linhas.slice().sort((a, b) => (a.cidade || '').localeCompare(b.cidade || '') || (a.bairro || '').localeCompare(b.bairro || '') || (a.data_venda < b.data_venda ? -1 : 1));
+  efDetAtual = { titulo: d.titulo, linhas };
+  document.getElementById('efDetTitulo').textContent = d.titulo;
+  document.getElementById('efDetDesc').textContent = efNum(linhas.length) + ' contrato(s) no recorte atual';
+  const td = v => v ? caEsc(v) : '<span class="muted">—</span>';
+  let h = '<thead><tr><th>Contrato</th><th>Cluster</th><th>Cidade</th><th>Bairro</th><th>Canal de venda</th><th class="num">Venda</th><th class="num">Ativação</th><th>Status</th><th>Responsável</th><th>Último motivo</th><th>Último submotivo</th><th class="num">Cancelamento</th></tr></thead><tbody>';
+  if (!linhas.length) h += '<tr><td colspan="12" class="muted">Sem contratos</td></tr>';
+  linhas.slice(0, 1500).forEach(r => {
+    h += '<tr><td class="mono">' + caEsc(r.contrato) + '</td><td>' + td(r.territorio) + '</td><td>' + td(r.cidade) + '</td><td>' + td(r.bairro) + '</td><td>' + td(r.canal) + '</td>'
+      + '<td class="num">' + caFmtData(r.data_venda) + '</td><td class="num">' + (r.data_ativacao ? caFmtData(r.data_ativacao) : '—') + '</td><td>' + efFmtStatus(r) + '</td>'
+      + '<td>' + td(efRotuloResp(r.responsavel)) + '</td><td>' + td(r.ultimo_motivo) + '</td><td>' + td(r.ultimo_submotivo) + '</td><td class="num">' + (r.data_cancelamento ? caFmtData(r.data_cancelamento) : '—') + '</td></tr>';
+  });
+  if (linhas.length > 1500) h += '<tr><td colspan="12" class="muted">Mostrando os 1.500 primeiros — o Excel leva todos.</td></tr>';
+  document.getElementById('efDetTable').innerHTML = h + '</tbody>';
+  document.getElementById('efDetBackdrop').classList.add('open');
+}
+function efLinhaExcel(r){
+  return { 'Contrato': r.contrato, 'Cliente': r.cliente || '', 'Cluster': r.territorio || '', 'Cidade': r.cidade || '', 'Bairro': r.bairro || '', 'Canal de venda': r.canal || '', 'Equipe': r.equipe || '',
+    'Data venda': r.data_venda || '', 'Data ativação': r.data_ativacao || '', 'Habilitado': r.habilitado ? 'Ativado' : 'Não ativado', 'Status': r.status || '', 'Responsável': efRotuloResp(r.responsavel),
+    'Último motivo': r.ultimo_motivo || '', 'Último submotivo': r.ultimo_submotivo || '', 'Data cancelamento': r.data_cancelamento || '', 'Expurgo': r.expurgo ? (r.tipo_expurgo || 'Sim') : '', 'Semana': r.semana || '' };
+}
+async function efExporta(nomeBase, abas){
+  if (!(await loadSheetJS())){ showToast('Não consegui carregar o gerador de Excel — verifique a internet.'); return false; }
+  const wb = XLSX.utils.book_new();
+  abas.forEach(a => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(a.dados), a.nome));
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  XLSX.writeFile(wb, nomeBase + '_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.xlsx');
+  return true;
+}
+async function exportarEficiencia(){
+  let meses = efMesesRef(); let mes = efMes;
+  if (!meses.length) return;
+  if (mes === 'ULTIMO' || meses.indexOf(mes) === -1) mes = meses[meses.length - 1];
+  const base = efBase();
+  const noMes = base.filter(r => efMesDe(r.data_venda) === mes || efMesDe(r.data_ativacao) === mes);
+  if (!noMes.length){ showToast('Nada para exportar.'); return; }
+  const resumo = g => ({ 'Vendas': g.v, 'Altas': g.a, 'Eficiência %': g.pct === null ? '' : Math.round(g.pct * 10) / 10, 'Não ativados': g.rows.filter(r => efMesDe(r.data_venda) === mes && !r.habilitado).length });
+  const lista = (fn, col) => efGrupos(noMes, mes, fn).sort((a, b) => (a.pct === null ? 1e9 : a.pct) - (b.pct === null ? 1e9 : b.pct)).map(g => Object.assign({ [col]: g.label }, resumo(g)));
+  const respMap = {};
+  noMes.filter(r => efMesDe(r.data_venda) === mes && !r.habilitado).forEach(r => { const k = efRotuloResp(r.responsavel); respMap[k] = (respMap[k] || 0) + 1; });
+  const ok = await efExporta('eficiencia_altas_' + mes.replace('-', ''), [
+    { nome:'Cluster', dados: lista(r => ({ key:r.territorio, label:r.territorio }), 'Cluster') },
+    { nome:'Cidades', dados: lista(r => { const c = r.cidade || '(sem cidade)'; return { key:c, label:c }; }, 'Cidade') },
+    { nome:'Bairros', dados: efGrupos(noMes, mes, r => { const c = r.cidade || '(sem cidade)', b = r.bairro || '(sem bairro)'; return { key:c + '|' + b, label:c + ' / ' + b }; })
+      .sort((a, b) => (a.pct === null ? 1e9 : a.pct) - (b.pct === null ? 1e9 : b.pct)).map(g => Object.assign({ 'Bairro': g.label }, resumo(g))) },
+    { nome:'Não ativados por responsável', dados: Object.keys(respMap).sort((a, b) => respMap[b] - respMap[a]).map(k => ({ 'Responsável': k, 'Contratos': respMap[k] })) },
+    { nome:'Contratos', dados: noMes.map(efLinhaExcel) }
+  ]);
+  if (ok) registrarAuditoria('exportar_eficiencia', { mes, linhas: noMes.length });
+}
+async function exportarEficienciaDetalhe(){
+  if (!efDetAtual || !efDetAtual.linhas.length){ showToast('Nada para exportar.'); return; }
+  const ok = await efExporta('eficiencia_' + semAcento(efDetAtual.titulo).replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60), [{ nome:'Contratos', dados: efDetAtual.linhas.map(efLinhaExcel) }]);
+  if (ok) registrarAuditoria('exportar_eficiencia_detalhe', { titulo: efDetAtual.titulo, linhas: efDetAtual.linhas.length });
+}
+function iniciarEficiencia(){
+  const mod = document.getElementById('module-eficiencia');
+  if (!mod) return;
+  mod.addEventListener('click', e => {
+    const t = e.target.closest ? e.target.closest('[data-efdet],button[data-efmes],button[data-efcl],button[data-efmin],button[data-efst],button[data-efexp]') : null;
+    if (!t) return;
+    if (t.dataset.efdet){ efAbreDetalhe(t.dataset.efdet); return; }
+    if (t.dataset.efmes){ efMes = t.dataset.efmes; renderEficiencia(); }
+    else if (t.dataset.efcl){ efCluster = t.dataset.efcl; renderEficiencia(); }
+    else if (t.dataset.efmin){ efMinVendas = +t.dataset.efmin; renderEficiencia(); }
+    else if (t.dataset.efst){ efStNA = t.dataset.efst; renderEficiencia(); }
+    else if (t.dataset.efexp){ exportarEficiencia(); }
+  });
+  const bd = document.getElementById('efDetBackdrop');
+  bd.addEventListener('click', e => { if (e.target.id === 'efDetBackdrop') bd.classList.remove('open'); });
+  document.getElementById('btnFecharEfDet').addEventListener('click', () => bd.classList.remove('open'));
+  document.getElementById('btnExportarEfDet').addEventListener('click', exportarEficienciaDetalhe);
+  const dz = document.getElementById('dz-EFIC'), input = document.getElementById('efic-xlsx-input');
+  input.addEventListener('change', e => { if (e.target.files[0]) handleEficienciaXlsx(e.target.files[0]); e.target.value = ''; });
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); if (e.dataTransfer.files[0]) handleEficienciaXlsx(e.dataTransfer.files[0]); });
+}
+
 /* ============================= NAVEGAÇÃO (menu lateral) ============================= */
 let currentModule = 'visao-geral';
 let sidebarCollapsed = false;
@@ -8456,6 +9148,7 @@ function setModule(mod){
   if (mod === 'cumprimento-agenda') renderCumprimentoAgenda();
   if (mod === 'rede') renderRede();
   if (mod === 'ativacoes') renderAtivacoes();
+  if (mod === 'eficiencia') renderEficiencia();
 }
 function toggleSidebar(){
   sidebarCollapsed = !sidebarCollapsed;
@@ -8884,6 +9577,7 @@ async function init(){
   iniciarCumprimentoAgenda();
   iniciarRede();
   iniciarAtivacoes();
+  iniciarEficiencia();
   document.querySelectorAll('.sidebar-item').forEach(item => item.addEventListener('click', () => setModule(item.dataset.module)));
   document.querySelectorAll('.reg-tab').forEach(btn => btn.addEventListener('click', () => setRegional(btn.dataset.ftype, btn.dataset.fvalue)));
   document.getElementById('btnHoje').addEventListener('click', () => quickPeriodo('hoje'));
