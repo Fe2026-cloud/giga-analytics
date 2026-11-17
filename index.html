@@ -1280,6 +1280,8 @@
   @media (max-width:1250px){.ef-row3{grid-template-columns:1fr;}}
   .ef-row3 .panel{min-width:0;}
   .ef-mom-bar{fill:var(--c-blue);opacity:.5;} .ef-mom-bar.sel{opacity:1;}
+  .ef-mom-bar.parcial{stroke:var(--c-blue);stroke-width:1.6;stroke-dasharray:4 3;fill-opacity:.55;}
+  .ef-nota{font-size:11px;color:var(--text-faint);line-height:1.4;margin-top:6px;}
   .ef-linha{fill:none;stroke:var(--accent);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
   .ef-pt{fill:var(--surface);stroke:var(--accent);stroke-width:2.4;}
   .ef-linha-navy{fill:none;stroke:#1B2F8F;stroke-width:2.4;stroke-dasharray:1 5;stroke-linecap:round;stroke-linejoin:round;}
@@ -8677,27 +8679,35 @@ async function handleEficienciaXlsx(file){
     const linhas = [...unicas.values()];
     if (!linhas.length) throw new Error('nenhum contrato válido no arquivo');
     // mês de referência = mês com mais vendas no arquivo (o arquivo traz também vendas de meses anteriores que ativaram agora)
-    const porMes = {};
-    linhas.forEach(l => { const m = l.data_venda.slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
-    const ref = Object.keys(porMes).sort((a, b) => porMes[b] - porMes[a] || (a < b ? 1 : -1))[0];
+    // meses de referência = meses com vendas "de verdade" no arquivo (≥ 25% do maior mês) + o mês mais recente (mesmo em andamento);
+    // sobras de meses anteriores (ex.: as 35 vendas de outubro que só vieram por terem ativado em novembro) não contam como mês
+    const porMes = {}, altasMes = {};
+    linhas.forEach(l => {
+      const m = l.data_venda.slice(0, 7); porMes[m] = (porMes[m] || 0) + 1;
+      if (l.data_ativacao){ const a = l.data_ativacao.slice(0, 7); altasMes[a] = (altasMes[a] || 0) + 1; }
+    });
+    const mesesArq = Object.keys(porMes).sort();
+    const maxVendas = Math.max.apply(null, mesesArq.map(m => porMes[m]));
+    const refs = mesesArq.filter(m => porMes[m] >= maxVendas * 0.25 || m === mesesArq[mesesArq.length - 1]);
+    const ref = refs[refs.length - 1];
     const LOTE = 500;
     for (let i = 0; i < linhas.length; i += LOTE){
       updateProgress(i, linhas.length, 'Gravando ' + Math.min(i + LOTE, linhas.length) + ' de ' + linhas.length + ' contratos...');
       const { error } = await supabaseClient.from('eficiencia_contratos').upsert(linhas.slice(i, i + LOTE), { onConflict:'contrato' });
       if (error) throw error;
     }
-    const altasRef = linhas.filter(l => l.data_ativacao && l.data_ativacao.slice(0, 7) === ref).length;
-    const imp = await supabaseClient.from('eficiencia_importacoes').upsert({
-      mes: ref + '-01', arquivo: file.name, linhas: linhas.length, vendas: porMes[ref], altas: altasRef,
+    const altasRef = altasMes[ref] || 0;
+    const imp = await supabaseClient.from('eficiencia_importacoes').upsert(refs.map(m => ({
+      mes: m + '-01', arquivo: file.name, linhas: linhas.length, vendas: porMes[m], altas: altasMes[m] || 0,
       importado_por: CURRENT_USER.id, importado_em: agora
-    }, { onConflict:'mes' });
+    })), { onConflict:'mes' });
     if (imp.error) throw imp.error;
     await carregarEficienciaDoSupabase();
     efMes = ref;
     showProgress(false);
     render();
-    registrarAuditoria('importar_eficiencia', { filename:file.name, linhas:linhas.length, ignoradas, mes_referencia:ref, vendas:porMes[ref], altas:altasRef });
-    showToast('Eficiência de Altas ' + caRotuloMes(ref) + ': ' + linhas.length.toLocaleString('pt-BR') + ' contratos (' + porMes[ref].toLocaleString('pt-BR') + ' vendas, ' + altasRef.toLocaleString('pt-BR') + ' altas = ' + caPct(porMes[ref] ? altasRef / porMes[ref] * 100 : null) + ').');
+    registrarAuditoria('importar_eficiencia', { filename:file.name, linhas:linhas.length, ignoradas, meses:refs, vendas:porMes[ref], altas:altasRef });
+    showToast('Eficiência de Altas: ' + linhas.length.toLocaleString('pt-BR') + ' contratos · ' + refs.map(caRotuloMes).join(', ') + ' · ' + caRotuloMes(ref) + ': ' + porMes[ref].toLocaleString('pt-BR') + ' vendas, ' + altasRef.toLocaleString('pt-BR') + ' altas = ' + caPct(porMes[ref] ? altasRef / porMes[ref] * 100 : null) + '.');
   }catch(err){
     console.error(err);
     showProgress(false);
@@ -8720,6 +8730,8 @@ function atualizarDzEficiencia(){
 /* ---------- apoio ---------- */
 function efMesDe(iso){ return iso ? iso.slice(0, 7) : ''; }
 function efFaixa(p){ return p === null || p === undefined ? '' : (p >= EF_META ? 'ef-ok' : (p >= EF_ALERTA ? 'ef-mid' : 'ef-bad')); }
+const EF_NOTA_PARCIAL = 'a base começa nesse mês: ativações de vendas de meses anteriores não estão no arquivo, então a eficiência fica subestimada (importe um arquivo com vendas desde o mês anterior para corrigir)';
+function efMesInicial(){ return EF_ROWS.reduce((m, r) => (!m || r.data_venda < m ? r.data_venda : m), '').slice(0, 7); }
 function efMesesRef(){ return [...new Set(EF_IMPS.map(i => String(i.mes).slice(0, 7)))].sort(); }
 function efBase(){ return efCluster === 'TODOS' ? EF_ROWS : EF_ROWS.filter(r => r.territorio === efCluster); }
 function efNum(n){ return n.toLocaleString('pt-BR'); }
@@ -8761,15 +8773,16 @@ function efSvgMom(pontos, sel){
     + '<text class="ca-meta-txt" x="' + (pl + 2) + '" y="' + (y(EF_META) - 6).toFixed(1) + '">meta ' + EF_META + '%</text>';
   pontos.forEach((p, i) => {
     const cx = pl + bw * (i + 0.5);
-    const tip = p.rot + '|Vendas: ' + efNum(p.v) + '|Altas: ' + efNum(p.a) + '|Eficiência: ' + caPct(p.pct);
+    const tip = p.rot + (p.parcial ? '*' : '') + '|Vendas: ' + efNum(p.v) + '|Altas: ' + efNum(p.a) + '|Eficiência: ' + caPct(p.pct) + (p.parcial ? '|* ' + EF_NOTA_PARCIAL : '');
     if (p.pct !== null){
       const hh = ih * Math.min(p.pct, 110) / 110;
-      g += '<g data-tip="' + caEsc(tip) + '"><rect x="' + (cx - gw / 2).toFixed(1) + '" y="' + (pt + ih - hh).toFixed(1) + '" width="' + gw.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="5" class="ef-mom-bar' + (p.mes === sel ? ' sel' : '') + '"/>'
+      g += '<g data-tip="' + caEsc(tip) + '"><rect x="' + (cx - gw / 2).toFixed(1) + '" y="' + (pt + ih - hh).toFixed(1) + '" width="' + gw.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="5" class="ef-mom-bar' + (p.mes === sel ? ' sel' : '') + (p.parcial ? ' parcial' : '') + '"/>'
         + '<text class="ca-pct-txt" x="' + cx.toFixed(1) + '" y="' + (pt + ih - hh - 8).toFixed(1) + '" text-anchor="middle">' + caPct(p.pct) + '</text></g>';
     }
-    g += '<text class="ca-eixo-b" x="' + cx.toFixed(1) + '" y="' + (H - pb + 20) + '" text-anchor="middle">' + caEsc(p.rot) + '</text>';
+    g += '<text class="ca-eixo-b" x="' + cx.toFixed(1) + '" y="' + (H - pb + 20) + '" text-anchor="middle">' + caEsc(p.rot) + (p.parcial ? '*' : '') + '</text>';
   });
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Evolução mensal da eficiência">' + g + '</svg>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Evolução mensal da eficiência">' + g + '</svg>'
+    + (pontos.some(p => p.parcial) ? '<div class="ef-nota">* ' + EF_NOTA_PARCIAL + '</div>' : '');
 }
 // linha da eficiência acumulada dia a dia (com área e meta)
 function efSvgDiaria(dias){
@@ -8892,6 +8905,7 @@ function renderEficiencia(){
   const clusters = [...new Set(EF_ROWS.map(r => r.territorio))].sort();
   if (efCluster !== 'TODOS' && clusters.indexOf(efCluster) === -1) efCluster = 'TODOS';
   const base = efBase();
+  const mesIni = efMesInicial();
   const noMes = base.filter(r => efMesDe(r.data_venda) === mes || efMesDe(r.data_ativacao) === mes);
   const vendas = noMes.filter(r => efMesDe(r.data_venda) === mes);
   const altas = noMes.filter(r => efMesDe(r.data_ativacao) === mes);
@@ -8901,7 +8915,7 @@ function renderEficiencia(){
   const ult = EF_IMPS.length ? EF_IMPS.slice().sort((a, b) => a.importado_em < b.importado_em ? 1 : -1)[0] : null;
 
   document.getElementById('efToolbar').innerHTML =
-    '<div class="ca-grupo"><span>Mês</span><div class="cp-status-bar">' + meses.map(m => caBotaoPill(m === mes, 'efmes', m, caRotuloMes(m))).join('') + '</div></div>'
+    '<div class="ca-grupo"><span>Mês</span><div class="cp-status-bar">' + meses.map(m => caBotaoPill(m === mes, 'efmes', m, caRotuloMes(m) + (m === mesIni ? '*' : ''))).join('') + '</div></div>'
     + '<div class="ca-grupo"><span>Cluster</span><div class="cp-status-bar">' + caBotaoPill(efCluster === 'TODOS', 'efcl', 'TODOS', 'Todos')
     + clusters.map(c => caBotaoPill(efCluster === c, 'efcl', c, c)).join('') + '</div></div>'
     + '<div class="ca-grupo" title="Cidades e bairros com menos vendas que isso ficam fora dos rankings (1 venda e 0 altas vira 0%)"><span>Mín. de vendas</span><div class="cp-status-bar">'
@@ -8928,7 +8942,7 @@ function renderEficiencia(){
   let antTxt = '';
   if (idxMes > 0){
     const ma = meses[idxMes - 1], vv = base.filter(r => efMesDe(r.data_venda) === ma).length, aa = base.filter(r => efMesDe(r.data_ativacao) === ma).length;
-    if (vv) antTxt = ' · ' + caRotuloMes(ma) + ': ' + caPct(efPct1(aa, vv));
+    if (vv) antTxt = ' · ' + caRotuloMes(ma) + (ma === mesIni ? '*' : '') + ': ' + caPct(efPct1(aa, vv));
   }
   document.getElementById('efKpis').innerHTML =
     cartao('kpi-blue', 'i-gauge', 'EFICIÊNCIA', caPct(pct), efNum(altas.length) + ' altas ÷ ' + efNum(vendas.length) + ' vendas' + antTxt, chipMeta, efReg('k|ef', tit('Contratos'), noMes))
@@ -8940,7 +8954,7 @@ function renderEficiencia(){
   // ----- evolução mensal (só meses importados), respeitando o cluster
   const pontosMes = meses.slice(-6).map(m => {
     const v = base.filter(r => efMesDe(r.data_venda) === m).length, a = base.filter(r => efMesDe(r.data_ativacao) === m).length;
-    return { mes:m, rot:caRotuloMes(m), v, a, pct:efPct1(a, v) };
+    return { mes:m, rot:caRotuloMes(m), v, a, pct:efPct1(a, v), parcial: m === mesIni };
   });
   document.getElementById('efMom').innerHTML = efSvgMom(pontosMes, mes);
 
