@@ -1233,6 +1233,39 @@
   .rd-st.iniciado{background:var(--green-bg);color:var(--green);} .rd-st.emrota{background:var(--accent-glow);color:var(--accent);}
   .rd-st.pendente{background:var(--yellow-bg);color:var(--yellow);} .rd-st.suspenso{background:var(--red-bg);color:var(--red);}
 
+  /* ---------- Ativações ---------- */
+  #module-ativacoes > .section-title:first-child h2{display:none;}
+  #module-ativacoes > .section-title:first-child{margin-top:0;}
+  .at-kpis{grid-template-columns:repeat(5,1fr);}
+  @media (max-width:1300px){.at-kpis{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:640px){.at-kpis{grid-template-columns:1fr;}}
+  .at-kpis .kpi-card .ca-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,.9);margin-top:8px;line-height:1.35;}
+  .at-kpis .kpi-card .value{font-size:46px;}
+  .at-kpi{cursor:pointer;}
+  .at-controles{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .at-tree{width:100%;}
+  .at-tree tr.at-n{transition:background .12s;}
+  .at-tree tr.at-tem{cursor:pointer;}
+  .at-tree tr.at-tem:hover td{background:var(--surface-3);}
+  .at-tree tr.at-p0 td{font-weight:750;background:var(--surface-2, var(--surface-3));border-top:1px solid var(--border);}
+  .at-tree tr.at-p1 td.at-nome{font-weight:650;}
+  .at-tree tr.at-p3 td.at-nome{color:var(--text-dim);}
+  .at-tree .at-nome{white-space:nowrap;}
+  .at-seta{display:inline-block;width:14px;margin-right:4px;color:var(--text-faint);transition:transform .15s;font-size:11px;}
+  .at-seta.on{transform:rotate(90deg);color:var(--accent);} .at-seta.vazio{visibility:hidden;}
+  .at-sub{font-size:10.5px;font-weight:700;color:var(--text-faint);background:var(--surface-3);border-radius:999px;padding:0 7px;margin-left:4px;}
+  .at-num{cursor:pointer;border-radius:6px;padding:1px 6px;font-weight:700;}
+  .at-num:hover{background:var(--accent-glow);color:var(--accent);text-decoration:underline;}
+  .at-total{white-space:nowrap;min-width:110px;}
+  .at-bar{display:inline-block;width:46px;height:6px;border-radius:999px;background:var(--surface-3);margin-left:8px;vertical-align:middle;overflow:hidden;}
+  .at-bar i{display:block;height:100%;border-radius:999px;background:var(--grad-blue);}
+  td.at-conc .at-num{color:var(--green);} td.at-imp .at-num{color:var(--red);}
+  .at-pior{color:var(--red);font-weight:800;} .at-medio{color:var(--yellow);font-weight:800;} .at-bom{color:var(--green);font-weight:800;}
+  .at-peq{font-size:11px;}
+  .at-princ{font-size:12px;color:var(--text-dim);}
+  tr.at-total-geral td{border-top:2px solid var(--border);font-weight:800;background:var(--surface-3);}
+  #atvMotivos .pareto-row{grid-template-columns:minmax(160px,300px) 1fr 40px 110px;}
+
   /* Cumprimento de Agenda · possíveis erros de apuração (versão compacta) */
   #caErros{padding:16px 18px;}
   #caErros .panel-head{margin-bottom:8px;}
@@ -1316,6 +1349,7 @@
       <div class="sidebar-item" data-module="cumprimento-agenda"><span class="ic"><svg class="i"><use href="#i-cal"/></svg></span><span class="lbl">Cumprimento de Agenda</span></div>
       <div class="sidebar-item" data-module="rede"><span class="ic"><svg class="i"><use href="#i-wifi"/></svg></span><span class="lbl">Rede</span></div>
       <div class="sidebar-item" data-module="mapa-vlan"><span class="ic"><svg class="i"><use href="#i-swap"/></svg></span><span class="lbl">Mapa de VLANs</span></div>
+      <div class="sidebar-item" data-module="ativacoes"><span class="ic"><svg class="i"><use href="#i-check"/></svg></span><span class="lbl">Ativações</span></div>
       <div class="sidebar-item" data-module="improdutivas"><span class="ic"><svg class="i"><use href="#i-alert"/></svg></span><span class="lbl">Improdutivas</span></div>
       <div class="sidebar-item" data-module="backlog"><span class="ic"><svg class="i"><use href="#i-box"/></svg></span><span class="lbl">Backlog</span></div>
       <div class="sidebar-item" data-module="prod-recurso"><span class="ic"><svg class="i"><use href="#i-hardhat"/></svg></span><span class="lbl">Produção por Recurso</span></div>
@@ -1861,6 +1895,38 @@
             <button type="button" class="btn ghost" id="btnExportarRede" style="margin-left:auto;">⬇ Exportar Excel</button>
           </div>
           <div class="table-scroll" style="max-height:640px;overflow-y:auto;"><table class="pivot compact-table" id="redeTabela"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="module" id="module-ativacoes">
+      <div class="section-title"><h2>Ativações</h2><span class="hint" id="atvHint">volumetria e improdutivas por regional, cidade e bairro</span></div>
+      <div id="atvVazio"></div>
+      <div id="atvCorpo">
+        <div class="vg-row5 at-kpis" id="atvKpis"></div>
+
+        <div class="panel">
+          <div class="panel-head"><h3><svg class="i"><use href="#i-building"/></svg>Volumetria por regional, cidade e bairro</h3><span class="desc">clique na linha para abrir/fechar · clique no número para ver as OS</span></div>
+          <div class="at-controles">
+            <input type="text" id="atvBusca" placeholder="🔎 Buscar regional, cidade, bairro ou motivo..." class="pr-busca" style="min-width:280px;">
+            <button type="button" class="btn ghost" id="atvExpandir">Expandir tudo</button>
+            <button type="button" class="btn ghost" id="atvRecolher">Recolher tudo</button>
+            <button type="button" class="btn ghost" id="btnExportarAtv" style="margin-left:auto;">⬇ Exportar Excel</button>
+          </div>
+          <div class="table-scroll" style="max-height:620px;overflow-y:auto;"><table class="pivot compact-table at-tree" id="atvVolTabela"></table></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3 class="h3-alert"><svg class="i"><use href="#i-alert"/></svg>Improdutivas e seus motivos</h3><span class="desc" id="atvImpDesc"></span></div>
+          <div id="atvMotivos" style="margin-bottom:16px;"></div>
+          <div class="at-controles">
+            <span class="ca-grupo"><span>Agrupar por</span></span>
+            <div class="cp-status-bar" id="atvModoBar">
+              <button type="button" class="cp-status-btn active" data-atvmodo="LOC">Regional ▸ cidade ▸ bairro ▸ motivo</button>
+              <button type="button" class="cp-status-btn" data-atvmodo="MOT">Motivo ▸ regional ▸ cidade ▸ bairro</button>
+            </div>
+          </div>
+          <div class="table-scroll" style="max-height:620px;overflow-y:auto;"><table class="pivot compact-table at-tree" id="atvImpTabela"></table></div>
         </div>
       </div>
     </div>
@@ -3725,6 +3791,7 @@ function render(){
   rc(() => renderBairros(rows), 'Bairros');
   rc(() => renderProducaoPorRecurso(rows), 'Produção por recurso (pivot)');
   rc(() => renderImprodutivas(rows), 'Improdutivas');
+  rc(() => renderAtivacoes(rows), 'Ativações');
   rc(() => renderBacklogReport(rows), 'Backlog report');
   rc(() => renderBacklogTabela(), 'Evolução horária do backlog');
   rc(() => renderPessoas(), 'Pessoas');
@@ -6557,9 +6624,9 @@ function abrirDetalheOS(titulo, linhas){
   detalheOSAtual = { titulo, linhas };
   document.getElementById('detalheMotivoTitulo').textContent = titulo;
   document.getElementById('detalheMotivoDesc').textContent = linhas.length + ' ordem(ns) no recorte atual';
-  let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Contrato</th><th>Cliente</th><th>Motivo de Encerramento das atividades</th><th>Endereço</th><th>Data/Hora de Criação</th><th>Data/Hora de Encerramento</th><th>Tempo decorrido</th></tr></thead><tbody>';
+  let html = '<thead><tr><th class="num">OS</th><th>Técnico</th><th>Regional</th><th>Empresa</th><th>Status</th><th>Cidade</th><th>Bairro</th><th>Contrato</th><th>Cliente</th><th>Motivo de Encerramento das atividades</th><th>Endereço</th><th>Data/Hora de Criação</th><th>Data/Hora de Encerramento</th><th>Tempo decorrido</th></tr></thead><tbody>';
   if (!linhas.length){
-    html += '<tr><td colspan="11" class="muted">Sem ordens</td></tr>';
+    html += '<tr><td colspan="14" class="muted">Sem ordens</td></tr>';
   } else {
     linhas.forEach(r => {
       html += `<tr>
@@ -6567,6 +6634,9 @@ function abrirDetalheOS(titulo, linhas){
         <td>${r.recurso || '—'}</td>
         <td>${r.regional}${REGIONAL_LABEL[r.regional] ? ' — '+REGIONAL_LABEL[r.regional] : ''}</td>
         <td>${EMPRESA_LABEL[r.empresa] || r.empresa}</td>
+        <td>${r.status || '<span class="muted">—</span>'}</td>
+        <td>${r.cidade || '<span class="muted">—</span>'}</td>
+        <td>${r.bairro || '<span class="muted">—</span>'}</td>
         <td>${r.contrato || '<span class="muted">—</span>'}</td>
         <td>${r.cliente || '<span class="muted">—</span>'}</td>
         <td>${r.motivo || '<span class="muted">—</span>'}</td>
@@ -6598,6 +6668,9 @@ async function exportarDetalheMotivoExcel(){
     'Técnico': r.recurso || '',
     'Regional': r.regional + (REGIONAL_LABEL[r.regional] ? ' — '+REGIONAL_LABEL[r.regional] : ''),
     'Empresa': EMPRESA_LABEL[r.empresa] || r.empresa,
+    'Status': r.status || '',
+    'Cidade': r.cidade || '',
+    'Bairro': r.bairro || '',
     'Contrato': r.contrato || '',
     'Cliente': r.cliente || '',
     'Motivo de Encerramento das atividades': r.motivo || '',
@@ -7000,6 +7073,7 @@ const PAGINAS = {
   'reincidencias':['Reincidências','IRR e IFI por contrato'],
   'cumprimento-agenda':['Cumprimento de Agenda','Novo indicador: agenda confirmada + SLA'],
   'rede':['Rede','Ordens de rede abertas e há quanto tempo'],
+  'ativacoes':['Ativações','Volumetria e improdutivas por regional, cidade e bairro'],
   'mapa-vlan':['Mapa de VLANs','Bairro, VLAN e equipamento'],
   'improdutivas':['Improdutivas','Motivos de não conclusão'],
   'backlog':['Backlog','Carga, capacity e evolução do backlog'],
@@ -8109,6 +8183,265 @@ function iniciarRede(){
   setInterval(redeTick, 1000);
 }
 
+/* ============================= ATIVAÇÕES (módulo dedicado) =============================
+   Usa as mesmas OS já importadas (CSV de atividades) — só o tipo "Ativação", respeitando o período e o
+   filtro regional/empresa do topo. Dois quadros em árvore (clique na linha abre/fecha; clique no número
+   lista as OS):
+     • Volumetria:   Regional ▸ Cidade ▸ Bairro, com concluídas / improdutivas / canceladas / em aberto
+     • Improdutivas: Regional ▸ Cidade ▸ Bairro ▸ Motivo  (ou Motivo ▸ Regional ▸ Cidade ▸ Bairro)
+   Improdutiva = status "não concluído". Efetividade = concluídas ÷ (concluídas + improdutivas).
+   "Regional" segue a convenção do painel: C10/C13/C14 = mão de obra própria; JH e Virtus são grupos à parte. */
+let ATV_ROWS = [];
+let ATV_NOS = {};
+let atvAbertos = new Set();
+let atvInicializado = false;
+let atvImpAbriu = { LOC:false, MOT:false };
+let atvModo = 'LOC';          // LOC = localidade ▸ motivo · MOT = motivo ▸ localidade
+let atvBusca = '';
+const ATV_REG_ORDEM = ['C10', 'C13', 'C14', 'JH', 'VIRTUS'];
+const ATV_ABERTOS = ['iniciado', 'em rota', 'pendente', 'suspenso'];
+const ATV_KIND = {
+  all:   { label:'todas',        ok: r => true },
+  conc:  { label:'concluídas',   ok: r => r.status === 'concluído' },
+  imp:   { label:'improdutivas', ok: r => r.status === 'não concluído' },
+  canc:  { label:'canceladas',   ok: r => r.status === 'cancelado' },
+  aberto:{ label:'em aberto',    ok: r => ATV_ABERTOS.indexOf(r.status) >= 0 }
+};
+
+function atvGrupoRegional(r){ return r.empresa === 'MOP' ? r.regional : r.empresa; }
+function atvNorm(t){ return semAcento(t).replace(/\s+/g, ' '); }
+function atvStats(rows){
+  const s = { total: rows.length, conc: 0, imp: 0, canc: 0, aberto: 0 };
+  rows.forEach(r => {
+    if (r.status === 'concluído') s.conc++;
+    else if (r.status === 'não concluído') s.imp++;
+    else if (r.status === 'cancelado') s.canc++;
+    else if (ATV_ABERTOS.indexOf(r.status) >= 0) s.aberto++;
+  });
+  s.efet = (s.conc + s.imp) ? s.conc / (s.conc + s.imp) * 100 : null;
+  s.taxa = (s.conc + s.imp) ? s.imp / (s.conc + s.imp) * 100 : null;
+  return s;
+}
+const ATV_NIVEL = {
+  regional: { nome:'regional', val: atvGrupoRegional,
+    label: g => { const r = g.rows[0], k = atvGrupoRegional(r); return REGIONAL_LABEL[k] ? k + ' — ' + REGIONAL_LABEL[k] : (EMPRESA_LABEL[k] || k); },
+    ordem: (a, b) => { const x = ATV_REG_ORDEM.indexOf(atvGrupoRegional(a.rows[0])), y = ATV_REG_ORDEM.indexOf(atvGrupoRegional(b.rows[0])); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); } },
+  cidade:   { nome:'cidade',   val: r => r.cidade || '(sem cidade)' },
+  bairro:   { nome:'bairro',   val: r => r.bairro || '(sem bairro)' },
+  motivo:   { nome:'motivo',   val: r => r.motivo || '(sem motivo informado)' }
+};
+// monta a árvore de grupos (cada nível agrupa pelo texto sem acento/caixa; mostra a grafia mais frequente)
+function atvConstroi(rows, niveis, prefixo, caminho){
+  const nivel = niveis[0], grupos = new Map();
+  rows.forEach(r => {
+    const raw = nivel.val(r), k = atvNorm(raw);
+    let g = grupos.get(k);
+    if (!g){ g = { k, variantes:{}, rows:[] }; grupos.set(k, g); }
+    g.rows.push(r); g.variantes[raw] = (g.variantes[raw] || 0) + 1;
+  });
+  const nos = [...grupos.values()].map(g => {
+    const label = nivel.label ? nivel.label(g) : Object.entries(g.variantes).sort((a, b) => b[1] - a[1])[0][0];
+    const id = prefixo + '/' + g.k;
+    const no = { id, label, nivel: nivel.nome, rows: g.rows, caminho: caminho.concat(label), filhos: [] };
+    if (niveis.length > 1) no.filhos = atvConstroi(g.rows, niveis.slice(1), id, no.caminho);
+    ATV_NOS[id] = no;
+    return no;
+  });
+  nos.sort(nivel.ordem ? (a, b) => nivel.ordem(a, b) : (a, b) => b.rows.length - a.rows.length || a.label.localeCompare(b.label));
+  return nos;
+}
+// poda a árvore pela busca: mantém o nó se ele (ou o caminho até ele) casa, ou se algum descendente casa
+function atvFiltra(nos, q){
+  if (!q) return nos;
+  const casa = no => atvNorm(no.caminho.join(' ')).indexOf(q) >= 0;
+  const out = [];
+  nos.forEach(no => {
+    const filhos = atvFiltra(no.filhos, q);
+    if (casa(no) || filhos.length) out.push(Object.assign({}, no, { filhos: casa(no) ? no.filhos : filhos }));
+  });
+  return out;
+}
+function atvBarra(v, max){ return '<span class="at-bar"><i style="width:' + (max ? Math.min(100, v / max * 100) : 0).toFixed(1) + '%"></i></span>'; }
+function atvNum(no, kind, n){
+  return n ? '<span class="at-num" data-det="' + caEsc(no.id) + '||' + kind + '" title="Ver as ' + n + ' OS">' + n.toLocaleString('pt-BR') + '</span>' : '<span class="muted">0</span>';
+}
+function atvPct(v){ return v === null || v === undefined ? '<span class="muted">—</span>' : v.toFixed(0) + '%'; }
+function atvRenderNos(nos, prof, colsFn, forcar, pai){
+  let h = '';
+  const max = nos.reduce((m, n) => Math.max(m, n.rows.length), 0);
+  nos.forEach(no => {
+    const tem = no.filhos.length > 0, aberto = tem && (forcar || atvAbertos.has(no.id));
+    h += '<tr class="at-n at-p' + Math.min(prof, 3) + (tem ? ' at-tem' : '') + '" data-nid="' + caEsc(no.id) + '">'
+      + '<td class="at-nome" style="padding-left:' + (10 + prof * 22) + 'px"><span class="at-seta' + (aberto ? ' on' : '') + (tem ? '' : ' vazio') + '">▸</span>' + caEsc(no.label)
+      + (tem ? ' <span class="at-sub">' + no.filhos.length + '</span>' : '') + '</td>' + colsFn(no, max, pai) + '</tr>';
+    if (aberto) h += atvRenderNos(no.filhos, prof + 1, colsFn, forcar, no);
+  });
+  return h;
+}
+
+/* ---------- tela ---------- */
+function renderAtivacoes(rowsParam){
+  if (currentModule !== 'ativacoes') return;
+  const todas = (rowsParam || getFilteredRows()).filter(r => semAcento(r.tipo) === 'ATIVACAO');
+  ATV_ROWS = todas;
+  const vazio = document.getElementById('atvVazio'), corpo = document.getElementById('atvCorpo');
+  if (!todas.length){
+    corpo.style.display = 'none';
+    vazio.innerHTML = '<div class="panel ca-vazio"><b>Nenhuma ativação no filtro atual</b>Ajuste o período ou a regional/empresa no topo — ou importe os CSVs de atividades em <b style="display:inline">Importar</b>.</div>';
+    document.getElementById('atvHint').textContent = 'sem ativações no filtro atual';
+    return;
+  }
+  vazio.innerHTML = ''; corpo.style.display = '';
+  document.getElementById('atvHint').textContent = todas.length.toLocaleString('pt-BR') + ' ordens de ativação no filtro atual · período e regional do topo valem aqui';
+  const s = atvStats(todas);
+  const cartao = (cls, icone, rotulo, valor, sub, kind) =>
+    '<div class="kpi-card ' + cls + ' at-kpi" data-det="__all__||' + kind + '" title="Clique para ver as OS"><div class="kpi-top"><span class="kpi-ic"><svg class="i"><use href="#' + icone + '"/></svg></span><span class="label">' + rotulo + '</span></div>'
+    + '<div class="kpi-main"><div class="value">' + valor + '</div><div class="ca-sub">' + sub + '</div></div></div>';
+  const pc = (a, b) => b ? (a / b * 100).toFixed(1).replace('.', ',') + '%' : '—';
+  document.getElementById('atvKpis').innerHTML =
+    cartao('kpi-blue', 'i-wifi', 'ATIVAÇÕES', s.total.toLocaleString('pt-BR'), 'todas as ordens do recorte', 'all')
+    + cartao('kpi-green', 'i-check', 'CONCLUÍDAS', s.conc.toLocaleString('pt-BR'), pc(s.conc, s.total) + ' do total', 'conc')
+    + cartao('kpi-red', 'i-alert', 'IMPRODUTIVAS', s.imp.toLocaleString('pt-BR'), 'taxa de improdutividade ' + pc(s.imp, s.conc + s.imp), 'imp')
+    + cartao('kpi-purple', 'i-gauge', 'EFETIVIDADE', s.efet === null ? '—' : s.efet.toFixed(1).replace('.', ',') + '%', 'concluídas ÷ (concluídas + improdutivas)', 'all')
+    + cartao('kpi-orange', 'i-clock', 'EM ABERTO', s.aberto.toLocaleString('pt-BR'), 'iniciadas, em rota, pendentes e suspensas · ' + s.canc.toLocaleString('pt-BR') + ' canceladas', 'aberto');
+  atvDesenha();
+}
+function atvDesenha(){
+  ATV_NOS = {};
+  const todas = ATV_ROWS, q = atvNorm(atvBusca);
+  const geral = atvStats(todas);
+  const colsVol = (no, max) => {
+    const st = atvStats(no.rows);
+    return '<td class="num at-total">' + atvNum(no, 'all', st.total) + atvBarra(st.total, max) + '</td>'
+      + '<td class="num at-conc">' + atvNum(no, 'conc', st.conc) + '</td>'
+      + '<td class="num at-imp">' + atvNum(no, 'imp', st.imp) + '</td>'
+      + '<td class="num">' + atvNum(no, 'canc', st.canc) + '</td>'
+      + '<td class="num">' + atvNum(no, 'aberto', st.aberto) + '</td>'
+      + '<td class="num"><b>' + atvPct(st.efet) + '</b></td>'
+      + '<td class="num muted">' + (geral.total ? (st.total / geral.total * 100).toFixed(1).replace('.', ',') + '%' : '—') + '</td>';
+  };
+  // ----- volumetria
+  const arvV = atvConstroi(todas, [ATV_NIVEL.regional, ATV_NIVEL.cidade, ATV_NIVEL.bairro], 'v', []);
+  if (!atvInicializado){ arvV.forEach(n => atvAbertos.add(n.id)); atvInicializado = true; }
+  const visV = atvFiltra(arvV, q);
+  document.getElementById('atvVolTabela').innerHTML =
+    '<thead><tr><th>Regional ▸ cidade ▸ bairro</th><th class="num">Total</th><th class="num">Concluídas</th><th class="num">Improdutivas</th><th class="num">Canceladas</th><th class="num">Em aberto</th><th class="num">Efetividade</th><th class="num">% do total</th></tr></thead><tbody>'
+    + (visV.length ? atvRenderNos(visV, 0, colsVol, !!q) : '<tr><td colspan="8" class="muted">Nada encontrado para "' + caEsc(atvBusca) + '".</td></tr>')
+    + (q ? '' : '<tr class="at-total-geral"><td><b>Total geral</b></td>' + colsVol({ id:'__all__', rows: todas, caminho:['Ativações'], filhos:[] }, todas.length) + '</tr>') + '</tbody>';
+  ATV_NOS['__all__'] = { id:'__all__', label:'Ativações', rows: todas, caminho:['Ativações'], filhos:[] };
+
+  // ----- improdutivas
+  const imp = todas.filter(r => r.status === 'não concluído');
+  const totImp = imp.length;
+  const nivelImp = atvModo === 'LOC' ? [ATV_NIVEL.regional, ATV_NIVEL.cidade, ATV_NIVEL.bairro, ATV_NIVEL.motivo] : [ATV_NIVEL.motivo, ATV_NIVEL.regional, ATV_NIVEL.cidade, ATV_NIVEL.bairro];
+  const arvI = atvConstroi(imp, nivelImp, atvModo === 'LOC' ? 'i' : 'm', []);
+  if (!atvImpAbriu[atvModo]){ arvI.forEach(n => atvAbertos.add(n.id)); atvImpAbriu[atvModo] = true; }   // 1ª vez em cada visão: abre o 1º nível
+  const colsImp = (no, max, pai) => {
+    const n = no.rows.length, base = pai ? pai.rows.length : totImp;
+    let taxa = '<span class="muted">—</span>', princ = '';
+    if (atvModo === 'LOC' && no.nivel !== 'motivo'){
+      const v = ATV_NOS['v' + no.id.slice(1)];
+      if (v){
+        const st = atvStats(v.rows);
+        const ratio = (st.taxa !== null && geral.taxa) ? st.taxa / geral.taxa : null;
+        taxa = st.taxa === null ? '<span class="muted">—</span>' : '<span class="' + (ratio >= 1.25 ? 'at-pior' : ratio >= 1 ? 'at-medio' : 'at-bom') + '">' + st.taxa.toFixed(0) + '%</span> <span class="muted at-peq">' + st.imp + ' de ' + (st.conc + st.imp) + '</span>';
+      }
+      const mm = {};
+      no.rows.forEach(r => { mm[r.motivo] = (mm[r.motivo] || 0) + 1; });
+      const top = Object.entries(mm).sort((a, b) => b[1] - a[1])[0];
+      princ = top ? caEsc(top[0]) + ' <span class="muted at-peq">' + top[1] + ' (' + (top[1] / n * 100).toFixed(0) + '%)</span>' : '';
+    }
+    return '<td class="num at-total">' + atvNum(no, 'all', n) + atvBarra(n, max) + '</td>'
+      + '<td class="num muted">' + (base ? (n / base * 100).toFixed(0) + '%' : '—') + '</td>'
+      + '<td class="num">' + taxa + '</td><td class="at-princ">' + princ + '</td>';
+  };
+  const visI = atvFiltra(arvI, q);
+  document.getElementById('atvImpTabela').innerHTML =
+    '<thead><tr><th>' + (atvModo === 'LOC' ? 'Regional ▸ cidade ▸ bairro ▸ motivo' : 'Motivo ▸ regional ▸ cidade ▸ bairro') + '</th><th class="num">Improdutivas</th><th class="num">% do nível acima</th><th class="num" title="improdutivas ÷ (concluídas + improdutivas) do local; vermelho = pior que a média geral">Taxa de improdutividade</th><th>Motivo principal</th></tr></thead><tbody>'
+    + (visI.length ? atvRenderNos(visI, 0, colsImp, !!q) : '<tr><td colspan="5" class="muted">' + (totImp ? 'Nada encontrado para "' + caEsc(atvBusca) + '".' : 'Nenhuma improdutiva no filtro atual.') + '</td></tr>') + '</tbody>';
+
+  // ----- motivos (visão geral, clicável)
+  const mapa = new Map();
+  imp.forEach(r => { const k = atvNorm(r.motivo || '(sem motivo informado)'); if (!mapa.has(k)) mapa.set(k, { label: r.motivo || '(sem motivo informado)', rows: [] }); mapa.get(k).rows.push(r); });
+  const mots = [...mapa.entries()].sort((a, b) => b[1].rows.length - a[1].rows.length);
+  const maxM = mots.length ? mots[0][1].rows.length : 0;
+  let ac = 0;
+  document.getElementById('atvMotivos').innerHTML = mots.length ? mots.map(([k, m]) => {
+    ac += m.rows.length;
+    const id = 'mot/' + k;
+    ATV_NOS[id] = { id, label: m.label, rows: m.rows, caminho: ['Motivo', m.label], filhos: [] };
+    const pct = m.rows.length / totImp * 100;
+    const sev = pct >= 25 ? 'sev-red' : pct >= 12 ? 'sev-peach' : pct >= 5 ? 'sev-yellow' : 'sev-green';
+    return '<div class="pareto-row" data-det="' + caEsc(id) + '||all"><span>' + caEsc(m.label) + '</span><span class="pareto-bar-track"><span class="pareto-bar-fill ' + sev + '" style="width:' + (m.rows.length / maxM * 100) + '%"></span></span>'
+      + '<span class="num">' + m.rows.length + '</span><span class="num">' + pct.toFixed(0) + '% <span class="muted">(ac. ' + (ac / totImp * 100).toFixed(0) + '%)</span></span></div>';
+  }).join('') : '<div class="muted" style="padding:8px 0;">Nenhuma ativação improdutiva no filtro atual.</div>';
+  document.getElementById('atvImpDesc').textContent = totImp.toLocaleString('pt-BR') + ' improdutivas · taxa ' + (geral.taxa === null ? '—' : geral.taxa.toFixed(1).replace('.', ',') + '%');
+  document.querySelectorAll('#atvModoBar button').forEach(b => b.classList.toggle('active', b.dataset.atvmodo === atvModo));
+}
+function atvAbreDetalhe(chave){
+  const [id, kind] = chave.split('||');
+  const no = ATV_NOS[id], k = ATV_KIND[kind];
+  if (!no || !k) return;
+  const linhas = no.rows.filter(k.ok).sort((a, b) => (a.cidade + a.bairro).localeCompare(b.cidade + b.bairro));
+  abrirDetalheOS('Ativações · ' + no.caminho.join(' › ') + ' · ' + k.label, linhas);
+}
+async function exportarAtivacoes(){
+  if (!ATV_ROWS.length){ showToast('Nada para exportar.'); return; }
+  if (!(await loadSheetJS())){ showToast('Não consegui carregar o gerador de Excel — verifique a internet.'); return; }
+  const reg = r => { const k = atvGrupoRegional(r); return REGIONAL_LABEL[k] ? k + ' — ' + REGIONAL_LABEL[k] : (EMPRESA_LABEL[k] || k); };
+  // bairro a bairro
+  const loc = new Map();
+  ATV_ROWS.forEach(r => {
+    const k = [atvNorm(reg(r)), atvNorm(r.cidade), atvNorm(r.bairro)].join('|');
+    if (!loc.has(k)) loc.set(k, { reg: reg(r), cidade: r.cidade, bairro: r.bairro, rows: [] });
+    loc.get(k).rows.push(r);
+  });
+  const vol = [...loc.values()].sort((a, b) => b.rows.length - a.rows.length).map(l => {
+    const s = atvStats(l.rows);
+    return { 'Regional': l.reg, 'Cidade': l.cidade, 'Bairro': l.bairro, 'Total': s.total, 'Concluídas': s.conc, 'Improdutivas': s.imp, 'Canceladas': s.canc, 'Em aberto': s.aberto, 'Efetividade %': s.efet === null ? '' : Math.round(s.efet * 10) / 10 };
+  });
+  const mot = new Map();
+  ATV_ROWS.filter(r => r.status === 'não concluído').forEach(r => {
+    const k = [atvNorm(reg(r)), atvNorm(r.cidade), atvNorm(r.bairro), atvNorm(r.motivo)].join('|');
+    if (!mot.has(k)) mot.set(k, { 'Regional': reg(r), 'Cidade': r.cidade, 'Bairro': r.bairro, 'Motivo': r.motivo, 'Improdutivas': 0 });
+    mot.get(k)['Improdutivas']++;
+  });
+  const impl = [...mot.values()].sort((a, b) => b['Improdutivas'] - a['Improdutivas']);
+  const os = ATV_ROWS.map(r => ({ 'OS': r.os || '', 'Regional': reg(r), 'Cidade': r.cidade, 'Bairro': r.bairro, 'Status': r.status, 'Motivo': r.status === 'não concluído' ? r.motivo : '',
+    'Técnico': r.recurso || '', 'Contrato': r.contrato || '', 'Cliente': r.cliente || '', 'Endereço': r.endereco || '', 'Data': r.data || '' }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vol), 'Volumetria');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(impl), 'Improdutivas e motivos');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(os), 'OS');
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  XLSX.writeFile(wb, 'ativacoes_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.xlsx');
+  registrarAuditoria('exportar_ativacoes', { linhas: os.length });
+}
+function iniciarAtivacoes(){
+  const mod = document.getElementById('module-ativacoes');
+  if (!mod) return;
+  mod.addEventListener('click', e => {
+    const t = e.target;
+    const det = t.closest ? t.closest('[data-det]') : null;
+    if (det){ atvAbreDetalhe(det.dataset.det); return; }
+    const modo = t.closest ? t.closest('button[data-atvmodo]') : null;
+    if (modo){ atvModo = modo.dataset.atvmodo; atvDesenha(); return; }
+    const tr = t.closest ? t.closest('tr[data-nid]') : null;
+    if (tr && tr.classList.contains('at-tem')){
+      const id = tr.dataset.nid;
+      if (atvAbertos.has(id)) atvAbertos.delete(id); else atvAbertos.add(id);
+      atvDesenha();
+    }
+  });
+  document.getElementById('atvBusca').addEventListener('input', e => { atvBusca = e.target.value; atvDesenha(); });
+  document.getElementById('atvExpandir').addEventListener('click', () => {
+    Object.keys(ATV_NOS).forEach(id => { if (ATV_NOS[id].filhos.length) atvAbertos.add(id); });
+    atvDesenha();
+  });
+  document.getElementById('atvRecolher').addEventListener('click', () => { atvAbertos.clear(); atvDesenha(); });
+  document.getElementById('btnExportarAtv').addEventListener('click', exportarAtivacoes);
+}
+
 /* ============================= NAVEGAÇÃO (menu lateral) ============================= */
 let currentModule = 'visao-geral';
 let sidebarCollapsed = false;
@@ -8122,6 +8455,7 @@ function setModule(mod){
   if (mod === 'mapa-vlan') renderMapaVlan();
   if (mod === 'cumprimento-agenda') renderCumprimentoAgenda();
   if (mod === 'rede') renderRede();
+  if (mod === 'ativacoes') renderAtivacoes();
 }
 function toggleSidebar(){
   sidebarCollapsed = !sidebarCollapsed;
@@ -8549,6 +8883,7 @@ async function init(){
   document.getElementById('agenda-xlsx-input').addEventListener('change', e => { if (e.target.files[0]) handleAgendaXlsx(e.target.files[0]); e.target.value = ''; });
   iniciarCumprimentoAgenda();
   iniciarRede();
+  iniciarAtivacoes();
   document.querySelectorAll('.sidebar-item').forEach(item => item.addEventListener('click', () => setModule(item.dataset.module)));
   document.querySelectorAll('.reg-tab').forEach(btn => btn.addEventListener('click', () => setRegional(btn.dataset.ftype, btn.dataset.fvalue)));
   document.getElementById('btnHoje').addEventListener('click', () => quickPeriodo('hoje'));
