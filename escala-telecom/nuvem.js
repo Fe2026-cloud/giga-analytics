@@ -96,7 +96,7 @@
       $('#nvCriar', o).addEventListener('click', async () => {
         const { email, senha } = val(); if (!email || senha.length < 8) return msg('Informe e-mail e uma senha de pelo menos 8 caracteres.', 'err');
         msg('Criando conta…'); const { data, error } = await sb.auth.signUp({ email, password: senha });
-        if (error) return msg(error.message, 'err');
+        if (error) return msg(/signups? not allowed/i.test(error.message) ? 'O cadastro automático está desligado. Use o e-mail e a senha que você já usa no painel GIGA+ ou peça ao administrador para criar o seu acesso.' : error.message, 'err');
         if (data.session) { fechaOverlay(); resolve(data.session); } else msg('Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.', 'ok');
       });
       $('#nvEsq', o).addEventListener('click', async () => {

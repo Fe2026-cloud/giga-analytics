@@ -17,9 +17,9 @@
 
 ## Primeira publicação (uma vez)
 1. Ative o GitHub Pages: repositório → *Settings → Pages → Branch `main` / pasta `/ (root)`*. O endereço fica `https://fe2026-cloud.github.io/giga-analytics/escala-telecom/`.
-2. Abra esse endereço, clique em **Criar conta** (e-mail + senha ≥ 8) e confirme o e-mail se pedir. Depois do login clique em **“Sou o administrador desta escala”** (só funciona para a primeira conta — faça isso logo).
+2. Abra esse endereço e **entre com o e-mail e a senha que já usa no painel GIGA+** (este projeto Supabase não permite cadastro automático; novos usuários são criados em Supabase → Authentication → Users → Add user). Depois do login clique em **“Sou o administrador desta escala”** (só funciona para a primeira conta — faça isso logo).
 3. No computador (pasta `escala-telecom`): `python -m http.server 5174`, abra `http://localhost:5174`, **Configurações → Nuvem → Entrar na nuvem** (mesma conta) → **Publicar tudo**. Isso envia dados, contatos, plantonistas, as 5 tabelas e gera os links dos técnicos.
-4. No site publicado: **Configurações → Acessos** libera os GAs e GOs (e-mail, perfil e tabelas). Cada um cria a conta na tela de login.
+4. No site publicado: **Configurações → Acessos** libera os GAs e GOs (e-mail, perfil e tabelas). Quem ainda não tem conta no projeto precisa ser criado no Supabase (Authentication → Users → Add user, com “Auto Confirm User”).
 5. **Configurações → Links dos técnicos**: confira o endereço público, gere os links, copie ou envie por WhatsApp.
 
 ## Rotina
