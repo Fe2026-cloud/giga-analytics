@@ -1,0 +1,6 @@
+# dados reais da escala ficam só no computador do administrador e na nuvem (atrás de login)
+dados.js
+*.xlsx
+*.pptx
+*.csv
+_local/
