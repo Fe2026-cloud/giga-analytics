@@ -56,6 +56,7 @@
     if (N.sb) return N.sb;
     await carregarSupabase();
     N.sb = window.supabase.createClient(CFG.url, CFG.chave, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'escala-auth' } });
+    N.sb.auth.onAuthStateChange(ev => { if (ev === 'PASSWORD_RECOVERY') setTimeout(telaNovaSenha, 0); });   // veio do link "Esqueci a senha"
     return N.sb;
   }
   const boardKey = id => (BOARDS[id].key || `escala-telecom-b-${id}-v1`);
@@ -106,6 +107,18 @@
       });
       const c = $('#nvCanc', o); if (c) c.addEventListener('click', () => { fechaOverlay(); resolve(null); });
       setTimeout(() => $('#nvEmail', o).focus(), 50);
+    });
+  }
+  function telaNovaSenha() {
+    const o = overlay(`<h2>Defina uma nova senha</h2><div class="sub">Escolha uma senha com pelo menos 8 caracteres.</div>
+      <label>Nova senha</label><input id="nvNova" type="password" autocomplete="new-password">
+      <label>Repita a senha</label><input id="nvNova2" type="password" autocomplete="new-password">
+      <div class="nv-row"><button class="btn pri" id="nvGrava">Salvar nova senha</button></div><div class="nv-msg" id="nvm"></div>`);
+    $('#nvGrava', o).addEventListener('click', async () => {
+      const a = $('#nvNova', o).value, b = $('#nvNova2', o).value;
+      if (a.length < 8) return msg('Use pelo menos 8 caracteres.', 'err'); if (a !== b) return msg('As senhas não conferem.', 'err');
+      const { error } = await N.sb.auth.updateUser({ password: a });
+      if (error) return msg(error.message, 'err'); msg('Senha alterada. Abrindo a escala…', 'ok'); setTimeout(() => { location.href = location.href.split('#')[0].split('?')[0]; }, 1200);
     });
   }
   async function sair() { try { await (await cliente()).auth.signOut(); } catch (e) { } location.reload(); }
