@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preventivas de Rede — Evolução</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabaseClient.js"></script>
+<style>
+  /* Identidade visual GIGA+ Analytics (mesmos tokens do painel principal) */
+  :root{
+    --c-navy:#061B3A; --c-deep:#082B59; --c-blue:#0866D9; --c-sky:#00A8FF; --c-cyan:#00D5E8;
+    --c-green:#00B87A; --c-orange:#FF9900; --c-red:#EF4444; --c-purple:#6D4BE0; --c-ink:#102A50;
+    --grad-blue:linear-gradient(135deg,#0866D9 0%,#00A8FF 100%);
+    --grad-purple:linear-gradient(135deg,#5B3FD8 0%,#9B6BFF 100%);
+    --grad-green:linear-gradient(135deg,#00A56F 0%,#27D49B 100%);
+    --grad-orange:linear-gradient(135deg,#F28A00 0%,#FFB62E 100%);
+    --grad-cyan:linear-gradient(135deg,#0A8FB0 0%,#00D5E8 100%);
+    --grad-red:linear-gradient(135deg,#D92D3A 0%,#FF6B6B 100%);
+    --grad-navy:linear-gradient(145deg,#061B3A 0%,#0B3270 100%);
+    --font-ui:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --radius:16px; --radius-sm:10px;
+    /* tema escuro */
+    --bg:#071A33; --bg-elev:#0B2342; --surface:#0D2A4E; --surface-2:#123766; --surface-3:#16417A;
+    --border:#1F4A85; --border-soft:#183C6C;
+    --text:#E8F0FF; --text-dim:#A9BEDD; --text-faint:#7088AF;
+    --accent:#2F8DFF; --accent-dim:#1E6FD6; --accent-glow:rgba(47,141,255,0.18);
+    --red:#FF6B6B; --red-bg:rgba(255,107,107,0.14);
+    --yellow:#FFB02E; --yellow-bg:rgba(255,176,46,0.15);
+    --green:#2FD39B; --green-bg:rgba(47,211,155,0.15);
+    --peach:#FFA64D; --peach-bg:rgba(255,166,77,0.16);
+    --gray-bg:rgba(169,190,221,0.10);
+    --on-accent:#FFFFFF;
+    --shadow-card:0 6px 22px rgba(0,0,0,0.28);
+    --shadow-pop:0 14px 40px rgba(0,0,0,0.45);
+  }
+  html[data-theme="light"]{
+    --bg:#F2F6FC; --bg-elev:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F8FD; --surface-3:#EAF2FE;
+    --border:#D5E2F5; --border-soft:#E4ECF8;
+    --text:#102A50; --text-dim:#4A628D; --text-faint:#8599B8;
+    --accent:#0866D9; --accent-dim:#0752B0; --accent-glow:rgba(8,102,217,0.10);
+    --red:#E5383B; --red-bg:rgba(239,68,68,0.11);
+    --yellow:#D97F00; --yellow-bg:rgba(255,153,0,0.14);
+    --green:#00A06C; --green-bg:rgba(0,184,122,0.13);
+    --peach:#D97F00; --peach-bg:rgba(255,153,0,0.14);
+    --gray-bg:rgba(16,42,80,0.05);
+    --shadow-card:0 4px 18px rgba(8,43,89,0.07), 0 1px 3px rgba(8,43,89,0.05);
+    --shadow-pop:0 14px 40px rgba(8,43,89,0.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:14px;line-height:1.45;letter-spacing:-0.005em;transition:background .15s,color .15s}
+  ::selection{background:rgba(8,102,217,.22)}
+  *{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  button{font-family:inherit;cursor:pointer}
+  .i{width:1.15em;height:1.15em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;vertical-align:-0.2em}
+
+  /* ---------- menu lateral ---------- */
+  .app-shell{display:flex;min-height:100vh}
+  .sidebar{width:240px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;display:flex;flex-direction:column;
+    background:linear-gradient(185deg,#061B3A 0%,#082B59 60%,#0A3A77 100%);padding:24px 14px 16px;color:#C9D9F2;box-shadow:6px 0 28px rgba(6,27,58,.22);z-index:60;scrollbar-width:none}
+  .sidebar::-webkit-scrollbar{display:none}
+  .sidebar-brand{display:flex;flex-direction:column;align-items:center;text-align:center;padding:2px 6px 14px}
+  .sidebar-wordmark{font-size:38px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:#fff}
+  .sidebar-wordmark span{color:var(--c-cyan)}
+  .sidebar-wordmark-sub{font-size:11.5px;font-weight:600;letter-spacing:.55em;padding-left:.55em;color:#C9D9F2;margin-top:3px}
+  .sidebar-subtitle{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--c-cyan);margin-top:12px;text-transform:uppercase}
+  .sidebar-swoosh{display:block;width:100%;height:30px;margin-top:8px}
+  .sidebar-mini{display:none;font-size:24px;font-weight:800;color:#fff;letter-spacing:-.04em}
+  .sidebar-mini span{color:var(--c-cyan)}
+  .sidebar-nav{flex:1;display:flex;flex-direction:column;margin-top:8px}
+  .sidebar-item{display:flex;align-items:center;gap:13px;padding:11px 14px;border-radius:13px;margin-bottom:3px;font-size:13.5px;font-weight:600;color:#B8C9E7;
+    background:transparent;border:none;text-align:left;width:100%;text-decoration:none;white-space:nowrap;overflow:hidden;transition:background .2s,color .2s,transform .2s,box-shadow .2s}
+  .sidebar-item .ic{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center}
+  .sidebar-item .ic .i{width:19px;height:19px;stroke-width:1.75}
+  .sidebar-item:hover{background:rgba(255,255,255,.09);color:#fff;transform:translateX(2px)}
+  .sidebar-item.on{background:linear-gradient(90deg,#0866D9 0%,#00A8FF 100%);color:#fff;box-shadow:0 8px 22px rgba(8,102,217,.5);transform:none}
+  .sidebar-footer{border-top:1px solid rgba(255,255,255,.1);padding-top:10px;margin-top:10px}
+  .sidebar-grupo{display:flex;align-items:center;gap:11px;margin:14px 2px 0;padding:13px 12px;border-radius:15px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07)}
+  .grupo-logo{width:30px;height:30px;flex-shrink:0}
+  .grupo-nome{font-size:11.5px;font-weight:750;letter-spacing:.13em;color:#fff;white-space:nowrap}
+
+  /* ---------- cabeçalho ---------- */
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:20px 30px;
+    background:linear-gradient(100deg,#061B3A 0%,#082B59 55%,#0A4A9A 100%);color:#fff;overflow:hidden}
+  .topbar-hero::before{content:"";position:absolute;right:-90px;top:-110px;width:520px;height:260px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,168,255,.42),transparent 70%);pointer-events:none}
+  .topbar-hero::after{content:"";position:absolute;left:34%;bottom:-70px;width:520px;height:150px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,213,232,.16),transparent 70%);pointer-events:none}
+  .brand{position:relative;z-index:1;display:flex;flex-direction:column;gap:3px}
+  .brand-line{display:flex;align-items:center;gap:14px;font-size:22px;font-weight:800;letter-spacing:.01em;color:#fff}
+  .brand-sep{width:1px;height:22px;background:rgba(255,255,255,.4)}
+  .brand-group{font-size:17px;font-weight:500;letter-spacing:.08em;color:#D7E5FA}
+  .brand .sub{font-size:13px;color:#A9C2E8}
+  .hero-actions{position:relative;z-index:1;display:flex;align-items:center;gap:8px}
+  .icon-btn{width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.09);color:#D7E5FA;border:1px solid rgba(255,255,255,.08);display:inline-flex;align-items:center;justify-content:center;transition:background .2s,color .2s}
+  .icon-btn .i{width:19px;height:19px}
+  .icon-btn:hover{background:rgba(255,255,255,.18);color:#fff}
+  .user-chip{display:flex;align-items:center;gap:11px;padding:5px 14px 5px 5px;margin-left:8px;border-radius:16px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.1)}
+  .avatar-chip{width:38px;height:38px;border-radius:50%;font-size:13px;font-weight:800;background:linear-gradient(135deg,#0866D9,#00A8FF);color:#fff;border:2px solid rgba(255,255,255,.75);display:inline-flex;align-items:center;justify-content:center}
+  .user-meta{display:flex;flex-direction:column;line-height:1.2}
+  .user-meta b{font-size:13.5px;font-weight:750;color:#fff}
+  .user-meta span{font-size:11.5px;color:#A9C2E8}
+  .fiber-line{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.08);overflow:hidden}
+  .fiber-line::after{content:"";position:absolute;top:0;left:-30%;height:100%;width:30%;background:linear-gradient(90deg,transparent,var(--c-cyan),transparent);animation:pulse 3.4s ease-in-out infinite}
+  @keyframes pulse{0%{left:-30%}100%{left:110%}}
+  @media (prefers-reduced-motion:reduce){.fiber-line::after{animation:none;left:0;width:100%;opacity:.35}}
+
+  .topbar-bar{position:sticky;top:0;z-index:55;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:11px 30px;background:var(--surface);border-bottom:1px solid var(--border-soft);box-shadow:0 8px 24px rgba(8,43,89,.08)}
+  .origem{flex:1;min-width:260px;font-size:12.5px;color:var(--text-dim);line-height:1.5}
+  .origem a{color:var(--accent);font-weight:750}
+  .live{display:inline-flex;align-items:center;padding:2px 11px;border-radius:99px;font-weight:750;margin-right:8px;font-size:12px;background:var(--gray-bg);color:var(--text)}
+  .live.on{background:var(--grad-green);color:#fff}
+  .live.warn{background:var(--yellow-bg);color:var(--yellow)}
+  .topbar-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{background:var(--surface);color:var(--text);border:1px solid var(--border);padding:9px 16px;border-radius:12px;font-size:13px;font-weight:650;display:inline-flex;align-items:center;gap:8px;
+    box-shadow:0 1px 2px rgba(8,43,89,.05);transition:background .18s,border-color .18s,box-shadow .18s,transform .18s}
+  .btn .i{width:17px;height:17px}
+  .btn:hover{border-color:var(--accent);background:var(--surface-3)}
+  .btn.primary{background:linear-gradient(135deg,#082B59 0%,#0866D9 100%);color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(8,102,217,.32)}
+  .btn.primary:hover{background:linear-gradient(135deg,#0A3A77 0%,#00A8FF 100%);transform:translateY(-1px)}
+  select,input[type=number],input[type=text],input[type=date],input[type=search]{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:11px;padding:8px 12px;font-size:13px;font-family:inherit}
+  select:focus,input:focus,button:focus-visible{outline:2px solid var(--c-sky);outline-offset:1px}
+
+  /* ---------- área principal ---------- */
+  main{max-width:1560px;width:100%;margin:0 auto;padding:22px 30px 40px}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:16px 24px;flex-wrap:wrap;margin:2px 0 18px}
+  .page-title{display:flex;align-items:center;gap:15px;min-width:0}
+  .page-ic{width:52px;height:52px;border-radius:16px;background:var(--grad-blue);color:#fff;display:grid;place-items:center;box-shadow:0 10px 24px rgba(8,102,217,.35);flex-shrink:0}
+  .page-ic .i{width:27px;height:27px;stroke-width:1.9}
+  .page-title h2{font-size:31px;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+  #pageSub{display:block;margin-top:3px;font-size:14px;color:var(--text-dim)}
+  .filter-pill{display:inline-flex;align-items:center;gap:9px;padding:11px 15px;border-radius:13px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);font-size:13.5px;box-shadow:var(--shadow-card)}
+  .filter-pill .i{width:17px;height:17px;color:var(--accent)}
+  .filter-pill b{color:var(--text);font-weight:750}
+
+  .filtros{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow-card);margin-bottom:18px}
+  .filtros label{display:flex;flex-direction:column;font-size:11px;font-weight:750;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;gap:4px}
+  .filtros select,.filtros input[type=date],.filtros input[type=number]{min-width:130px;font-weight:500}
+  .filtros input[type=number]{width:120px;min-width:0}
+  .chk{flex-direction:row!important;align-items:center;gap:7px!important;text-transform:none!important;font-size:12.5px!important;font-weight:600!important;letter-spacing:0!important;padding-bottom:8px;color:var(--text-dim)!important}
+  .lnk{background:none;border:none;color:var(--accent);font:700 12.5px var(--font-ui);cursor:pointer;padding:9px 4px}
+  .lnk:hover{text-decoration:underline}
+
+  .aba{display:none}
+  .aba.on{display:block;animation:fade .22s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ---------- cartões de indicador (gradiente, como a Visão Geral do GIGA+) ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px;margin-bottom:18px}
+  /* 5 a 7 cartões ficam sempre na MESMA linha; 8 viram 2 linhas de 4 (telas estreitas voltam a quebrar sozinhas) */
+  @media (min-width:900px){
+    .kpis:has(> .kpi:nth-child(5):last-child){grid-template-columns:repeat(5,minmax(0,1fr))}
+    .kpis:has(> .kpi:nth-child(6):last-child){grid-template-columns:repeat(6,minmax(0,1fr))}
+    .kpis:has(> .kpi:nth-child(7):last-child){grid-template-columns:repeat(7,minmax(0,1fr))}
+    .kpis:has(> .kpi:nth-child(8):last-child){grid-template-columns:repeat(4,minmax(0,1fr))}
+    .kpis:has(> .kpi:nth-child(5):last-child) .kpi,.kpis:has(> .kpi:nth-child(6):last-child) .kpi,.kpis:has(> .kpi:nth-child(7):last-child) .kpi{padding:16px 16px}
+    .kpis:has(> .kpi:nth-child(5):last-child) .kpi .v,.kpis:has(> .kpi:nth-child(6):last-child) .kpi .v,.kpis:has(> .kpi:nth-child(7):last-child) .kpi .v{font-size:clamp(26px,2.5vw,38px)}
+    .kpis:has(> .kpi:nth-child(5):last-child) .kpi .l,.kpis:has(> .kpi:nth-child(6):last-child) .kpi .l,.kpis:has(> .kpi:nth-child(7):last-child) .kpi .l{font-size:11px}
+    .kpis:has(> .kpi:nth-child(5):last-child) .kpi .s,.kpis:has(> .kpi:nth-child(6):last-child) .kpi .s,.kpis:has(> .kpi:nth-child(7):last-child) .kpi .s{font-size:12px}
+  }
+  .kpi{position:relative;overflow:hidden;border-radius:20px;padding:18px 20px;min-height:136px;color:#fff;background:var(--g,var(--grad-blue));box-shadow:0 14px 30px rgba(8,43,89,.2);display:flex;flex-direction:column}
+  .kpi::before{content:"";position:absolute;right:-60px;top:-70px;width:200px;height:200px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.22),transparent 72%);pointer-events:none}
+  .kpi.g-blue{--g:var(--grad-blue)}.kpi.g-green{--g:var(--grad-green)}.kpi.g-purple{--g:var(--grad-purple)}.kpi.g-orange{--g:var(--grad-orange)}.kpi.g-cyan{--g:var(--grad-cyan)}.kpi.g-red{--g:var(--grad-red)}
+  .kpi .l{position:relative;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.96);line-height:1.25}
+  .kpi .v{position:relative;font-size:40px;font-weight:800;line-height:1;letter-spacing:-.035em;margin-top:auto;padding-top:14px;text-shadow:0 2px 12px rgba(0,0,0,.12)}
+  .kpi .s{position:relative;font-size:12.5px;margin-top:8px;color:rgba(255,255,255,.92);font-weight:600}
+  .kpi .up{color:#9CFFD8;font-weight:800}.kpi .down{color:#FFD0D0;font-weight:800}
+  .up{color:var(--green);font-weight:700}.down{color:var(--red);font-weight:700}
+
+  .grid{display:grid;gap:18px;margin-bottom:18px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(430px,1fr))}
+  .g21{grid-template-columns:2fr 1fr}
+  .card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius);padding:20px 22px;min-width:0;box-shadow:var(--shadow-card)}
+  .card h3{font-size:16px;font-weight:750;color:var(--text);margin-bottom:2px}
+  .card .nota{font-size:12.5px;color:var(--text-faint);margin-bottom:12px}
+  .cv{position:relative;height:290px}
+  .cv.alto{height:420px}
+  .leituras li{margin:0 0 10px 18px;line-height:1.5}
+  .leituras li::marker{color:var(--accent)}
+  .leituras li.alerta{color:var(--yellow)}
+  .leituras li.alerta b{color:var(--yellow)}
+  h2.sec{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin:26px 0 12px}
+  h2.sec::before{content:"";width:4px;height:17px;border-radius:3px;background:var(--grad-blue)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:750;text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);background:var(--surface-2);cursor:pointer;white-space:nowrap;user-select:none;position:sticky;top:0}
+  th.n,td.n{text-align:right}
+  td{padding:8px 10px;border-bottom:1px solid var(--border-soft)}
+  tbody tr:hover td{background:var(--surface-2)}
+  .tbox{max-height:430px;overflow:auto;border-radius:12px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:750}
+  .p-ok{background:var(--green-bg);color:var(--green)}.p-am{background:var(--yellow-bg);color:var(--yellow)}.p-vm{background:var(--red-bg);color:var(--red)}.p-az{background:var(--accent-glow);color:var(--accent)}
+  .heat{border-collapse:separate;border-spacing:2px;font-size:11px}
+  .heat td,.heat th{padding:4px 6px;text-align:center;border:none;cursor:default;background:transparent;position:static}
+  .heat th{color:var(--text-faint)}
+  .heat tbody tr:hover td{background:transparent}
+  .heat td.nm{text-align:left;white-space:nowrap;font-weight:650;font-size:12px;padding-right:10px}
+  .heat td.c{min-width:38px;border-radius:6px}
+  .rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+  .rc{background:var(--surface);border:1px solid var(--border-soft);border-left:5px solid var(--accent);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-card)}
+  .rc.alta{border-left-color:var(--c-red)}.rc.media{border-left-color:var(--c-orange)}.rc.baixa{border-left-color:var(--c-sky)}
+  .rc h4{font-size:14.5px;font-weight:750;margin-bottom:5px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .rc p{font-size:13px;color:var(--text-dim)}
+  .tag{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:var(--surface-3);color:var(--text-dim);white-space:nowrap}
+  .vazio{color:var(--text-faint);padding:30px;text-align:center}
+  footer{padding:0 30px 30px;color:var(--text-faint);font-size:12px}
+  #aviso{display:none;background:var(--yellow-bg);color:var(--yellow);padding:10px 30px;font-weight:650}
+
+  /* ---------- galeria de fotos ---------- */
+  .fbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .fbar input[type=search]{min-width:270px}
+  .galeria{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px}
+  .gc{border:1px solid var(--border-soft);border-radius:14px;overflow:hidden;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;box-shadow:var(--shadow-card);transition:box-shadow .15s,transform .15s}
+  .gc:hover{box-shadow:0 12px 28px rgba(8,43,89,.18),0 0 0 1.5px var(--accent);transform:translateY(-2px)}
+  .th{position:relative;height:150px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:12px;font-weight:650;text-align:center;padding:8px}
+  .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .th img.quebrada{display:none}
+  .th .nf{position:absolute;right:8px;bottom:8px;background:rgba(6,27,58,.82);color:#fff;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700}
+  .th .tp{position:absolute;left:8px;top:8px;color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+  .gc .inf{padding:10px 12px;font-size:12px;line-height:1.4}
+  .gc .inf b{font-size:13px;display:block;color:var(--text)}
+  .gc .inf .m{color:var(--text-dim)}
+  .gc .inf .o{color:var(--text-dim);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .pager{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:16px;color:var(--text-dim)}
+  .pager button,.mnav button,.mnav a{font:700 12.5px var(--font-ui);border:1px solid var(--border);background:var(--surface);color:var(--accent);padding:7px 14px;border-radius:11px;cursor:pointer;text-decoration:none}
+  .pager button:hover,.mnav button:hover,.mnav a:hover{border-color:var(--accent);background:var(--surface-3)}
+  .pager button:disabled,.mnav button:disabled{opacity:.4;cursor:default}
+  #modal{display:none;position:fixed;inset:0;z-index:100;background:rgba(6,27,58,.8);padding:24px;overflow:auto}
+  #modal.on{display:block}
+  .mb{max-width:1100px;margin:0 auto;background:var(--surface);color:var(--text);border-radius:20px;padding:20px 22px 24px;box-shadow:var(--shadow-pop)}
+  .mh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+  .mh h3{font-size:19px;font-weight:800}
+  .mh .x{font:700 20px var(--font-ui);border:none;background:var(--surface-3);border-radius:10px;width:36px;height:36px;color:var(--text)}
+  .mnav{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .mfotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:14px}
+  .mfotos a{display:block;position:relative;min-height:120px;background:var(--surface-3);border-radius:12px;overflow:hidden;color:var(--accent);font-weight:700;font-size:13px;text-align:center;text-decoration:none}
+  .mfotos a span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:10px}
+  .mfotos img{position:relative;display:block;width:100%;height:auto;z-index:1;background:var(--surface-3)}
+  .mfotos img.quebrada{display:none}
+  #avisoFoto{display:none;background:var(--yellow-bg);color:var(--yellow);border-radius:12px;padding:11px 15px;font-weight:650;margin-bottom:14px}
+
+  /* ---------- responsivo ---------- */
+  @media (max-width:1380px){.g21{grid-template-columns:1fr}}
+  @media (max-width:1100px){
+    .sidebar{width:78px;padding-left:10px;padding-right:10px}
+    .sidebar .sidebar-wordmark,.sidebar .sidebar-wordmark-sub,.sidebar .sidebar-subtitle,.sidebar .sidebar-swoosh,.sidebar .lbl,.sidebar .grupo-nome{display:none}
+    .sidebar .sidebar-mini{display:block}
+    .sidebar .sidebar-item{justify-content:center;padding:12px 0}
+    .sidebar .sidebar-grupo{justify-content:center;padding:10px 0}
+  }
+  @media (max-width:900px){.g2{grid-template-columns:1fr}}
+  @media (max-width:760px){
+    .topbar-hero{padding:16px}
+    .brand-line{font-size:17px;gap:10px}.brand-group{font-size:13px}
+    .user-meta{display:none}.user-chip{padding:4px}
+    .topbar-bar{padding:10px 12px;position:static}
+    main{padding:16px 12px 40px}
+    .page-title h2{font-size:23px}.page-ic{width:42px;height:42px;border-radius:13px}
+    .kpi .v{font-size:34px}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-import" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/><path d="M12 10v6"/><path d="m9 13 3-3 3 3"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+</defs></svg>
+<div id="aviso"></div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-wordmark">GIGA<span>+</span></div>
+      <div class="sidebar-wordmark-sub">ANALYTICS</div>
+      <div class="sidebar-subtitle">Preventivas de Rede</div>
+      <div class="sidebar-mini">G<span>+</span></div>
+      <svg class="sidebar-swoosh" viewBox="0 0 220 36" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="swGrad" x1="0" x2="1"><stop offset="0" stop-color="#0866D9" stop-opacity="0"/><stop offset=".45" stop-color="#00A8FF"/><stop offset="1" stop-color="#00D5E8"/></linearGradient></defs><path d="M0 30C50 30 70 6 125 7c40 .6 62 12 95 5" fill="none" stroke="url(#swGrad)" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </div>
+    <nav class="sidebar-nav" id="abas">
+      <button class="sidebar-item on" data-a="geral"><span class="ic"><svg class="i"><use href="#i-home"/></svg></span><span class="lbl">Visão Geral</span></button>
+      <button class="sidebar-item" data-a="equipe"><span class="ic"><svg class="i"><use href="#i-users"/></svg></span><span class="lbl">Equipe</span></button>
+      <button class="sidebar-item" data-a="territorio"><span class="ic"><svg class="i"><use href="#i-globe"/></svg></span><span class="lbl">Território</span></button>
+      <button class="sidebar-item" data-a="resultados"><span class="ic"><svg class="i"><use href="#i-trend"/></svg></span><span class="lbl">Resultados</span></button>
+      <button class="sidebar-item" data-a="fotos"><span class="ic"><svg class="i"><use href="#i-camera"/></svg></span><span class="lbl">Fotos</span></button>
+      <button class="sidebar-item" data-a="acoes"><span class="ic"><svg class="i"><use href="#i-list"/></svg></span><span class="lbl">Qualidade &amp; Ações</span></button>
+    </nav>
+    <div class="sidebar-footer">
+      <a class="sidebar-item" href="../index.html" title="Voltar ao GIGA+ Analytics"><span class="ic"><svg class="i" style="transform:scaleX(-1)"><use href="#i-arrow-r"/></svg></span><span class="lbl">Voltar ao GIGA+</span></a>
+      <div class="sidebar-grupo">
+        <svg class="grupo-logo" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="gaGrad" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#0866D9"/><stop offset="1" stop-color="#00D5E8"/></linearGradient></defs><path d="M20 3 37 36H28.5L20 18.5 11.5 36H3z" fill="url(#gaGrad)"/></svg>
+        <span class="grupo-nome">GRUPO ALLOHA</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <div class="topbar-hero">
+      <div class="brand">
+        <div class="brand-line"><span>GIGA+ FIBRA</span><span class="brand-sep"></span><span class="brand-group">GRUPO ALLOHA</span></div>
+        <span class="sub">Preventivas de Rede · Gestão Rafael Fraga</span>
+      </div>
+      <div class="hero-actions">
+        <button class="icon-btn" id="btnTheme" title="Alternar tema"><svg class="i"><use href="#i-moon"/></svg></button>
+        <div class="user-chip" id="userChip" style="display:none">
+          <div class="avatar-chip" id="avatarChip">··</div>
+          <div class="user-meta"><b id="userNome">—</b><span id="userPapel"></span></div>
+        </div>
+      </div>
+      <div class="fiber-line"></div>
+    </div>
+    <div class="topbar-bar">
+      <div class="origem" id="origem"></div>
+      <div class="topbar-actions">
+        <button class="btn" id="btnCarregar" title="Envia a planilha para a nuvem (operador/admin) ou carrega só neste navegador"><svg class="i"><use href="#i-import"/></svg>Carregar nova planilha</button>
+        <button class="btn" id="btnRestaurar" style="display:none">↩ Voltar aos dados originais</button>
+        <input type="file" id="arq" accept=".xlsx,.xls,.csv" hidden>
+      </div>
+    </div>
+
+    <main>
+      <div class="page-head">
+        <div class="page-title">
+          <div class="page-ic"><svg class="i" id="pageIcon"><use href="#i-home"/></svg></div>
+          <div><h2 id="pageTitle">Visão Geral</h2><span id="pageSub">Evolução semanal, ritmo diário e mix das ações preventivas</span></div>
+        </div>
+        <div class="filter-pill" id="pageInfo"><svg class="i"><use href="#i-filter"/></svg><span></span></div>
+      </div>
+
+      <div class="filtros">
+        <label>De<input type="date" id="fDe"></label>
+        <label>Até<input type="date" id="fAte"></label>
+        <label>Cluster<select id="fCluster"></select></label>
+        <label>Cidade<select id="fCidade"></select></label>
+        <label>Tipo de ação<select id="fTipo"></select></label>
+        <label>Técnico<select id="fTec"></select></label>
+        <label>Meta semanal (ações)<input type="number" id="fMeta" min="0" placeholder="opcional"></label>
+        <label class="chk"><input type="checkbox" id="fTeste"> incluir registros de teste</label>
+        <button class="lnk" id="btnLimpar">Limpar filtros</button>
+      </div>
+
+  <!-- ============ VISÃO GERAL ============ -->
+  <section class="aba on" id="a-geral">
+    <div class="kpis" id="kpisGeral"></div>
+    <div class="grid g21">
+      <div class="card"><h3>Evolução semanal por tipo de ação</h3><div class="nota">Semanas de segunda a domingo. A última barra pode estar incompleta (marcada como parcial).</div><div class="cv"><canvas id="cSemanal"></canvas></div></div>
+      <div class="card"><h3>Leituras do período</h3><div class="nota">Geradas automaticamente a partir dos filtros.</div><ul class="leituras" id="leituras"></ul></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>Ritmo diário</h3><div class="nota">Barras = ações do dia · linha = média móvel de 7 dias.</div><div class="cv"><canvas id="cDiario"></canvas></div></div>
+      <div class="card"><h3>Acumulado de ações</h3><div class="nota">Total de ações registradas desde o início do período.</div><div class="cv"><canvas id="cAcum"></canvas></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>Mix por tipo de ação</h3><div class="cv"><canvas id="cMix"></canvas></div></div>
+      <div class="card"><h3>Média de ações por dia da semana</h3><div class="nota">Total dividido pelo nº de vezes que aquele dia da semana ocorreu no período.</div><div class="cv"><canvas id="cDow"></canvas></div></div>
+    </div>
+  </section>
+
+  <!-- ============ EQUIPE ============ -->
+  <section class="aba" id="a-equipe">
+    <div class="kpis" id="kpisEquipe"></div>
+    <div class="grid g2">
+      <div class="card"><h3>Ações por técnico (top 15)</h3><div class="cv alto"><canvas id="cTecnicos"></canvas></div></div>
+      <div class="card"><h3>Ações × técnicos ativos por semana</h3><div class="nota">Mostra se a variação do volume vem de equipe menor ou de menos produção por pessoa.</div><div class="cv"><canvas id="cEquipeSem"></canvas></div></div>
+    </div>
+    <div class="card"><h3>Detalhe por técnico</h3><div class="nota">Clique no título da coluna para ordenar. "Técnico" é identificado pela conta de e-mail que enviou o formulário.</div><div class="tbox" id="tTec"></div></div>
+  </section>
+
+  <!-- ============ TERRITÓRIO ============ -->
+  <section class="aba" id="a-territorio">
+    <div class="kpis" id="kpisTerr"></div>
+    <div class="grid g2">
+      <div class="card"><h3>Ações por cidade</h3><div class="cv"><canvas id="cCidade"></canvas></div></div>
+      <div class="card"><h3>Ações por bairro (top 15)</h3><div class="cv alto"><canvas id="cBairro"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px"><h3>Mapa de calor — bairros × semana</h3><div class="nota">Quanto mais escuro, mais ações naquele bairro naquela semana (top 18 bairros).</div><div class="tbox" id="heat"></div></div>
+    <div class="card"><h3>Fila de revisita — bairros por tempo sem ação</h3><div class="nota">Dias contados até o último dado da planilha. <span class="pill p-vm">&gt; 21 dias</span> <span class="pill p-am">15–21 dias</span> <span class="pill p-ok">≤ 14 dias</span>. Sem o inventário de CTOs por bairro não dá para medir cobertura em %, só recência.</div><div class="tbox" id="tBairro"></div></div>
+  </section>
+
+  <!-- ============ RESULTADOS ============ -->
+  <section class="aba" id="a-resultados">
+    <div class="kpis" id="kpisRes"></div>
+    <div class="grid g2">
+      <div class="card"><h3>Portas livres informadas por semana</h3><div class="nota">Soma do que as equipes informaram (Migração, Retrofit e Clean UP via observação). Barras = portas · linha = % de ações com resultado informado.</div><div class="cv"><canvas id="cPortasSem"></canvas></div></div>
+      <div class="card"><h3>Distribuição de portas livres por CTO</h3><div class="nota">Quantas CTOs ficaram com 0, 1, 2… portas livres após a ação.</div><div class="cv"><canvas id="cHistPortas"></canvas></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>Portas livres médias por tipo de ação</h3><div class="cv"><canvas id="cPortasTipo"></canvas></div></div>
+      <div class="card"><h3>Migrações e retiradas por semana</h3><div class="nota">CTOs migradas para a nova rede e CTOs antigas desativadas.</div><div class="cv"><canvas id="cMigRet"></canvas></div></div>
+    </div>
+  </section>
+
+  <!-- ============ FOTOS ============ -->
+  <section class="aba" id="a-fotos">
+    <div class="kpis" id="kpisFotos"></div>
+    <div class="card">
+      <h3>Galeria de fotos das ações</h3>
+      <div class="nota">Respeita os filtros do topo. Clique em um cartão para ver todas as fotos da ação. As imagens são cópias reduzidas guardadas na nuvem do GIGA+ (abrem sem login Microsoft). Fotos novas só aparecem depois de enviadas pelo script de sincronização.</div>
+      <div id="avisoFoto"></div>
+      <div class="fbar">
+        <input type="search" id="fBusca" placeholder="Buscar bairro, técnico, observação…">
+        <select id="fOrd"><option value="rec">Mais recentes</option><option value="ant">Mais antigas</option><option value="mais">Mais fotos</option><option value="menos">Menos fotos (evidência fraca)</option></select>
+        <span class="nota" id="fCont" style="margin:0"></span>
+      </div>
+      <div class="galeria" id="galeria"></div>
+      <div class="pager"><button id="pgAnt">◀ Anterior</button><span id="pgInfo"></span><button id="pgProx">Próxima ▶</button></div>
+    </div>
+  </section>
+
+  <!-- ============ QUALIDADE & AÇÕES ============ -->
+  <section class="aba" id="a-acoes">
+    <h2 class="sec" style="margin-top:4px">O que podemos fazer — recomendações a partir da planilha</h2>
+    <div class="rec" id="recs"></div>
+    <h2 class="sec">Qualidade dos dados (o que a planilha consegue — e não consegue — dizer hoje)</h2>
+    <div class="card"><div class="tbox" id="tQual"></div></div>
+  </section>
+
+    </main>
+    <footer id="rodape"></footer>
+  </div>
+</div>
+<div id="modal"><div class="mb" id="mb"></div></div>
+
+<script>
+/* =====================================================================
+   PREVENTIVAS DE REDE — painel. Dados vêm de dados.js (planilha do Forms)
+   ou de uma planilha carregada pelo botão (fica salva só neste navegador).
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const strip = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const nk = s => strip(s).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const fmt = n => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString('pt-BR');
+const fmt1 = n => (n == null || isNaN(n)) ? '—' : n.toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+const DIA = 864e5;
+const isoDia = ms => new Date(ms).toISOString().slice(0, 10);
+const addDias = (d, n) => isoDia(Date.parse(d + 'T00:00:00Z') + n * DIA);
+const dd = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '—';
+const ddy = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '—';
+const dowOf = d => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7;      // 0 = segunda
+const semanaDe = d => addDias(d, -dowOf(d));
+const sum = (a, f) => a.reduce((t, x) => t + (f ? f(x) : x), 0);
+const uniq = a => [...new Set(a)];
+function agrupa(a, f) { const m = new Map(); a.forEach(x => { const k = f(x); (m.get(k) || m.set(k, []).get(k)).push(x); }); return m; }
+const mediana = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+
+/* ---------- Limpeza ---------- */
+const IDS_TESTE = new Set([1]);                       // ID 1 = teste do próprio gestor (dados sem sentido)
+const MINUSC = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
+const titulo = s => String(s).toLowerCase().replace(/\S+/g, (w, i) => (i > 0 && MINUSC.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1));
+const CANON = ['Boiçucanga', 'Camburi', 'Boracéia', 'Jussara', 'Perequê Mirim', 'Jaraguá', 'Sumaré', 'Martim de Sá', 'Massaguaçu', 'Morro do Algodão', 'Travessão',
+  'Centro', 'Canto do Mar', 'Enseada', 'Pegorelly', 'Juquehy', 'Maresias', 'Porto Novo', 'Rio do Ouro', 'Barra do Una', 'Umuarama', 'Baleia', 'Indaiá', 'Pontal de Santa Marina',
+  'Tinga', 'Prainha', 'Poiares', 'Cocanha', 'Martim de Sá', 'Sertão do Ingá', 'Topolândia', 'Perequê', 'Itaguá', 'Toninhas'];
+CANON.push('Golfinhos', 'Sahy', 'Barequeçaba', 'Caputera', 'Jardim Casa Branca');
+const ALIAS = { 'boissucanga': 'Boiçucanga', 'boicucanga': 'Boiçucanga', 'bocucanga': 'Boiçucanga', 'cambury': 'Camburi', 'cambufy': 'Camburi', 'cambiri': 'Camburi', 'balneario jussara': 'Jussara',
+  'pereque mirim': 'Perequê Mirim', 'pereque mirm': 'Perequê Mirim', 'jussara balneario': 'Jussara', 'jussar': 'Jussara', 'av jussara': 'Jussara', 'balneario umurama': 'Umuarama',
+  'pegoreli': 'Pegorelly', 'pegorelli': 'Pegorelly', 'golfinho': 'Golfinhos', 'balneario golfinhos': 'Golfinhos', 'recanto do sol golfinhos': 'Golfinhos', 'matin de sa': 'Martim de Sá', 'martin de sa': 'Martim de Sá',
+  'enceada': 'Enseada', 'barequecaba': 'Barequeçaba', 'jhunquey': 'Juquehy', 'mareesias': 'Maresias', 'barra do sahy': 'Sahy', 'jd casa branca': 'Jardim Casa Branca',
+  'ipiranga sumare': 'Sumaré', 'sumare ipiranga': 'Sumaré', 'pontal santa marina': 'Pontal de Santa Marina', 'caputera estrela d alva': 'Caputera', 'travessao caragua 2': 'Travessão' };
+const MAPA_BAIRRO = new Map(CANON.map(c => [nk(c), c])); Object.entries(ALIAS).forEach(([k, v]) => MAPA_BAIRRO.set(k, v));
+// bairros que só existem em São Sebastião: os técnicos às vezes marcam Bertioga/Caraguatatuba na cidade
+const BAIRRO_SS = new Set(['Camburi', 'Boracéia', 'Juquehy', 'Maresias', 'Baleia', 'Barra do Una', 'Boiçucanga', 'Sahy', 'Canto do Mar']);
+const bairroInvalido = b => /https?:|waze|maps\.app|share\.google|^bk\d/i.test(String(b || '').trim());
+const bairroNorm = b => { const k = nk(b); if (!k) return 'Não informado'; if (bairroInvalido(b)) return 'Bairro inválido (link/ID)'; return MAPA_BAIRRO.get(k) || titulo(String(b).trim().replace(/\s+/g, ' ')); };
+
+const TIPO_COR = { 'Clean UP': '#0866D9', 'Migração': '#00B87A', 'Retirada de CTO': '#FF9900', 'Retrofit': '#6D4BE0', 'Preventiva POP': '#00A8FF', 'Outros': '#8DA0C0' };
+function tipoNorm(t) {
+  const k = nk(t);
+  if (k.includes('clean')) return 'Clean UP'; if (k.includes('migra')) return 'Migração'; if (k.includes('retirada')) return 'Retirada de CTO';
+  if (k.includes('retrofit')) return 'Retrofit'; if (k.includes('pop')) return 'Preventiva POP'; return t ? titulo(t) : 'Outros';
+}
+const intDe = v => { if (v == null) return null; const m = String(v).match(/\d+/); return m ? +m[0] : null; };
+function portasObs(o) {
+  if (!o) return null;
+  const m = String(o).match(/(?<!\d)(\d{1,2})\s*(?:portas?|vagas?)/i) || String(o).match(/portas?\s*(?:livres?|liberadas?|vagas?)?\s*[:\-]?\s*(\d{1,2})(?!\d)/i);
+  if (!m) return null; const n = +m[1]; return n <= 16 ? n : null;
+}
+function metros(v) {
+  if (v == null || v === '') return { n: null, q: 'vazio' };
+  const s = String(v).trim().toLowerCase();
+  if (/^0+$/.test(s)) return { n: 0, q: 'zero' };
+  const m = s.match(/^(\d+(?:[.,]\d+)?)\s*(km|k|m|mt|mts|mtrs|metros?)?\s*$/);
+  if (!m) return { n: null, q: 'texto' };
+  let n = parseFloat(m[1].replace(',', '.')); if (m[2] === 'km' || m[2] === 'k') n *= 1000;
+  return { n, q: n > 1000 ? 'outlier' : 'ok' };
+}
+const BASE_FOTO = 'https://allohafibra-my.sharepoint.com/personal/fellipe_andrade_alloha_com/Documents/Aplicativos/Microsoft%20Forms/A%C3%87%C3%95ES%20PREVENTIVAS%20-%20GEST%C3%83O%20RAFAEL%20FRAGA/Pergunta/';
+const encurta = u => u.startsWith(BASE_FOTO) ? u.slice(BASE_FOTO.length) : u;            // guarda só o nome do arquivo
+const urlFoto = u => /^https?:/i.test(u) ? u : BASE_FOTO + u;                 // original no SharePoint (exige login Microsoft)
+// Cópia reduzida no Supabase Storage (pública para leitura, sem login). A "chave" é calculada IGUAL na Edge Function preventivas-foto.
+function chaveFoto(nome) {
+  let n = String(nome).split('/').pop();
+  try { n = decodeURIComponent(n); } catch (e) { }
+  return n.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(-150);
+}
+const urlEspelho = u => (typeof SUPABASE_URL === 'undefined' ? urlFoto(u) : `${SUPABASE_URL}/storage/v1/object/public/preventivas-fotos/${chaveFoto(u)}`);
+const ehVideo = u => /\.(mp4|mov)$/i.test(u);
+const listaFotos = v => (v == null || typeof v === 'number') ? [] : String(v).split(';').map(x => x.trim()).filter(Boolean);
+const iso8601 = s => (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(s)) ? s : null;
+
+function limpar(bruto) {
+  // chaves = cabeçalho normalizado (sem acento, minúsculo)
+  const linhas = bruto.map(o => {
+    const iso = iso8601(o['hora de inicio']); if (!iso) return null;
+    const ts = Date.parse(iso + 'Z'); if (isNaN(ts)) return null;
+    const tipo = tipoNorm(o['tipo de servico']);
+    const obs = o['observacoes'] || '';
+    const cid = o['cidade (c.14)'] || o['cidade (c.10)'] || '';
+    const bairro = bairroNorm(o['bairro']);
+    let cidade = /outra/i.test(cid) || !cid ? (BAIRRO_SS.has(bairro) ? 'São Sebastião' : 'Cidade não informada') : cid;
+    let cidadeCorrigida = false;
+    if (BAIRRO_SS.has(bairro) && cidade !== 'São Sebastião' && !/outra/i.test(cid)) { cidade = 'São Sebastião'; cidadeCorrigida = true; }
+    const clusterRaw = o['cluster'] || '';
+    const cluster = clusterRaw.replace(/^(C\.\d+)\s*-\s*(.*)$/, '$2 ($1)') || 'Não informado';
+    const statusBruto = ['status do servico (migracao)', 'status do servico (retirada)', 'status do servico (retrofit)', 'status do servico (clean up)', 'status do servico (readequacao)', 'status do servico (irr)'].map(k => o[k]).find(x => x);
+    const m = metros(o['clean up - quantidade de metros percorridos']);
+    let portas = null, portasFonte = null;
+    if (tipo === 'Migração') { portas = intDe(o['migracao - quantidade de portas vagas na nova cto']); portasFonte = 'campo'; }
+    else if (tipo === 'Retrofit') { portas = intDe(o['retrofit - quantidade de portas vagas na nova cto']); portasFonte = 'campo'; }
+    else if (tipo === 'Clean UP') { portas = portasObs(obs); portasFonte = 'obs'; }
+    const canc = tipo === 'Clean UP' ? (String(obs).match(/(\d+)\s*cancelamentos?/i) || [])[1] : null;
+    const dia = isoDia(ts);
+    const textoTeste = nk([o['bairro'], obs, o['clean up - quantidade de metros percorridos'], o['nome do tecnico']].join(' '));
+    return {
+      id: o['id'], ts, dia, semana: semanaDe(dia), email: (o['email'] || '').toLowerCase(), nome: o['nome'] || '', tecForm: o['nome do tecnico'] || '',
+      cluster, cidade, bairro, bairroRaw: o['bairro'] || '', bairroKey: bairro + '|' + cidade, tipo, obs, status: statusBruto || null,
+      portas, portasFonte, cabos: tipo === 'Retirada de CTO' ? (parseFloat(o['retirada - quantidade de cabos removidos (m)']) || 0) : null,
+      metrosN: m.n, metrosQ: tipo === 'Clean UP' ? m.q : null, canc: canc != null ? +canc : null,
+      ctoNova: o['migracao - id cto nova'] || '', ctoVelha: o['migracao - id cto desativada'] || o['retirada - id cto desativada'] || '',
+      cidadeOutra: /outra/i.test(cid), cidadeCorrigida, bairroInvalido: bairroInvalido(o['bairro']), fotos: listaFotos(o['fotos da acao (ate 6)']), mapa: /^https?:/i.test(o['localizacao (link do google maps)'] || '') ? o['localizacao (link do google maps)'] : '',
+      teste: IDS_TESTE.has(+o['id']) || /(^| )teste( |$)/.test(textoTeste)
+    };
+  }).filter(Boolean);
+  // identidade do técnico = e-mail; nome exibido = nome mais frequente daquele e-mail
+  const porEmail = agrupa(linhas, r => r.email || r.nome);
+  const nomes = new Map();
+  porEmail.forEach((rs, k) => {
+    const freq = agrupa(rs, r => titulo(r.nome.trim().replace(/\s+/g, ' ')));
+    nomes.set(k, [...freq.entries()].sort((a, b) => b[1].length - a[1].length)[0][0]);
+  });
+  const curto = n => { const t = n.split(' ').filter(w => !MINUSC.has(w.toLowerCase())); return t.length > 1 ? t[0] + ' ' + t[t.length - 1] : n; };
+  const usados = new Map();
+  nomes.forEach((n, k) => { const c = curto(n); (usados.get(c) || usados.set(c, []).get(c)).push(k); });
+  linhas.forEach(r => {
+    const k = r.email || r.nome, n = nomes.get(k), c = curto(n);
+    r.tec = usados.get(c).length > 1 ? n : c; r.tecKey = k;
+  });
+  return linhas;
+}
+
+/* ---------- Fonte de dados ----------
+   Prioridade: (1) nuvem (Supabase, ao vivo) quando há login e dados; (2) planilha carregada neste navegador;
+   (3) snapshot embutido (dados.js). O Power Automate grava cada resposta nova do Forms na nuvem. */
+const LS = 'preventivas_rede_upload_v1';
+const SNAPSHOT = window.PREVENTIVAS_DADOS || [];
+let LOCAL = null;
+try { const s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s && s.rows && s.rows.length) LOCAL = s; } catch (e) { }
+let BRUTO = LOCAL ? LOCAL.rows : SNAPSHOT, ORIGEM = '';
+let NUVEM = 'off', SB_SESSAO = null, ULTIMA_ATU = null;       // NUVEM: off | semlogin | vivo | vazia | erro
+let TODOS = [], FIM = '0000';                                 // FIM = último dia com dado
+
+function dataParaIso(v) {
+  const serial = n => new Date(Math.round((n - 25569) * 864e5)).toISOString().slice(0, 19);
+  if (typeof v === 'number') return serial(v);
+  if (v instanceof Date) return v.toISOString().slice(0, 19);
+  const s = String(v).trim();
+  if (/^\d+(\.\d+)?$/.test(s)) return serial(+s);
+  let m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/); if (m) return m[1] + 'T' + m[2];          // ignora fuso: a hora do Forms já é a de parede
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})[ T](\d{2}):(\d{2})(?::(\d{2}))?/); if (m) return `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6] || '00'}`;
+  return s;
+}
+// Aceita a linha como veio da planilha/Power Automate (títulos originais das colunas) ou já normalizada.
+function normalizaObj(raw) {
+  const o = {};
+  for (const [k, v0] of Object.entries(raw)) {
+    const h = strip(k).trim().toLowerCase(); let v = v0;
+    if (v == null || (typeof v === 'string' && !v.trim())) continue;
+    if (h === 'hora de inicio') v = dataParaIso(v);
+    else if (h === 'fotos da acao (ate 6)') v = (Array.isArray(v) ? v : String(v).split(';')).map(x => String(x).trim()).filter(Boolean).map(encurta).join(';');
+    else if (typeof v === 'string') v = v.trim();
+    if (h.startsWith('localizacao') && !/^https?:/i.test(String(v))) continue;
+    o[h] = v;
+  }
+  return o;
+}
+function lerPlanilha(buf, nome) {
+  const wb = XLSX.read(buf, { type: 'array', raw: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const m = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const hdr = m[0].map(h => strip(h).trim().toLowerCase());
+  if (!hdr.includes('hora de inicio') || !hdr.includes('tipo de servico')) throw new Error('Não encontrei as colunas "Hora de início" e "Tipo de serviço". Esta é a planilha do formulário de Ações Preventivas?');
+  const rows = m.slice(1).filter(r => r[0] != null).map(r => normalizaObj(Object.fromEntries(hdr.map((h, i) => [h, r[i]]))));
+  if (!rows.length) throw new Error('A planilha não tem linhas de dados.');
+  return rows;
+}
+
+async function carregaNuvem() {
+  if (typeof supabaseClient === 'undefined') { NUVEM = 'off'; return null; }
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession(); SB_SESSAO = session;
+    if (!session) { NUVEM = 'semlogin'; location.replace('../login.html?next=preventivas-rede/index.html'); return null; }   // painel só para usuários logados do GIGA+
+    const rows = [];
+    for (let i = 0; ; i += 1000) {
+      const { data, error } = await supabaseClient.from('preventivas_respostas').select('id,dados').order('id').range(i, i + 999);
+      if (error) throw error;
+      rows.push(...data); if (data.length < 1000) break;
+    }
+    NUVEM = rows.length ? 'vivo' : 'vazia'; return rows;
+  } catch (e) { console.warn('Nuvem indisponível:', e); NUVEM = 'erro'; return null; }
+}
+async function atualizaFonte() {
+  const nuvem = await carregaNuvem();
+  if (nuvem && nuvem.length) { BRUTO = nuvem.map(r => Object.assign({ ID: r.id }, r.dados)); ORIGEM = 'Dados da nuvem'; ULTIMA_ATU = new Date(); }
+  else if (LOCAL) { BRUTO = LOCAL.rows; ORIGEM = `Planilha carregada neste navegador: ${LOCAL.nome} (em ${LOCAL.em})`; }
+  else { BRUTO = SNAPSHOT; ORIGEM = NUVEM === 'vazia' ? 'Nuvem ainda sem dados' : 'Sem dados carregados'; }
+  $('#btnRestaurar').style.display = (LOCAL && !(nuvem && nuvem.length)) ? '' : 'none';
+}
+function chipNuvem(ultima) {
+  const h = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  if (NUVEM === 'vivo') return `<span class="live on">● Ao vivo</span>nuvem atualizada às ${h(ULTIMA_ATU)}${ultima ? ' · última resposta em ' + ultima : ''} · recarrega sozinho a cada resposta nova · `;
+  if (NUVEM === 'semlogin') return `<span class="live warn">● Sem login</span>mostrando cópia fixa. <a href="../login.html?next=preventivas-rede/index.html">Entrar para ver os dados ao vivo</a> · `;
+  if (NUVEM === 'vazia') return `<span class="live warn">● Nuvem vazia</span>aguardando o Power Automate (ou use "Carregar nova planilha" como operador/admin para enviar o histórico) · `;
+  if (NUVEM === 'erro') return `<span class="live warn">● Nuvem indisponível</span>mostrando a última cópia local · `;
+  return '';
+}
+
+$('#btnCarregar').onclick = () => $('#arq').click();
+$('#arq').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    if (typeof XLSX === 'undefined') throw new Error('Biblioteca de leitura de Excel não carregou (verifique a internet).');
+    const rows = lerPlanilha(await f.arrayBuffer(), f.name);
+    let enviado = false;
+    try { SB_SESSAO = (await supabaseClient.auth.getSession()).data.session; } catch (err) { SB_SESSAO = null; }
+    if (!SB_SESSAO) alert('Você não está logado, então a planilha NÃO foi para a nuvem: ela vale só neste navegador. Entre pelo link "Entrar" no topo da página e carregue de novo.');
+    if (SB_SESSAO) {                                   // logado: tenta mandar para a nuvem (precisa ser operador/admin)
+      const validas = rows.filter(o => /^\d+$/.test(String(o.id)));
+      let erro = null;
+      for (let i = 0; i < validas.length && !erro; i += 200) {
+        const lote = validas.slice(i, i + 200).map(o => ({ id: +o.id, dados: o, atualizado_em: new Date().toISOString() }));
+        ({ error: erro } = await supabaseClient.from('preventivas_respostas').upsert(lote, { onConflict: 'id' }));
+      }
+      if (erro) alert('Não consegui enviar para a nuvem (' + erro.message + '). Seu perfil precisa ser operador ou administrador. A planilha vale só neste navegador.');
+      else { enviado = true; alert(`${validas.length} respostas enviadas para a nuvem. Todos os usuários passam a ver esses dados.`); }
+    }
+    if (!enviado) {
+      LOCAL = { nome: f.name, em: new Date().toLocaleString('pt-BR'), rows };
+      try { localStorage.setItem(LS, JSON.stringify(LOCAL)); } catch (err) { aviso('Planilha carregada, mas é grande demais para ficar salva neste navegador — vale só até fechar a página.'); }
+    }
+    await atualizaFonte(); iniciar();
+  } catch (err) { alert(err.message); }
+  e.target.value = '';
+};
+$('#btnRestaurar').onclick = () => { localStorage.removeItem(LS); location.reload(); };
+function aviso(t) { const a = $('#aviso'); a.textContent = t; a.style.display = 'block'; }
+
+/* tempo real: cada resposta nova gravada pelo Power Automate dispara a recarga (com folga de 3 s) + checagem a cada 5 min */
+let RT = null, RTT = null;
+async function recarrega() { await atualizaFonte(); iniciar(); }
+function ligaTempoReal() {
+  if (RT || !SB_SESSAO || typeof supabaseClient === 'undefined') return;
+  RT = supabaseClient.channel('preventivas-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'preventivas_respostas' },
+    () => { clearTimeout(RTT); RTT = setTimeout(recarrega, 3000); }).subscribe();
+  setInterval(() => { if (!document.hidden) recarrega(); }, 5 * 60e3);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ULTIMA_ATU && Date.now() - ULTIMA_ATU > 60e3) recarrega(); });
+}
+
+/* ---------- Filtros ---------- */
+const F = { de: '', ate: '', cluster: '', cidade: '', tipo: '', tec: '', meta: 0, teste: false };
+try { F.meta = +localStorage.getItem('preventivas_meta') || 0; } catch (e) { }
+function opts(sel, vals, todos) {
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${todos}</option>` + vals.map(v => `<option value="${v.replace(/"/g, '&quot;')}">${v}</option>`).join('');
+  sel.value = vals.includes(cur) ? cur : '';
+}
+function montaFiltros() {
+  const base = TODOS.filter(r => F.teste || !r.teste);
+  const dias = base.map(r => r.dia).sort();
+  $('#fDe').min = $('#fAte').min = dias[0]; $('#fDe').max = $('#fAte').max = dias[dias.length - 1];
+  const cont = (k) => [...agrupa(base, r => r[k]).entries()].sort((a, b) => b[1].length - a[1].length).map(x => x[0]);
+  opts($('#fCluster'), cont('cluster'), 'Todos'); opts($('#fCidade'), cont('cidade'), 'Todas');
+  opts($('#fTipo'), cont('tipo'), 'Todos'); opts($('#fTec'), cont('tec'), 'Todos');
+  $('#fMeta').value = F.meta || '';
+}
+let PAG = 1;
+function lerFiltros() {
+  PAG = 1;
+  F.de = $('#fDe').value; F.ate = $('#fAte').value; F.cluster = $('#fCluster').value; F.cidade = $('#fCidade').value;
+  F.tipo = $('#fTipo').value; F.tec = $('#fTec').value; F.teste = $('#fTeste').checked; F.meta = +$('#fMeta').value || 0;
+  try { localStorage.setItem('preventivas_meta', F.meta); } catch (e) { }
+}
+function filtrados() {
+  return TODOS.filter(r => (F.teste || !r.teste) && (!F.de || r.dia >= F.de) && (!F.ate || r.dia <= F.ate) && (!F.cluster || r.cluster === F.cluster)
+    && (!F.cidade || r.cidade === F.cidade) && (!F.tipo || r.tipo === F.tipo) && (!F.tec || r.tec === F.tec));
+}
+['fDe', 'fAte', 'fCluster', 'fCidade', 'fTipo', 'fTec', 'fMeta', 'fTeste'].forEach(id => $('#' + id).addEventListener('change', () => { lerFiltros(); render(); }));
+$('#btnLimpar').onclick = () => { ['fDe', 'fAte'].forEach(i => $('#' + i).value = ''); ['fCluster', 'fCidade', 'fTipo', 'fTec'].forEach(i => $('#' + i).value = ''); $('#fTeste').checked = false; lerFiltros(); render(); };
+const PAGINAS = {
+  geral: ['home', 'Visão Geral', 'Evolução semanal, ritmo diário e mix das ações preventivas'],
+  equipe: ['users', 'Equipe', 'Produção por técnico e técnicos ativos por semana'],
+  territorio: ['globe', 'Território', 'Cidades, bairros, mapa de calor e fila de revisita'],
+  resultados: ['trend', 'Resultados', 'Portas livres, migrações, retiradas e cabos removidos'],
+  fotos: ['camera', 'Fotos', 'Evidências registradas pelas equipes de campo'],
+  acoes: ['list', 'Qualidade dos dados & O que fazer', 'Recomendações e problemas encontrados na planilha']
+};
+function abrirAba(a) {
+  document.querySelectorAll('#abas button').forEach(x => x.classList.toggle('on', x.dataset.a === a));
+  document.querySelectorAll('.aba').forEach(x => x.classList.toggle('on', x.id === 'a-' + a));
+  const [ic, t, sub] = PAGINAS[a];
+  $('#pageIcon').innerHTML = `<use href="#i-${ic}"/>`; $('#pageTitle').textContent = t; $('#pageSub').textContent = sub;
+  render();
+}
+$('#abas').onclick = e => { const b = e.target.closest('button'); if (b) abrirAba(b.dataset.a); };
+
+/* tema claro/escuro (mesmos tokens do GIGA+) */
+function temaCharts() {
+  const cs = getComputedStyle(document.documentElement);
+  GRADE.color = cs.getPropertyValue('--border-soft').trim();
+  if (typeof Chart !== 'undefined') Chart.defaults.color = cs.getPropertyValue('--text-dim').trim();
+}
+function aplicaTema(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  $('#btnTheme').innerHTML = `<svg class="i"><use href="#i-${t === 'light' ? 'sun' : 'moon'}"/></svg>`;
+  try { localStorage.setItem('preventivas_tema', t); } catch (e) { }
+  temaCharts();
+}
+$('#btnTheme').onclick = () => { aplicaTema(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); render(); };
+function temaInicial() { let t = 'light'; try { t = localStorage.getItem('preventivas_tema') || 'light'; } catch (e) { } aplicaTema(t); }
+
+/* usuário logado (chip no cabeçalho) */
+async function mostraUsuario() {
+  if (!SB_SESSAO) { $('#userChip').style.display = 'none'; return; }
+  const email = SB_SESSAO.user.email || '', papeis = { administrador: 'Administrador', operador: 'Operador', visualizacao: 'Visualização' };
+  let nome = email.split('@')[0], papel = '';
+  try {
+    const { data } = await supabaseClient.from('perfis').select('nome_completo,papel').eq('id', SB_SESSAO.user.id).maybeSingle();
+    if (data) { nome = data.nome_completo || nome; papel = papeis[data.papel] || data.papel || ''; }
+  } catch (e) { }
+  const ini = nome.split(/[ ._]+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '··';
+  $('#avatarChip').textContent = ini; $('#userNome').textContent = nome; $('#userPapel').textContent = papel; $('#userChip').style.display = '';
+}
+
+/* ---------- Gráficos ---------- */
+const CH = {};
+function grafico(id, cfg) {
+  if (typeof Chart === 'undefined') { aviso('Biblioteca de gráficos não carregou (verifique a internet).'); return; }
+  const cv = document.getElementById(id); if (!cv || !cv.offsetParent) { if (CH[id]) { CH[id].destroy(); delete CH[id]; } return; }
+  if (CH[id]) CH[id].destroy();
+  cfg.options = Object.assign({ responsive: true, maintainAspectRatio: false, animation: { duration: 250 } }, cfg.options || {});
+  CH[id] = new Chart(cv, cfg);
+}
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.font.family = '"Hanken Grotesk",sans-serif'; Chart.defaults.font.size = 12; Chart.defaults.color = '#5B7196';
+  Chart.defaults.plugins.legend.labels.boxWidth = 12; Chart.defaults.plugins.legend.labels.usePointStyle = true;
+}
+const GRADE = { color: '#E6EDF8' };
+const eixo = (extra) => Object.assign({ grid: GRADE, border: { display: false }, beginAtZero: true, ticks: { precision: 0 } }, extra || {});
+const TIPOS = ['Clean UP', 'Migração', 'Retirada de CTO', 'Retrofit', 'Preventiva POP', 'Outros'];
+const tiposEm = rs => TIPOS.filter(t => rs.some(r => r.tipo === t)).concat(uniq(rs.map(r => r.tipo)).filter(t => !TIPOS.includes(t)));
+const corTipo = t => TIPO_COR[t] || '#8DA0C0';
+
+/* ---------- Tabelas ordenáveis ---------- */
+function tabela(el, cols, rows, k0, desc0 = true) {
+  el._st = el._st || { k: k0, d: desc0 }; el._rows = rows; el._cols = cols;
+  const st = el._st;
+  const ord = [...rows].sort((a, b) => { const x = a[st.k], y = b[st.k]; const c = (typeof x === 'number' && typeof y === 'number') ? x - y : String(x ?? '').localeCompare(String(y ?? ''), 'pt-BR'); return st.d ? -c : c; });
+  el.innerHTML = '<table><thead><tr>' + cols.map(c => `<th class="${c.n ? 'n' : ''}" data-k="${c.k}">${c.l}${st.k === c.k ? (st.d ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr></thead><tbody>' +
+    ord.map(r => '<tr>' + cols.map(c => `<td class="${c.n ? 'n' : ''}">${c.f ? c.f(r) : (r[c.k] ?? '—')}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+  el.querySelectorAll('th').forEach(th => th.onclick = () => { const k = th.dataset.k; el._st = { k, d: el._st.k === k ? !el._st.d : true }; tabela(el, cols, rows, k0, desc0); });
+}
+
+/* ---------- Séries ---------- */
+function semanasDe(rs) {
+  if (!rs.length) return [];
+  const ini = rs.reduce((m, r) => r.semana < m ? r.semana : m, '9999'), fim = rs.reduce((m, r) => r.semana > m ? r.semana : m, '0000');
+  const por = agrupa(rs, r => r.semana), out = [];
+  for (let s = ini; s <= fim; s = addDias(s, 7)) { const x = por.get(s) || []; out.push({ s, rs: x, total: x.length, parcial: addDias(s, 6) > FIM, tecs: uniq(x.map(r => r.tecKey)).length }); }
+  return out;
+}
+function diasDe(rs) {
+  if (!rs.length) return [];
+  const ini = rs.reduce((m, r) => r.dia < m ? r.dia : m, '9999'), fim = rs.reduce((m, r) => r.dia > m ? r.dia : m, '0000');
+  const por = agrupa(rs, r => r.dia), out = [];
+  for (let d = ini; d <= fim; d = addDias(d, 1)) { const x = por.get(d) || []; out.push({ d, rs: x, total: x.length }); }
+  return out;
+}
+const G_KPI = { 'var(--green)': 'g-green', 'var(--purple)': 'g-purple', 'var(--orange)': 'g-orange', 'var(--cyan)': 'g-cyan', 'var(--red)': 'g-red' };
+const kpi = (l, v, s, c) => `<div class="kpi ${G_KPI[c] || 'g-blue'}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s || '&nbsp;'}</div></div>`;
+const delta = (a, b) => { if (!b) return ''; const p = Math.round((a - b) / b * 100); return `<span class="${p >= 0 ? 'up' : 'down'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}%</span> vs semana anterior`; };
+const vazio = (el, msg) => { el.innerHTML = `<div class="vazio">${msg || 'Sem dados para os filtros escolhidos.'}</div>`; };
+
+/* ===================================================================
+   RENDER
+   =================================================================== */
+function render() {
+  temaCharts();
+  const S = filtrados();
+  const ativa = document.querySelector('.aba.on').id;
+  const nTeste = TODOS.filter(r => r.teste).length;
+  const dias = S.map(r => r.dia).sort();
+  const ultTs = TODOS.reduce((m, r) => r.ts > m ? r.ts : m, 0), ultTxt = ultTs ? ddy(isoDia(ultTs)) + ' ' + new Date(ultTs).toISOString().slice(11, 16) : '';
+  $('#origem').innerHTML = `${chipNuvem(ultTxt)}${ORIGEM} · ${fmt(TODOS.length)} registros lidos (${nTeste} de teste${F.teste ? ' incluídos' : ' ignorados'}) · dados até ${ddy(FIM)} · mostrando <b>${fmt(S.length)}</b> ações${dias.length ? ' de ' + ddy(dias[0]) + ' a ' + ddy(dias[dias.length - 1]) : ''}`;
+  $('#pageInfo span').innerHTML = `<b>${fmt(S.length)}</b> ações${dias.length ? ' · ' + dd(dias[0]) + ' a ' + dd(dias[dias.length - 1]) : ''}`;
+  $('#rodape').innerHTML = 'Fonte: formulário "Ações Preventivas — Gestão Rafael Fraga". Cada linha da planilha é uma ação registrada por um técnico. "Portas livres" = valor informado pelo técnico ao fechar a ação (estado da CTO, não variação). Painel gerado em ' + new Date().toLocaleDateString('pt-BR') + '.';
+  if (ativa === 'a-geral') rGeral(S);
+  if (ativa === 'a-equipe') rEquipe(S);
+  if (ativa === 'a-territorio') rTerritorio(S);
+  if (ativa === 'a-resultados') rResultados(S);
+  if (ativa === 'a-fotos') rFotos(S);
+  if (ativa === 'a-acoes') rAcoes(S);
+}
+
+/* ---------------- VISÃO GERAL ---------------- */
+function rGeral(S) {
+  const sem = semanasDe(S), comp = sem.filter(w => !w.parcial);
+  const ult = comp[comp.length - 1], ant = comp[comp.length - 2];
+  const diasOp = uniq(S.map(r => r.dia)).length;
+  const portas = S.filter(r => r.portas != null);
+  $('#kpisGeral').innerHTML =
+    kpi('Ações registradas', fmt(S.length), `${fmt(diasOp)} dias com operação`) +
+    kpi('Última semana completa', ult ? fmt(ult.total) : '—', ult ? `${dd(ult.s)}–${dd(addDias(ult.s, 6))} · ${ant ? delta(ult.total, ant.total) : ''}` : '', 'var(--green)') +
+    kpi('Média por dia de operação', fmt1(diasOp ? S.length / diasOp : 0), 'ações / dia com registro', 'var(--sky)') +
+    kpi('Técnicos ativos', fmt(uniq(S.map(r => r.tecKey)).length), ult ? `${ult.tecs} na última semana completa` : '', 'var(--purple)') +
+    kpi('Bairros atendidos', fmt(uniq(S.map(r => r.bairroKey)).length), `${fmt(uniq(S.map(r => r.cidade)).length)} cidades`, 'var(--orange)') +
+    kpi('Portas livres informadas', fmt(sum(portas, r => r.portas)), `em ${fmt(portas.length)} CTOs · média ${fmt1(portas.length ? sum(portas, r => r.portas) / portas.length : 0)}`, 'var(--cyan)') +
+    (F.meta && ult ? kpi('Meta semanal', pct(ult.total, F.meta), `${fmt(ult.total)} de ${fmt(F.meta)} na última semana completa`, ult.total >= F.meta ? 'var(--green)' : 'var(--red)') : '');
+  if (!S.length) { document.getElementById('leituras').innerHTML = '<li>Sem dados para os filtros escolhidos.</li>'; Object.keys(CH).forEach(k => { CH[k].destroy(); delete CH[k]; }); return; }
+
+  const tipos = tiposEm(S);
+  const rot = sem.map(w => dd(w.s) + (w.parcial ? ' (parcial)' : ''));
+  const ds = tipos.map(t => ({ label: t, data: sem.map(w => w.rs.filter(r => r.tipo === t).length), backgroundColor: corTipo(t), borderRadius: 3, stack: 's' }));
+  if (F.meta) ds.push({ type: 'line', label: 'Meta', data: sem.map(() => F.meta), borderColor: '#EF4444', borderDash: [6, 4], pointRadius: 0, borderWidth: 2, order: -1 });
+  grafico('cSemanal', {
+    type: 'bar', data: { labels: rot, datasets: ds },
+    options: { scales: { x: { stacked: true, grid: { display: false } }, y: eixo({ stacked: true }) }, plugins: { tooltip: { callbacks: { footer: it => { const w = sem[it[0].dataIndex]; return 'Total: ' + w.total + ' · ' + w.tecs + ' técnicos'; } } } } }
+  });
+
+  const dia = diasDe(S);
+  const mm = dia.map((_, i) => { const j = dia.slice(Math.max(0, i - 6), i + 1); return +(sum(j, x => x.total) / j.length).toFixed(1); });
+  grafico('cDiario', {
+    type: 'bar', data: { labels: dia.map(x => dd(x.d)), datasets: [
+      { label: 'Ações no dia', data: dia.map(x => x.total), backgroundColor: dia.map(x => dowOf(x.d) > 4 ? '#B8D4F5' : '#0866D9'), borderRadius: 2 },
+      { type: 'line', label: 'Média móvel 7 dias', data: mm, borderColor: '#FF9900', borderWidth: 2.5, pointRadius: 0, tension: .3 }] },
+    options: { scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 14, autoSkip: true } }, y: eixo() } }
+  });
+  let ac = 0;
+  grafico('cAcum', {
+    type: 'line', data: { labels: dia.map(x => dd(x.d)), datasets: [{ label: 'Acumulado', data: dia.map(x => ac += x.total), borderColor: '#0866D9', backgroundColor: 'rgba(8,102,217,.12)', fill: true, pointRadius: 0, tension: .25, borderWidth: 2.5 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 14 } }, y: eixo() } }
+  });
+  grafico('cMix', {
+    type: 'doughnut', data: { labels: tipos, datasets: [{ data: tipos.map(t => S.filter(r => r.tipo === t).length), backgroundColor: tipos.map(corTipo), borderWidth: 2, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() }] },
+    options: { cutout: '58%', plugins: { legend: { position: 'right' }, tooltip: { callbacks: { label: c => `${c.label}: ${fmt(c.raw)} (${pct(c.raw, S.length)})` } } } }
+  });
+  const nomesDow = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  const ocorr = new Array(7).fill(0); dia.forEach(x => ocorr[dowOf(x.d)]++);
+  const totDow = new Array(7).fill(0); S.forEach(r => totDow[dowOf(r.dia)]++);
+  grafico('cDow', {
+    type: 'bar', data: { labels: nomesDow, datasets: [{ label: 'Média de ações', data: totDow.map((t, i) => ocorr[i] ? +(t / ocorr[i]).toFixed(1) : 0), backgroundColor: ['#0866D9', '#0866D9', '#0866D9', '#0866D9', '#0866D9', '#B8D4F5', '#B8D4F5'], borderRadius: 4 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: eixo({ ticks: { precision: 1 } }) } }
+  });
+  document.getElementById('leituras').innerHTML = leituras(S, sem, comp, dia).map(x => `<li class="${x.a ? 'alerta' : ''}">${x.t}</li>`).join('');
+}
+
+function leituras(S, sem, comp, dia) {
+  const L = [], tot = S.length;
+  const porTipo = [...agrupa(S, r => r.tipo).entries()].sort((a, b) => b[1].length - a[1].length);
+  L.push({ t: `<b>${fmt(tot)} ações</b> no período; <b>${porTipo[0][0]}</b> responde por ${pct(porTipo[0][1].length, tot)} do volume${porTipo[1] ? `, seguido de ${porTipo[1][0]} (${pct(porTipo[1][1].length, tot)})` : ''}.` });
+  // queda/alta da última semana completa vs. média das anteriores (ignora semanas de piloto, < 30 ações)
+  const regulares = comp.filter(w => w.total >= 30);
+  if (regulares.length >= 3) {
+    const u = regulares[regulares.length - 1], base = regulares.slice(-5, -1);
+    const m = sum(base, w => w.total) / base.length, mt = sum(base, w => w.tecs) / base.length, pu = u.total / u.tecs, pb = sum(base, w => w.total) / sum(base, w => w.tecs);
+    const v = Math.round((u.total - m) / m * 100);
+    if (Math.abs(v) >= 20) {
+      const causa = (u.tecs < mt * 0.85 && pu < pb * 0.85) ? 'tanto equipe menor quanto menos ações por técnico'
+        : u.tecs < mt * 0.85 ? 'principalmente por <b>menos técnicos ativos</b>' : pu < pb * 0.85 ? 'principalmente por <b>menos ações por técnico</b>' : 'sem mudança clara de equipe ou produtividade';
+      L.push({ a: v < 0, t: `Semana de ${dd(u.s)}: <b>${fmt(u.total)} ações</b>, ${v < 0 ? 'queda' : 'alta'} de <b>${Math.abs(v)}%</b> vs. a média das ${base.length} semanas anteriores (${fmt(m)}). Técnicos ativos: ${u.tecs} (média ${fmt1(mt)}); ações por técnico: ${fmt1(pu)} (média ${fmt1(pb)}) — ${causa}.` });
+    } else L.push({ t: `Última semana completa (${dd(u.s)}): <b>${fmt(u.total)} ações</b>, dentro da faixa das ${base.length} semanas anteriores (média ${fmt(m)}).` });
+  }
+  // dias úteis muito abaixo do normal
+  const uteis = dia.filter(x => dowOf(x.d) < 5 && x.d <= FIM);
+  const med = mediana(uteis.filter(x => x.total > 0).map(x => x.total));
+  const fracos = uteis.filter(x => med >= 10 && x.total < med * 0.3 && x.d >= (regulares.length ? regulares[0].s : '0'));
+  if (fracos.length) L.push({ a: true, t: `Dias úteis com volume muito baixo (mediana ${fmt(med)}/dia): ${fracos.slice(-6).map(x => `<b>${dd(x.d)}</b> (${x.total})`).join(', ')} — possível feriado, folga de equipe ou falta de lançamento.` });
+  // concentração
+  const porTec = [...agrupa(S, r => r.tec).entries()].sort((a, b) => b[1].length - a[1].length);
+  if (porTec.length >= 4) { const t3 = sum(porTec.slice(0, 3), x => x[1].length); L.push({ t: `<b>Concentração:</b> ${porTec.slice(0, 3).map(x => x[0]).join(', ')} somam ${pct(t3, tot)} das ações (${porTec.length} técnicos no total).` }); }
+  // território
+  const porBairro = [...agrupa(S, r => r.bairroKey).entries()].sort((a, b) => b[1].length - a[1].length);
+  if (porBairro.length) L.push({ t: `<b>${porBairro.length} bairros</b> atendidos; o maior é <b>${porBairro[0][1][0].bairro}</b> (${porBairro[0][1][0].cidade}) com ${fmt(porBairro[0][1].length)} ações (${pct(porBairro[0][1].length, tot)}).` });
+  const cu = S.filter(r => r.tipo === 'Clean UP');
+  if (cu.length >= 20) { const comRes = cu.filter(r => r.portas != null).length; L.push({ a: comRes / cu.length < 0.5, t: `Só <b>${pct(comRes, cu.length)}</b> dos Clean UPs informam quantas portas ficaram livres (e só por texto livre) — o principal resultado do trabalho está quase invisível.` }); }
+  return L;
+}
+
+/* ---------------- EQUIPE ---------------- */
+function rEquipe(S) {
+  const por = [...agrupa(S, r => r.tecKey).entries()].map(([k, rs]) => {
+    const dias = uniq(rs.map(r => r.dia)); const ord = rs.map(r => r.dia).sort();
+    const cid = [...agrupa(rs, r => r.cidade).entries()].sort((a, b) => b[1].length - a[1].length)[0][0];
+    return { tec: rs[0].tec, total: rs.length, dias: dias.length, mpd: rs.length / dias.length, ini: ord[0], fim: ord[ord.length - 1], sems: uniq(rs.map(r => r.semana)).length, cidade: cid,
+      cu: rs.filter(r => r.tipo === 'Clean UP').length, mig: rs.filter(r => r.tipo === 'Migração').length, ret: rs.filter(r => r.tipo === 'Retirada de CTO').length, rtf: rs.filter(r => r.tipo === 'Retrofit').length,
+      ativoRec: ord[ord.length - 1] >= addDias(FIM, -7) };
+  });
+  const ativos = por.filter(x => x.ativoRec);
+  $('#kpisEquipe').innerHTML = kpi('Técnicos com ação no período', fmt(por.length), 'conta de e-mail única') + kpi('Ativos nos últimos 7 dias', fmt(ativos.length), `até ${ddy(FIM)}`, 'var(--green)') +
+    kpi('Ações por técnico (média)', fmt1(por.length ? S.length / por.length : 0), 'no período', 'var(--sky)') +
+    kpi('Ações por técnico por dia ativo', fmt1(por.length ? sum(por, x => x.total) / sum(por, x => x.dias) : 0), 'produtividade diária média', 'var(--orange)') +
+    kpi('Top 3 concentram', pct(sum([...por].sort((a, b) => b.total - a.total).slice(0, 3), x => x.total), S.length || 1), 'das ações', 'var(--purple)');
+  if (!S.length) { vazio($('#tTec')); return; }
+  const top = [...por].sort((a, b) => b.total - a.total).slice(0, 15), tipos = tiposEm(S);
+  grafico('cTecnicos', {
+    type: 'bar', data: { labels: top.map(x => x.tec), datasets: tipos.map(t => ({ label: t, data: top.map(x => S.filter(r => r.tecKey === S.find(q => q.tec === x.tec).tecKey && r.tipo === t).length), backgroundColor: corTipo(t), stack: 's' })) },
+    options: { indexAxis: 'y', scales: { x: eixo({ stacked: true }), y: { stacked: true, grid: { display: false } } } }
+  });
+  const sem = semanasDe(S);
+  grafico('cEquipeSem', {
+    data: { labels: sem.map(w => dd(w.s) + (w.parcial ? '*' : '')), datasets: [
+      { type: 'bar', label: 'Ações', data: sem.map(w => w.total), backgroundColor: '#0866D9', borderRadius: 3, yAxisID: 'y' },
+      { type: 'line', label: 'Técnicos ativos', data: sem.map(w => w.tecs), borderColor: '#FF9900', backgroundColor: '#FF9900', borderWidth: 2.5, tension: .25, yAxisID: 'y2' }] },
+    options: { scales: { x: { grid: { display: false } }, y: eixo(), y2: eixo({ position: 'right', grid: { display: false } }) } }
+  });
+  tabela($('#tTec'), [
+    { k: 'tec', l: 'Técnico' }, { k: 'total', l: 'Ações', n: 1 }, { k: 'dias', l: 'Dias ativos', n: 1 }, { k: 'mpd', l: 'Ações/dia ativo', n: 1, f: r => fmt1(r.mpd) },
+    { k: 'sems', l: 'Semanas ativas', n: 1 }, { k: 'cu', l: 'Clean UP', n: 1 }, { k: 'mig', l: 'Migração', n: 1 }, { k: 'ret', l: 'Retirada', n: 1 }, { k: 'rtf', l: 'Retrofit', n: 1 },
+    { k: 'cidade', l: 'Cidade principal' }, { k: 'ini', l: 'Primeira', f: r => dd(r.ini) }, { k: 'fim', l: 'Última', f: r => dd(r.fim) + (r.ativoRec ? '' : ' <span class="pill p-am">parado</span>') }
+  ], por, 'total');
+}
+
+/* ---------------- TERRITÓRIO ---------------- */
+function rTerritorio(S) {
+  const porB = [...agrupa(S.filter(r => !r.bairroInvalido && r.bairro !== 'Não informado'), r => r.bairroKey).entries()].map(([k, rs]) => {
+    const ord = rs.map(r => r.dia).sort(), fim = ord[ord.length - 1];
+    return { key: k, bairro: rs[0].bairro, cidade: rs[0].cidade, total: rs.length, tipos: tiposEm(rs), ini: ord[0], fim, dias: Math.round((Date.parse(FIM + 'T00:00:00Z') - Date.parse(fim + 'T00:00:00Z')) / DIA), tecs: uniq(rs.map(r => r.tec)).length, vis: uniq(rs.map(r => r.dia)).length };
+  });
+  const porC = [...agrupa(S, r => r.cidade).entries()].sort((a, b) => b[1].length - a[1].length);
+  $('#kpisTerr').innerHTML = kpi('Bairros atendidos', fmt(porB.length), `${porC.length} cidades`) +
+    kpi('Ações por bairro (média)', fmt1(porB.length ? S.length / porB.length : 0), 'no período', 'var(--sky)') +
+    kpi('Bairros sem ação há +21 dias', fmt(porB.filter(b => b.dias > 21).length), 'candidatos a revisita', 'var(--red)') +
+    kpi('Bairros com 1 ação só', fmt(porB.filter(b => b.total === 1).length), 'pode ser lançamento isolado', 'var(--orange)') +
+    kpi('Maior bairro', porB.length ? [...porB].sort((a, b) => b.total - a.total)[0].bairro : '—', porB.length ? fmt([...porB].sort((a, b) => b.total - a.total)[0].total) + ' ações' : '', 'var(--purple)');
+  if (!S.length) { vazio($('#tBairro')); vazio($('#heat')); return; }
+  const tipos = tiposEm(S);
+  grafico('cCidade', { type: 'bar', data: { labels: porC.map(x => x[0]), datasets: tipos.map(t => ({ label: t, data: porC.map(x => x[1].filter(r => r.tipo === t).length), backgroundColor: corTipo(t), stack: 's' })) },
+    options: { scales: { x: { stacked: true, grid: { display: false } }, y: eixo({ stacked: true }) } } });
+  const top = [...porB].sort((a, b) => b.total - a.total).slice(0, 15);
+  grafico('cBairro', { type: 'bar', data: { labels: top.map(x => x.bairro + ' · ' + x.cidade.replace('São Sebastião', 'SS').replace('Caraguatatuba', 'Caraguá')), datasets: tipos.map(t => ({ label: t, data: top.map(x => S.filter(r => r.bairroKey === x.key && r.tipo === t).length), backgroundColor: corTipo(t), stack: 's' })) },
+    options: { indexAxis: 'y', scales: { x: eixo({ stacked: true }), y: { stacked: true, grid: { display: false } } } } });
+  // mapa de calor
+  const sem = semanasDe(S).filter(w => w.total > 0), t18 = [...porB].sort((a, b) => b.total - a.total).slice(0, 18);
+  const mx = Math.max(1, ...t18.flatMap(b => sem.map(w => w.rs.filter(r => r.bairroKey === b.key).length)));
+  $('#heat').innerHTML = '<table class="heat"><thead><tr><th></th>' + sem.map(w => `<th>${dd(w.s)}</th>`).join('') + '<th>Total</th></tr></thead><tbody>' +
+    t18.map(b => '<tr><td class="nm">' + b.bairro + ' <span style="color:var(--faint);font-weight:500">· ' + b.cidade.replace('São Sebastião', 'SS').replace('Caraguatatuba', 'Caraguá') + '</span></td>' +
+      sem.map(w => { const n = w.rs.filter(r => r.bairroKey === b.key).length; return `<td class="c" title="${b.bairro} — semana de ${dd(w.s)}: ${n}" style="background:${n ? `rgba(8,102,217,${(0.12 + 0.88 * n / mx).toFixed(2)})` : 'var(--surface-3)'};color:${n / mx > .5 ? '#fff' : 'var(--text)'}">${n || ''}</td>`; }).join('') + `<td class="c" style="font-weight:800">${b.total}</td></tr>`).join('') + '</tbody></table>';
+  tabela($('#tBairro'), [
+    { k: 'bairro', l: 'Bairro' }, { k: 'cidade', l: 'Cidade' }, { k: 'total', l: 'Ações', n: 1 }, { k: 'vis', l: 'Dias com ação', n: 1 }, { k: 'tecs', l: 'Técnicos', n: 1 },
+    { k: 'tp', l: 'Tipos', f: r => r.tipos.join(', ') }, { k: 'ini', l: 'Primeira', f: r => dd(r.ini) }, { k: 'fim', l: 'Última', f: r => dd(r.fim) },
+    { k: 'dias', l: 'Dias sem ação', n: 1, f: r => `<span class="pill ${r.dias > 21 ? 'p-vm' : r.dias > 14 ? 'p-am' : 'p-ok'}">${r.dias}</span>` }
+  ], porB, 'dias');
+}
+
+/* ---------------- RESULTADOS ---------------- */
+function rResultados(S) {
+  const mig = S.filter(r => r.tipo === 'Migração'), ret = S.filter(r => r.tipo === 'Retirada de CTO'), cu = S.filter(r => r.tipo === 'Clean UP'), rtf = S.filter(r => r.tipo === 'Retrofit');
+  const pt = S.filter(r => r.portas != null);
+  const mt = cu.filter(r => r.metrosN != null && r.metrosN >= 1 && r.metrosN <= 1000);
+  const canc = cu.filter(r => r.canc != null);
+  $('#kpisRes').innerHTML = kpi('CTOs migradas', fmt(mig.length), 'Migração Rede Allohinha', 'var(--green)') + kpi('CTOs antigas desativadas', fmt(ret.length), 'Retirada Rede Allohinha', 'var(--orange)') +
+    kpi('Clean UPs feitos', fmt(cu.length), `${pct(cu.filter(r => r.portas != null).length, cu.length)} informam portas livres`, 'var(--blue)') + kpi('Retrofits', fmt(rtf.length), 'troca de CEO por CTO', 'var(--purple)') +
+    kpi('Portas livres informadas', fmt(sum(pt, r => r.portas)), `${fmt(pt.length)} CTOs · média ${fmt1(pt.length ? sum(pt, r => r.portas) / pt.length : 0)}`, 'var(--cyan)') +
+    kpi('Cabos removidos (retiradas)', fmt(sum(ret, r => r.cabos || 0)) + ' m', `${fmt(ret.filter(r => r.cabos > 0).length)} retiradas com cabo`, 'var(--orange)') +
+    kpi('Metros percorridos (Clean UP)', fmt(sum(mt, r => r.metrosN)) + ' m', `só ${fmt(mt.length)} registros com valor válido ≥ 1 m`, 'var(--sky)') +
+    kpi('Cancelamentos encontrados', fmt(sum(canc, r => r.canc)), `citados em ${fmt(canc.length)} Clean UPs (via observação)`, 'var(--red)');
+  if (!S.length) { Object.keys(CH).forEach(k => { CH[k].destroy(); delete CH[k]; }); return; }
+  const sem = semanasDe(S);
+  grafico('cPortasSem', { data: { labels: sem.map(w => dd(w.s) + (w.parcial ? '*' : '')), datasets: [
+    { type: 'bar', label: 'Portas livres informadas', data: sem.map(w => sum(w.rs.filter(r => r.portas != null), r => r.portas)), backgroundColor: '#00D5E8', borderRadius: 3, yAxisID: 'y' },
+    { type: 'line', label: '% das ações com resultado informado', data: sem.map(w => w.total ? Math.round(w.rs.filter(r => r.portas != null).length / w.total * 100) : null), borderColor: '#6D4BE0', backgroundColor: '#6D4BE0', borderWidth: 2.5, tension: .25, yAxisID: 'y2' }] },
+    options: { scales: { x: { grid: { display: false } }, y: eixo(), y2: eixo({ position: 'right', grid: { display: false }, max: 100 }) } } });
+  const faixa = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
+  grafico('cHistPortas', { type: 'bar', data: { labels: faixa, datasets: [{ label: 'CTOs', data: faixa.map((f, i) => pt.filter(r => i === 10 ? r.portas >= 10 : r.portas === i).length), backgroundColor: '#00A8FF', borderRadius: 4 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, title: { display: true, text: 'portas livres na CTO' } }, y: eixo() } } });
+  const tp = ['Clean UP', 'Migração', 'Retrofit'].filter(t => pt.some(r => r.tipo === t));
+  grafico('cPortasTipo', { type: 'bar', data: { labels: tp, datasets: [
+    { label: 'Média de portas livres', data: tp.map(t => { const x = pt.filter(r => r.tipo === t); return +(sum(x, r => r.portas) / x.length).toFixed(1); }), backgroundColor: tp.map(corTipo), borderRadius: 4 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { footer: it => { const t = tp[it[0].dataIndex]; return pt.filter(r => r.tipo === t).length + ' CTOs com valor informado'; } } } }, scales: { x: { grid: { display: false } }, y: eixo() } } });
+  grafico('cMigRet', { type: 'bar', data: { labels: sem.map(w => dd(w.s) + (w.parcial ? '*' : '')), datasets: [
+    { label: 'Migrações', data: sem.map(w => w.rs.filter(r => r.tipo === 'Migração').length), backgroundColor: corTipo('Migração'), borderRadius: 3 },
+    { label: 'Retiradas de CTO', data: sem.map(w => w.rs.filter(r => r.tipo === 'Retirada de CTO').length), backgroundColor: corTipo('Retirada de CTO'), borderRadius: 3 },
+    { label: 'Retrofits', data: sem.map(w => w.rs.filter(r => r.tipo === 'Retrofit').length), backgroundColor: corTipo('Retrofit'), borderRadius: 3 }] },
+    options: { scales: { x: { grid: { display: false } }, y: eixo() } } });
+}
+
+/* ---------------- FOTOS ---------------- */
+let GAL = [], FOK = 0, FERR = 0;
+const PAGE = 24;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fotoOk = () => { FOK++; $('#avisoFoto').style.display = 'none'; };
+const fotoErro = img => {
+  img.classList.add('quebrada'); FERR++;
+  if (FOK === 0 && FERR >= 4) { const a = $('#avisoFoto'); a.style.display = 'block'; a.innerHTML = '📷 Estas fotos ainda não foram copiadas para a nuvem do painel (a cópia é feita pelo fluxo do Power Automate — veja LEIAME-AUTOMACAO.md). Enquanto isso, quem tem acesso ao SharePoint da empresa consegue abrir o original pelo link dentro de cada ação.'; }
+};
+function rFotos(S) {
+  const comF = S.filter(r => r.fotos.length), totF = sum(S, r => r.fotos.length);
+  $('#kpisFotos').innerHTML = kpi('Ações com foto', fmt(comF.length), pct(comF.length, S.length) + ' das ações') + kpi('Fotos no total', fmt(totF), 'arquivos anexados', 'var(--sky)') +
+    kpi('Fotos por ação (média)', fmt1(S.length ? totF / S.length : 0), 'máximo 6 por ação', 'var(--purple)') +
+    kpi('Ações com só 1 foto', fmt(S.filter(r => r.fotos.length === 1).length), 'evidência fraca (antes/depois?)', 'var(--orange)') +
+    kpi('Ações com 4+ fotos', fmt(S.filter(r => r.fotos.length >= 4).length), 'bem documentadas', 'var(--green)');
+  const q = nk($('#fBusca').value), ord = $('#fOrd').value;
+  GAL = comF.filter(r => !q || nk([r.bairro, r.cidade, r.tec, r.obs, r.tipo, r.cluster].join(' ')).includes(q));
+  GAL.sort((a, b) => ord === 'ant' ? a.ts - b.ts : ord === 'mais' ? b.fotos.length - a.fotos.length || b.ts - a.ts : ord === 'menos' ? a.fotos.length - b.fotos.length || b.ts - a.ts : b.ts - a.ts);
+  const pgs = Math.max(1, Math.ceil(GAL.length / PAGE)); PAG = Math.min(PAG, pgs);
+  const ini = (PAG - 1) * PAGE;
+  $('#fCont').textContent = `${fmt(GAL.length)} ações · ${fmt(sum(GAL, r => r.fotos.length))} fotos`;
+  $('#pgInfo').textContent = `Página ${PAG} de ${pgs}`; $('#pgAnt').disabled = PAG <= 1; $('#pgProx').disabled = PAG >= pgs;
+  FOK = 0; FERR = 0;
+  $('#galeria').innerHTML = GAL.length ? GAL.slice(ini, ini + PAGE).map((r, i) => {
+    const capa = r.fotos.find(u => !ehVideo(u));
+    return `<div class="gc" data-i="${ini + i}"><div class="th">📷 ${r.fotos.length} foto${r.fotos.length > 1 ? 's' : ''}
+      ${capa ? `<img loading="lazy" referrerpolicy="no-referrer" src="${esc(urlEspelho(capa))}" alt="" onload="fotoOk()" onerror="fotoErro(this)">` : ''}
+      <span class="tp" style="background:${corTipo(r.tipo)}">${esc(r.tipo)}</span><span class="nf">${r.fotos.length} 📷</span></div>
+      <div class="inf"><b>${esc(r.bairro)} · ${esc(r.cidade)}</b><span class="m">${ddy(r.dia)} · ${esc(r.tec)}</span>${r.obs ? `<div class="o">${esc(r.obs)}</div>` : ''}</div></div>`;
+  }).join('') : '<div class="vazio">Nenhuma ação com foto para os filtros escolhidos.</div>';
+}
+$('#galeria').addEventListener('click', e => { const c = e.target.closest('.gc'); if (c) abreModal(+c.dataset.i); });
+$('#pgAnt').onclick = () => { PAG--; rFotos(filtrados()); $('#a-fotos').scrollIntoView(); };
+$('#pgProx').onclick = () => { PAG++; rFotos(filtrados()); $('#a-fotos').scrollIntoView(); };
+$('#fBusca').addEventListener('input', () => { PAG = 1; rFotos(filtrados()); });
+$('#fOrd').addEventListener('change', () => { PAG = 1; rFotos(filtrados()); });
+
+let MI = -1;
+function abreModal(i) {
+  if (i < 0 || i >= GAL.length) return; MI = i; const r = GAL[i];
+  $('#mb').innerHTML = `<div class="mh"><div><h3>${esc(r.bairro)} · ${esc(r.cidade)}</h3>
+      <div class="nota" style="margin:0"><span class="pill" style="background:${corTipo(r.tipo)};color:#fff">${esc(r.tipo)}</span> ${ddy(r.dia)} ${new Date(r.ts).toISOString().slice(11, 16)} · ${esc(r.tec)} · ${esc(r.cluster)}${r.portas != null ? ` · <b>${r.portas}</b> portas livres informadas` : ''}</div></div>
+      <button class="x" id="mx" aria-label="Fechar">×</button></div>
+    ${r.obs ? `<p style="margin-bottom:6px">${esc(r.obs)}</p>` : ''}
+    <div class="mnav"><button id="mAnt" ${i === 0 ? 'disabled' : ''}>◀ Ação anterior</button><span class="nota" style="margin:0">${i + 1} de ${GAL.length}</span><button id="mProx" ${i === GAL.length - 1 ? 'disabled' : ''}>Próxima ação ▶</button>
+      ${r.mapa ? `<a href="${esc(r.mapa)}" target="_blank" rel="noopener">📍 Ver no mapa</a>` : ''}</div>
+    <div class="mfotos">${r.fotos.map((u, k) => ehVideo(u)
+      ? `<a href="${esc(urlEspelho(u))}" target="_blank" rel="noopener"><span>▶ Abrir vídeo ${k + 1}</span></a>`
+      : `<a href="${esc(urlEspelho(u))}" target="_blank" rel="noopener"><span>Abrir foto ${k + 1}</span><img loading="lazy" referrerpolicy="no-referrer" src="${esc(urlEspelho(u))}" alt="Foto ${k + 1}" data-orig="${esc(urlFoto(u))}" onerror="this.classList.add('quebrada');this.parentElement.href=this.dataset.orig"></a>`).join('')}</div>`;
+  $('#modal').classList.add('on'); $('#modal').scrollTop = 0; document.body.style.overflow = 'hidden';
+}
+const fechaModal = () => { $('#modal').classList.remove('on'); document.body.style.overflow = ''; };
+$('#modal').addEventListener('click', e => {
+  if (e.target.id === 'modal' || e.target.id === 'mx') fechaModal();
+  else if (e.target.id === 'mAnt') abreModal(MI - 1); else if (e.target.id === 'mProx') abreModal(MI + 1);
+});
+document.addEventListener('keydown', e => {
+  if (!$('#modal').classList.contains('on')) return;
+  if (e.key === 'Escape') fechaModal(); else if (e.key === 'ArrowLeft') abreModal(MI - 1); else if (e.key === 'ArrowRight') abreModal(MI + 1);
+});
+
+/* ---------------- QUALIDADE & AÇÕES ---------------- */
+function rAcoes(S) {
+  const cu = S.filter(r => r.tipo === 'Clean UP'), mig = S.filter(r => r.tipo === 'Migração');
+  const n = S.length || 1;
+  const bairrosRaw = uniq(S.map(r => nk(r.bairroRaw))).length, bairrosOk = uniq(S.map(r => r.bairro)).length;
+  const tecTxt = uniq(S.map(r => nk(r.tecForm))).length, tecReal = uniq(S.map(r => r.tecKey)).length;
+  const txt = cu.filter(r => r.metrosQ === 'texto'), out = cu.filter(r => r.metrosQ === 'outlier'), zero = cu.filter(r => r.metrosQ === 'zero');
+  const semRes = cu.filter(r => r.portas == null);
+  const outra = S.filter(r => r.cidadeOutra);
+  const naoConc = S.filter(r => r.status && !/conclu/i.test(r.status));
+  const semStatus = S.filter(r => !r.status);
+  const ctoRuim = mig.filter(r => !/^POP\d+-FH/i.test(r.ctoNova.trim()));
+  const radIRR = TODOS.filter(r => false).length;
+  const nTeste = TODOS.filter(r => r.teste).length;
+  const sev = (p) => p >= .3 ? 'p-vm' : p >= .1 ? 'p-am' : 'p-ok';
+  const Q = [
+    { c: 'Clean UP — resultado', p: 'Não existe campo para "portas livres" / "cancelamentos"; o técnico escreve na observação (quando escreve)', q: semRes.length, b: cu.length, o: 'Criar campos numéricos obrigatórios' },
+    { c: 'Clean UP — metragem', p: 'Campo aceita qualquer texto: bairro, link do Maps, endereço, "não faço ideia"', q: txt.length, b: cu.length, o: 'Validar como número' },
+    { c: 'Clean UP — metragem', p: 'Valores em km ou acima de 1.000 m (ex.: "5km", 900) — tratados como suspeitos e fora das somas', q: out.length, b: cu.length, o: 'Validar faixa (0–1000 m)' },
+    { c: 'Clean UP — metragem', p: 'Valor 0 (clean up só dentro da CTO?) — válido, mas mostra que metragem pouco ajuda a medir esforço', q: zero.length, b: cu.length, o: 'Trocar por nº de CTOs tratadas', info: true },
+    { c: 'Bairro', p: `Digitado livre: ${bairrosRaw} grafias viram ${bairrosOk} bairros após a limpeza do painel (ex.: Boiçucanga, Boissucanga, Boicucanga)`, q: Math.max(0, bairrosRaw - bairrosOk), b: bairrosRaw, o: 'Lista suspensa por cidade' },
+    { c: 'Técnico', p: `Campo "Nome do técnico" tem ${tecTxt} grafias para ${tecReal} pessoas reais (painel usa o e-mail)`, q: Math.max(0, tecTxt - tecReal), b: tecTxt, o: 'Usar a conta do Forms' },
+    { c: 'Cidade × bairro', p: 'Cidade marcada não bate com o bairro (ex.: Boiçucanga, Camburi e Juquehy lançados em Bertioga ou Caraguatatuba; são de São Sebastião) — painel corrige pelo bairro', q: S.filter(r => r.cidadeCorrigida).length, b: n, o: 'Cidade preenchida a partir do bairro' },
+    { c: 'Bairro', p: 'Campo recebeu link do Maps/Waze ou ID de CTO no lugar do bairro', q: S.filter(r => r.bairroInvalido).length, b: n, o: 'Lista suspensa de bairros' },
+    { c: 'Cidade (C.10)', p: 'Opção "Outra cidade" usada por falta de São Sebastião na lista do C.10 (Camburi, Boracéia, Juquehy…); painel infere a cidade pelo bairro', q: outra.length, b: n, o: 'Incluir São Sebastião' },
+    { c: 'Status do serviço', p: 'Só existe "Concluído": ações parciais ou não executadas não aparecem, logo o painel não vê pendências', q: S.length - naoConc.length, b: n, o: 'Concluído / Parcial / Não executado + motivo' },
+    { c: 'Migração — ID da CTO nova', p: 'Fora do padrão POPxx-FHxx-… ("Fguj", "Sem identificação")', q: ctoRuim.length, b: mig.length, o: 'Validar formato' },
+    { c: 'Registros de teste', p: 'Linhas de teste/treino ignoradas por padrão nos números', q: nTeste, b: TODOS.length, o: 'Excluir da base' }
+  ];
+  tabela($('#tQual'), [
+    { k: 'c', l: 'Onde' }, { k: 'p', l: 'Problema' }, { k: 'q', l: 'Ocorrências', n: 1, f: r => fmt(r.q) }, { k: 'pc', l: '% da base', n: 1, f: r => r.b ? `<span class="pill ${r.info ? 'p-az' : sev(r.q / r.b)}">${pct(r.q, r.b)}</span>` : '—' }, { k: 'o', l: 'Correção sugerida' }
+  ], Q.map(x => Object.assign(x, { pc: x.b ? x.q / x.b : 0 })), 'pc');
+
+  // recomendações dinâmicas
+  const sem = semanasDe(S).filter(w => !w.parcial && w.total >= 30);
+  const mediaSem = sem.length ? sum(sem, w => w.total) / sem.length : 0, melhor = sem.length ? Math.max(...sem.map(w => w.total)) : 0;
+  const porTec = [...agrupa(S, r => r.tec).entries()].sort((a, b) => b[1].length - a[1].length);
+  const R = [
+    { p: 'alta', t: 'Formulário', h: 'Clean UP: medir o resultado, não só o esforço', d: `Hoje só ${pct(cu.length - semRes.length, cu.length || 1)} dos Clean UPs dizem quantas portas ficaram livres, e apenas em texto livre. Incluir campos numéricos obrigatórios "portas livres após a ação" e "contratos cancelados encontrados" transforma ${fmt(cu.length)} lançamentos em capacidade liberada comprovada.` },
+    { p: 'alta', t: 'Formulário', h: 'Registrar o ID da CTO no Clean UP', d: 'Migração e Retirada já pedem o ID da CTO; o Clean UP não. Com o ID dá para medir revisita (a mesma CTO limpa de novo), cobertura real da rede e comparar antes/depois. É a mudança que mais destrava análise.' },
+    { p: 'alta', t: 'Gestão', h: 'Trazer o inventário de CTOs por bairro', d: 'Com a quantidade de CTOs por bairro/cidade o painel passa a mostrar cobertura % (ex.: "Sumaré: 60% das CTOs preventivadas") e a fila de revisita deixa de ser só por recência. Basta uma planilha simples: cidade, bairro, nº de CTOs.' },
+    { p: 'media', t: 'Gestão', h: `Definir meta semanal (campo no topo da página)`, d: `Sem meta o painel só descreve. Referência das semanas completas: média de ${fmt(mediaSem)} ações/semana e melhor semana com ${fmt(melhor)}. Digite a meta no filtro "Meta semanal" e ela aparece no gráfico e no card.` },
+    { p: 'media', t: 'Gestão', h: 'Provar o efeito: cruzar com ocorrências e reparos', d: 'Cruzar os bairros trabalhados com o histórico de chamados/ocorrências de rede (e IRR) antes e depois da preventiva mostra se o Clean UP realmente reduz problema. Dá argumento para a gestão ampliar equipe e prazo.' },
+    { p: 'media', t: 'Gestão', h: 'Equilibrar a carga da equipe', d: porTec.length ? `${porTec[0][0]} sozinho responde por ${pct(porTec[0][1].length, n)} das ações. Se essa pessoa sair de escala, o ritmo cai. Vale redistribuir bairros e acompanhar na aba Equipe quem está "parado".` : 'Sem dados.' },
+    { p: 'media', t: 'Formulário', h: 'Status com Parcial / Não executado + motivo', d: `100% das ações estão "Concluído". Incluir motivo (CTO sem acesso, falta de material, chuva…) mostra gargalo real — hoje até a falta de abraçadeira só aparece escondida em observação.` },
+    { p: 'media', t: 'Formulário', h: 'Bairro em lista suspensa e São Sebastião no C.10', d: `Padronizar elimina a limpeza manual (${bairrosRaw} grafias → ${bairrosOk} bairros) e os ${fmt(outra.length)} registros caindo em "Outra cidade".` },
+    { p: 'baixa', t: 'Formulário', h: 'Readequação e IRR: usar ou remover', d: 'Esses dois tipos existem no formulário mas não têm nenhum lançamento. Ou entram na rotina, ou saem para encurtar o formulário.' },
+    { p: 'baixa', t: 'Automação', h: 'Atualizar o painel sozinho', d: 'Hoje basta clicar em "Carregar nova planilha" com o export do Forms. O próximo passo é o Power Automate enviar cada resposta direto ao Supabase (como já fazemos no resto do projeto) e o painel abrir sempre atualizado.' }
+  ];
+  const ord = { alta: 0, media: 1, baixa: 2 }, nm = { alta: 'Prioridade alta', media: 'Prioridade média', baixa: 'Prioridade baixa' };
+  $('#recs').innerHTML = R.sort((a, b) => ord[a.p] - ord[b.p]).map(x => `<div class="rc ${x.p}"><h4><span>${x.h}</span><span class="tag">${x.t}</span></h4><p>${x.d}</p><p style="margin-top:6px;font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase">${nm[x.p]}</p></div>`).join('');
+}
+
+/* ---------- Início ---------- */
+function iniciar() {
+  TODOS = limpar(BRUTO.map(normalizaObj));
+  FIM = TODOS.reduce((m, r) => r.dia > m ? r.dia : m, '0000');
+  montaFiltros(); lerFiltros(); render();
+}
+ORIGEM = LOCAL ? `Planilha carregada neste navegador: ${LOCAL.nome} (em ${LOCAL.em})` : 'Carregando…';
+if (LOCAL) $('#btnRestaurar').style.display = '';
+temaInicial();
+iniciar();                                                   // pinta já com o que há no navegador
+(async () => { await atualizaFonte(); iniciar(); ligaTempoReal(); mostraUsuario(); })();   // depois troca pelos dados da nuvem, se houver login
+window.addEventListener('resize', () => Object.values(CH).forEach(c => c.resize()));
+</script>
+</body>
+</html>

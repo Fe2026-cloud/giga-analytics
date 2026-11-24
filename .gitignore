@@ -1,3 +1,6 @@
 .DS_Store
 Thumbs.db
 .claude/
+
+# Preventivas: cópia local dos dados (contém nomes/e-mails de técnicos) — não publicar; o painel lê da nuvem com login
+preventivas-rede/dados.js

@@ -134,6 +134,11 @@ function esconderMsg(){
 }
 
 /* Tela de boas-vindas com barra de progresso 0-100% antes de entrar no painel. */
+// Destino pós-login: ?next=caminho/relativo.html (só caminhos relativos do mesmo site; qualquer outra coisa cai em index.html)
+const DESTINO_POS_LOGIN = (() => {
+  const n = new URLSearchParams(location.search).get('next') || '';
+  return (/^[A-Za-z0-9_\-\/\.]+\.html$/.test(n) && !n.startsWith('/') && !n.includes('..')) ? n : 'index.html';
+})();
 function mostrarBoasVindasEIr(destino){
   document.getElementById('loginCard').style.display = 'none';
   const tela = document.getElementById('welcomeScreen');
@@ -168,7 +173,7 @@ document.getElementById('authForm').addEventListener('submit', async (e) => {
   try{
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
     if (error) throw error;
-    mostrarBoasVindasEIr('index.html');
+    mostrarBoasVindasEIr(DESTINO_POS_LOGIN);
   } catch(err){
     mostrarMsg(traduzErro(err.message), 'error');
     btn.disabled = false;
@@ -184,7 +189,7 @@ function traduzErro(msg){
 // Se já tem sessão ativa, pula direto pro painel (sem repetir a tela de boas-vindas).
 (async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) window.location.href = 'index.html';
+  if (session) window.location.href = DESTINO_POS_LOGIN;
 })();
 </script>
 
