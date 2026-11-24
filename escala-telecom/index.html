@@ -377,6 +377,9 @@ tr.cv8 th,tr.cv8 td{top:228px;height:24px}
 tr.cv9 th,tr.cv9 td{top:252px;height:24px;box-shadow:0 2px 0 var(--border);font-weight:700}
 tr.cv5 th.nm,tr.cv9 th.nm{font-weight:700}
 tr.parc th.nm,tr.parc td{font-weight:500;opacity:.9}
+#tbl.rsmOff tr.cv1,#tbl.rsmOff tr.cv2,#tbl.rsmOff tr.cv3,#tbl.rsmOff tr.cv4,#tbl.rsmOff tr.cv5,#tbl.rsmOff tr.cv6,#tbl.rsmOff tr.cv7,#tbl.rsmOff tr.cv8,#tbl.rsmOff tr.cv9{display:none}
+button.rsm{font:inherit;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:none;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;margin-right:6px;cursor:pointer}
+button.rsm:hover{filter:brightness(1.25)}
 thead tr.hw th.nm{text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 thead th.wkh{background:var(--surface-2);color:var(--text);font-size:12px;font-weight:800;text-align:center;border-right:2px solid var(--border);border-bottom:1px solid var(--grid);letter-spacing:.04em}
 thead th.wkh.wk1{background:var(--surface-3)}
@@ -1667,6 +1670,9 @@ function personStats(p,y,m){
   return s;
 }
 
+/* faixa de resumos (Sobreaviso, Em jornada, % e somas) recolhível: libera a tela para a escala; a escolha fica gravada neste navegador */
+let RSM_OFF=false;try{RSM_OFF=localStorage.getItem('escala-resumo')==='0'}catch(e){}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.rsm');if(!b)return;e.stopPropagation();RSM_OFF=!RSM_OFF;try{localStorage.setItem('escala-resumo',RSM_OFF?'0':'1')}catch(x){}render()},true);
 function render(){
   const y=view.y,m=view.m,nd=new Date(y,m+1,0).getDate();
   const from=new Date(y,m,1),to=new Date(y,m,nd);
@@ -1685,7 +1691,7 @@ function render(){
   const short=n=>{const a=n.split(' ');return a.length>1?a[0]+' '+a[a.length-1]:n};
   // linha das SEMANAS (W1 = semana ISO que começa em 29/12/2025; a contagem segue passando de 53: W53, W54, W55…)
   const wnum=dd=>Math.round((monday(dd)-new Date(2025,11,29))/(7*864e5))+1;
-  let hw='<tr class="hw"><th class="nm">Semana</th>';
+  let hw=`<tr class="hw"><th class="nm"><button type="button" class="rsm" title="${RSM_OFF?'Mostrar':'Recolher'} a faixa de resumos (sobreaviso, em jornada, % trabalhando e somas)">${RSM_OFF?'▸':'▾'} Resumo</button> Semana</th>`;
   for(let i0=0;i0<days.length;){
     const m0=monday(new Date(y,m,days[i0]));let j=i0;
     while(j+1<days.length&&monday(new Date(y,m,days[j+1])).getTime()===m0.getTime())j++;
@@ -1754,7 +1760,7 @@ ${partes.join(' · ')}`:'calculando…')}">${pronto?tot:'…'}</td>`}
   }
   h+='</tbody>';
   const wrap=$('#wrap'),sl=wrap.scrollLeft,stp=wrap.scrollTop;
-  $('#tbl').innerHTML=h;
+  $('#tbl').innerHTML=h;$('#tbl').classList.toggle('rsmOff',RSM_OFF);
   {   // plantonista da semana: rodízio de 3 pessoas, começando em W51 (14/12/2026); acompanha a semana escolhida no cabeçalho (ou a semana vigente)
     const PL=PLANTONISTAS;
     const mw=filters.semana?parse(filters.semana):monday(parse(hojeS())),W=Math.round((mw-new Date(2025,11,29))/(7*864e5))+1;
