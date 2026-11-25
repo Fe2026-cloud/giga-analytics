@@ -111,18 +111,29 @@
       setTimeout(() => $('#nvEmail', o).focus(), 50);
     });
   }
+  /* tela própria (#nvrec), fora do #nvov: a escala continua carregando por baixo sem fechá-la */
   function telaNovaSenha() {
-    const o = overlay(`<h2>Defina uma nova senha</h2><div class="sub">Escolha uma senha com pelo menos 8 caracteres.</div>
-      <label>Nova senha</label><input id="nvNova" type="password" autocomplete="new-password">
-      <label>Repita a senha</label><input id="nvNova2" type="password" autocomplete="new-password">
-      <div class="nv-row"><button class="btn pri" id="nvGrava">Salvar nova senha</button></div><div class="nv-msg" id="nvm"></div>`);
-    $('#nvGrava', o).addEventListener('click', async () => {
-      const a = $('#nvNova', o).value, b = $('#nvNova2', o).value;
-      if (a.length < 8) return msg('Use pelo menos 8 caracteres.', 'err'); if (a !== b) return msg('As senhas não conferem.', 'err');
-      const { error } = await N.sb.auth.updateUser({ password: a });
-      if (error) return msg(error.message, 'err'); msg('Senha alterada. Abrindo a escala…', 'ok'); setTimeout(() => { location.href = location.href.split('#')[0].split('?')[0]; }, 1200);
+    if ($('#nvrec')) return;
+    injetaCSS(); const o = document.createElement('div'); o.id = 'nvrec'; o.className = 'nv-ov'; o.style.zIndex = '10000';
+    o.innerHTML = `<form class="nv-card" novalidate><h2>Defina uma nova senha</h2><div class="sub">Escolha uma senha com pelo menos 8 caracteres.</div>
+      <label for="nvNova">Nova senha</label><input id="nvNova" type="password" autocomplete="new-password">
+      <label for="nvNova2">Repita a senha</label><input id="nvNova2" type="password" autocomplete="new-password">
+      <div class="nv-row"><button type="submit" class="btn pri" id="nvGrava">Salvar nova senha</button></div><div class="nv-msg" id="nvrecMsg" role="status"></div></form>`;
+    document.body.appendChild(o);
+    const m = (t, c) => { const e = $('#nvrecMsg', o); e.textContent = t; e.className = 'nv-msg ' + (c || ''); };
+    $('form', o).addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const a = $('#nvNova', o).value, b = $('#nvNova2', o).value, bt = $('#nvGrava', o);
+      if (a.length < 8) return m('Use pelo menos 8 caracteres.', 'err'); if (a !== b) return m('As senhas não conferem.', 'err');
+      bt.disabled = true; m('Salvando…');
+      let erro = null;
+      try { erro = (await N.sb.auth.updateUser({ password: a })).error; } catch (e) { erro = e; }
+      if (erro) { bt.disabled = false; return m(/different from the old/i.test(erro.message) ? 'A nova senha precisa ser diferente da atual.' : 'Não foi possível salvar a senha: ' + erro.message, 'err'); }
+      m('Senha alterada. Abrindo a escala…', 'ok'); setTimeout(() => { location.href = location.href.split('#')[0].split('?')[0]; }, 1200);
     });
+    $('#nvNova', o).focus();
   }
+
   /* troca de senha de quem não tem o botão Configurações (GAs, GOs e leitores) */
   function abrirTrocaSenha() {
     injetaCSS(); let d = $('#dlgSenha'); if (!d) { d = document.createElement('dialog'); d.id = 'dlgSenha'; document.body.appendChild(d); }
