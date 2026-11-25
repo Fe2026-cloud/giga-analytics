@@ -41,7 +41,9 @@
   .nv-pill.ok{color:#4ade80}.nv-pill.bad{color:#ff7a8a;border-color:#ff7a8a}
   .nv-url{font:11.5px ui-monospace,Consolas,monospace;word-break:break-all;color:var(--text-2,#9fb0d6)}
   .nv-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9998;background:var(--surface,#12182a);border:1px solid var(--hoje-borda,#9cc3ff);color:var(--text,#fff);padding:12px 16px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);font-size:13.5px;max-width:92vw}
-  .nv-banner .btn{margin-left:8px}`;
+  .nv-banner .btn{margin-left:8px}
+  dialog#dlgSenha{width:min(400px,94vw);border:0;background:transparent;padding:0;overflow:visible}
+  dialog#dlgSenha::backdrop{background:rgba(0,0,0,.6)}`;
   function injetaCSS() { if ($('#nvcss')) return; const s = document.createElement('style'); s.id = 'nvcss'; s.textContent = CSS; document.head.appendChild(s); }
 
   /* ---------------------------------------------------------------- cliente */
@@ -120,6 +122,32 @@
       const { error } = await N.sb.auth.updateUser({ password: a });
       if (error) return msg(error.message, 'err'); msg('Senha alterada. Abrindo a escala…', 'ok'); setTimeout(() => { location.href = location.href.split('#')[0].split('?')[0]; }, 1200);
     });
+  }
+  /* troca de senha de quem não tem o botão Configurações (GAs, GOs e leitores) */
+  function abrirTrocaSenha() {
+    injetaCSS(); let d = $('#dlgSenha'); if (!d) { d = document.createElement('dialog'); d.id = 'dlgSenha'; document.body.appendChild(d); }
+    d.innerHTML = `<form class="nv-card" novalidate><h2>Trocar senha</h2><div class="sub">Conta: ${esc(N.email)}<br>Use pelo menos 8 caracteres.</div>
+      <label for="tsNova">Nova senha</label><input id="tsNova" type="password" autocomplete="new-password">
+      <label for="tsRepete">Repita a nova senha</label><input id="tsRepete" type="password" autocomplete="new-password">
+      <div class="nv-row"><button type="submit" class="btn pri" id="tsSalvar">Salvar nova senha</button><button type="button" class="btn" id="tsFechar">Fechar</button></div><div class="nv-msg" id="tsMsg" role="status"></div></form>`;
+    const m = (t, c) => { const e = $('#tsMsg', d); e.textContent = t; e.className = 'nv-msg ' + (c || ''); };
+    $('#tsFechar', d).addEventListener('click', () => d.close());
+    d.onclose = () => { d.innerHTML = ''; };   // não deixa a senha digitada na página
+    $('form', d).addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const nova = $('#tsNova', d).value, rep = $('#tsRepete', d).value, bt = $('#tsSalvar', d);
+      if (nova.length < 8) return m('Use pelo menos 8 caracteres.', 'err');
+      if (nova !== rep) return m('As senhas não conferem.', 'err');
+      bt.disabled = true; m('Salvando…');
+      let erro = null;
+      try { const r = await (await cliente()).auth.updateUser({ password: nova }); erro = r.error; } catch (e) { erro = e; }
+      if (!erro) { $('#tsNova', d).value = ''; $('#tsRepete', d).value = ''; return m('Senha alterada. Use a nova senha no próximo acesso.', 'ok'); }
+      bt.disabled = false;
+      m(/different from the old/i.test(erro.message) ? 'A nova senha precisa ser diferente da atual.'
+        : /reauthentication|session/i.test(erro.message) ? 'Por segurança, clique em Sair, entre de novo e repita a troca.'
+        : 'Não foi possível trocar a senha: ' + erro.message, 'err');
+    });
+    d.showModal(); $('#tsNova', d).focus();
   }
   async function sair() { try { await (await cliente()).auth.signOut(); } catch (e) { } location.reload(); }
 
@@ -221,6 +249,7 @@
     if (N.modo === 'local' || (N.acesso && N.acesso.papel === 'admin')) {
       const b = document.createElement('button'); b.className = 'btn'; b.id = 'cfgBtn'; b.textContent = 'Configurações'; b.addEventListener('click', abrirConfig); frag.appendChild(b);
     }
+    if (N.modo === 'nuvem' && N.acesso && N.acesso.papel !== 'admin') { const t = document.createElement('button'); t.className = 'btn'; t.id = 'nvSenhaBtn'; t.textContent = 'Trocar senha'; t.addEventListener('click', abrirTrocaSenha); frag.appendChild(t); }   // o administrador troca em Configurações → Minha conta
     if (N.modo === 'nuvem') { const u = document.createElement('button'); u.className = 'btn'; u.id = 'nvSair'; u.textContent = 'Sair'; u.title = N.email; u.addEventListener('click', sair); frag.appendChild(u); }
     const ref = $('#regras'); if (ref && ref.parentNode === row) row.insertBefore(frag, ref); else row.appendChild(frag);
   }
