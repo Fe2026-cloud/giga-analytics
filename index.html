@@ -3447,65 +3447,174 @@ function loadSheetJS(){
   });
 }
 
+/* ---------- Leitor de XLSX em fluxo ----------
+   O export de chamados abertos chegou a ~500 MB de XML descompactado. Nesse tamanho o SheetJS (que precisa montar a
+   aba inteira na memória) desiste sem avisar e não devolve a aba — era o erro "planilha vazia".
+   Aqui o .xlsx (que é um ZIP) é descompactado aos pedaços pelo próprio navegador e cada linha é tratada e descartada,
+   lendo só as colunas pedidas. */
+async function xlsxEntradasZip(file){
+  const ler = async (ini, fim) => new DataView(await file.slice(ini, fim).arrayBuffer());
+  const u64 = (dv, o) => Number(dv.getBigUint64(o, true));
+  const cauda = await ler(Math.max(0, file.size - 66000), file.size);
+  let eocd = -1;
+  for (let i = cauda.byteLength - 22; i >= 0; i--){ if (cauda.getUint32(i, true) === 0x06054b50){ eocd = i; break; } }
+  if (eocd < 0) throw new Error('o arquivo não é um .xlsx válido');
+  let total = cauda.getUint16(eocd + 10, true), tamDir = cauda.getUint32(eocd + 12, true), iniDir = cauda.getUint32(eocd + 16, true);
+  if (total === 0xFFFF || tamDir === 0xFFFFFFFF || iniDir === 0xFFFFFFFF){          // ZIP64 (arquivos muito grandes)
+    if (eocd < 20 || cauda.getUint32(eocd - 20, true) !== 0x07064b50) throw new Error('índice do .xlsx não reconhecido');
+    const pos = u64(cauda, eocd - 12), z = await ler(pos, pos + 56);
+    total = u64(z, 32); tamDir = u64(z, 40); iniDir = u64(z, 48);
+  }
+  const dir = await ler(iniDir, iniDir + tamDir), nomes = new TextDecoder(), entradas = {};
+  for (let i = 0, p = 0; i < total; i++){
+    if (dir.getUint32(p, true) !== 0x02014b50) throw new Error('índice do .xlsx corrompido');
+    const metodo = dir.getUint16(p + 10, true);
+    let tamComp = dir.getUint32(p + 20, true), tam = dir.getUint32(p + 24, true), local = dir.getUint32(p + 42, true);
+    const nNome = dir.getUint16(p + 28, true), nExtra = dir.getUint16(p + 30, true), nComent = dir.getUint16(p + 32, true);
+    const nome = nomes.decode(new Uint8Array(dir.buffer, p + 46, nNome));
+    for (let x = p + 46 + nNome; x < p + 46 + nNome + nExtra; x += 4 + dir.getUint16(x + 2, true)){
+      if (dir.getUint16(x, true) !== 0x0001) continue;                              // campo extra ZIP64
+      let q = x + 4;
+      if (tam === 0xFFFFFFFF){ tam = u64(dir, q); q += 8; }
+      if (tamComp === 0xFFFFFFFF){ tamComp = u64(dir, q); q += 8; }
+      if (local === 0xFFFFFFFF) local = u64(dir, q);
+    }
+    entradas[nome] = { metodo, tamComp, tam, local };
+    p += 46 + nNome + nExtra + nComent;
+  }
+  return entradas;
+}
+async function xlsxFluxoDaEntrada(file, e){
+  const h = new DataView(await file.slice(e.local, e.local + 30).arrayBuffer());
+  const ini = e.local + 30 + h.getUint16(26, true) + h.getUint16(28, true);
+  let fluxo = file.slice(ini, ini + e.tamComp).stream();
+  if (e.metodo === 8) fluxo = fluxo.pipeThrough(new DecompressionStream('deflate-raw'));
+  else if (e.metodo !== 0) throw new Error('compactação do .xlsx não suportada');
+  return fluxo.pipeThrough(new TextDecoderStream('utf-8'));
+}
+async function xlsxTextoDaEntrada(file, e){
+  const leitor = (await xlsxFluxoDaEntrada(file, e)).getReader(), partes = [];
+  for (;;){ const { value, done } = await leitor.read(); if (done) break; partes.push(value); }
+  return partes.join('');
+}
+// chama aoBloco(texto) a cada trecho terminado em "fecho" (ex.: '</row>'), sem guardar o arquivo inteiro
+async function xlsxPercorrerBlocos(file, e, fecho, aoBloco, aoProgresso){
+  const leitor = (await xlsxFluxoDaEntrada(file, e)).getReader();
+  let resto = '', lidos = 0, marco = 0, prefixo = null;
+  for (;;){
+    const { value, done } = await leitor.read();
+    if (done) break;
+    resto += value; lidos += value.length;
+    if (prefixo === null) prefixo = /<x:/.test(resto);               // alguns geradores gravam <x:row>, <x:c>...
+    if (prefixo) resto = resto.replace(/<(\/?)x:/g, '<$1');
+    let ini = 0, fim;
+    while ((fim = resto.indexOf(fecho, ini)) !== -1){ aoBloco(resto.slice(ini, fim)); ini = fim + fecho.length; }
+    resto = resto.slice(ini);
+    if (aoProgresso && lidos - marco > 15e6){ marco = lidos; aoProgresso(Math.min(lidos / (e.tam || lidos), 1)); await new Promise(r => setTimeout(r, 0)); }
+  }
+}
+function xlsxDecodifica(t){
+  if (t.indexOf('&') === -1) return t;
+  const fixos = { amp:'&', lt:'<', gt:'>', quot:'"', apos:"'" };
+  return t.replace(/&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);/g, (m, c) =>
+    fixos[c] !== undefined ? fixos[c] : String.fromCodePoint(c[1] === 'x' ? parseInt(c.slice(2), 16) : parseInt(c.slice(1), 10)));
+}
+function xlsxTextos(xml){ let t = ''; const re = /<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g; let m; while ((m = re.exec(xml))) t += m[1]; return xlsxDecodifica(t); }
+function xlsxIndiceColuna(letras){ let n = 0; for (let i = 0; i < letras.length; i++) n = n * 26 + letras.charCodeAt(i) - 64; return n - 1; }
+// células de uma linha; se "quero" (Set de índices) vier, só decodifica essas colunas
+function xlsxCelulas(xmlLinha, compartilhados, quero){
+  const linha = [], re = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+  let m, col = -1;
+  while ((m = re.exec(xmlLinha))){
+    const ref = /\br="([A-Z]+)\d+"/.exec(m[1]);
+    col = ref ? xlsxIndiceColuna(ref[1]) : col + 1;
+    if (quero && !quero.has(col)) continue;
+    const miolo = m[2] || '', tipo = (/\bt="(\w+)"/.exec(m[1]) || [])[1];
+    if (tipo === 'inlineStr') linha[col] = xlsxTextos(miolo);
+    else{
+      const v = /<v>([\s\S]*?)<\/v>/.exec(miolo);
+      linha[col] = !v ? '' : (tipo === 's' ? (compartilhados[+v[1]] || '') : xlsxDecodifica(v[1]));
+    }
+  }
+  return linha;
+}
+// percorre a aba "nomeAba" (ou a primeira). aoCabecalho(linha) devolve os índices das colunas que interessam;
+// aoLinha(linha) é chamada para cada linha seguinte. Devolve quantas linhas leu (contando o cabeçalho).
+async function xlsxLerAbaEmFluxo(file, nomeAba, aoCabecalho, aoLinha, aoProgresso){
+  if (typeof DecompressionStream !== 'function') throw new Error('este navegador é antigo demais para ler a planilha — atualize o Chrome ou o Edge');
+  const zip = await xlsxEntradasZip(file);
+  if (!zip['xl/workbook.xml'] || !zip['xl/_rels/workbook.xml.rels']) throw new Error('o arquivo não é um .xlsx válido');
+  const xml = async n => new DOMParser().parseFromString(await xlsxTextoDaEntrada(file, zip[n]), 'application/xml');
+  const abas = [...(await xml('xl/workbook.xml')).getElementsByTagNameNS('*', 'sheet')];
+  const aba = abas.find(a => a.getAttribute('name') === nomeAba) || abas[0];
+  const rid = aba && aba.getAttribute('r:id');
+  const rel = [...(await xml('xl/_rels/workbook.xml.rels')).getElementsByTagNameNS('*', 'Relationship')].find(r => r.getAttribute('Id') === rid);
+  if (!rel) throw new Error('não achei a aba dentro do .xlsx');
+  const alvo = rel.getAttribute('Target').replace(/^\//, '');
+  const entrada = zip[alvo.startsWith('xl/') ? alvo : 'xl/' + alvo];
+  if (!entrada) throw new Error('não achei a aba dentro do .xlsx');
+  const compartilhados = [];
+  if (zip['xl/sharedStrings.xml']){
+    await xlsxPercorrerBlocos(file, zip['xl/sharedStrings.xml'], '</si>', b => { const i = b.search(/<si[\s>]/); if (i >= 0) compartilhados.push(xlsxTextos(b.slice(i))); });
+  }
+  let lidas = 0, quero = null;
+  await xlsxPercorrerBlocos(file, entrada, '</row>', bloco => {
+    const i = bloco.lastIndexOf('<row');
+    if (i < 0) return;
+    const trecho = bloco.slice(i);
+    if (!lidas){ const cab = xlsxCelulas(trecho, compartilhados, null); quero = new Set(aoCabecalho(Array.from(cab, v => v || ''))); }
+    else aoLinha(xlsxCelulas(trecho, compartilhados, quero));
+    lidas++;
+  }, aoProgresso);
+  return lidas;
+}
+
 async function handleBacklogXlsx(file){
   const statusEl = document.getElementById('dz-status-BACKLOGXLSX');
-  statusEl.innerHTML = '⏳ Carregando leitor de planilha...';
-  const ok = await loadSheetJS();
-  if (!ok){
-    showToast('Não consegui carregar o leitor de XLSX — verifique a internet e tente de novo.');
-    statusEl.innerHTML = 'Falha ao carregar. Tente novamente.';
-    return;
-  }
-  statusEl.innerHTML = '⏳ Lendo planilha (pode levar alguns segundos, arquivo grande)...';
+  statusEl.innerHTML = '⏳ Lendo planilha (arquivo grande, pode levar alguns segundos)...';
   showProgress(true);
   updateProgress(0, 1, 'Lendo ' + file.name + '...');
   const t0 = performance.now();
   try{
-    const buf = await file.arrayBuffer();
-    const t1 = performance.now();
-    const wb = XLSX.read(buf, { type:'array' });
-    const t2 = performance.now();
-    const sheetName = wb.SheetNames.includes('Relatório') ? 'Relatório' : wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'' });
-    const t3 = performance.now();
-    if (!rows.length){ throw new Error('planilha vazia'); }
-
-    const header = rows[0].map(h => semAcento(h));
-    const idxFila = header.indexOf('FILA');
-    const idxStatusPlano = header.indexOf('STATUS_PLANO');
-    const idxUnidade = header.indexOf('UNIDADE');
-    if (idxFila===-1 || idxStatusPlano===-1 || idxUnidade===-1){
-      throw new Error('não encontrei as colunas FILA / STATUS_PLANO / UNIDADE no cabeçalho');
-    }
-
     const porRegionalTipo = { C10:{}, C13:{}, C14:{} };
     ['C10','C13','C14'].forEach(r => { Object.values(BACKLOG_FILA_TIPO).forEach(t => porRegionalTipo[r][t]=0); });
-    let totalConsiderado = 0, ignoradasUnidade = 0;
-
-    for (let i=1; i<rows.length; i++){
-      const row = rows[i];
+    let totalConsiderado = 0, ignoradasUnidade = 0, idxFila = -1, idxStatusPlano = -1, idxUnidade = -1;
+    const aoCabecalho = cab => {
+      const header = cab.map(h => semAcento(h));
+      idxFila = header.indexOf('FILA');
+      idxStatusPlano = header.indexOf('STATUS_PLANO');
+      idxUnidade = header.indexOf('UNIDADE');
+      if (idxFila===-1 || idxStatusPlano===-1 || idxUnidade===-1){
+        throw new Error('não encontrei as colunas FILA / STATUS_PLANO / UNIDADE no cabeçalho');
+      }
+      return [idxFila, idxStatusPlano, idxUnidade];
+    };
+    const aoLinha = row => {
       const fila = semAcento(row[idxFila]);
       const tipo = BACKLOG_FILA_TIPO[fila];
-      if (!tipo) continue;
+      if (!tipo) return;
       const unidade = semAcento(row[idxUnidade]);
       const regional = BACKLOG_UNIDADE_DE_PARA[unidade];
-      if (!regional){ ignoradasUnidade++; continue; }
+      if (!regional){ ignoradasUnidade++; return; }
       const statusPlano = semAcento(row[idxStatusPlano]);
       const isAguardandoAtivacao = statusPlano === 'AGUARDANDO ATIVACAO';
       if (tipo === 'Ativação'){
-        if (!isAguardandoAtivacao) continue;
+        if (!isAguardandoAtivacao) return;
       } else {
-        if (isAguardandoAtivacao) continue;
+        if (isAguardandoAtivacao) return;
       }
       porRegionalTipo[regional][tipo]++;
       totalConsiderado++;
-    }
+    };
+    const lidas = await xlsxLerAbaEmFluxo(file, 'Relatório', aoCabecalho, aoLinha,
+      f => updateProgress(Math.round(f * 100), 100, 'Lendo ' + file.name + '... ' + Math.round(f * 100) + '%'));
+    if (lidas < 2) throw new Error('não encontrei linhas de dados na aba — confira se o export terminou de gerar');
+    const totalLinhas = lidas - 1;
     const t4 = performance.now();
 
     BACKLOG_CHAMADOS = {
       porRegionalTipo, totalConsiderado, ignoradasUnidade,
-      totalLinhas: rows.length-1,
+      totalLinhas,
       uploadedAt: new Date().toISOString(),
       filename: file.name
     };
@@ -3513,7 +3622,7 @@ async function handleBacklogXlsx(file){
     try{
       const { error: upErr } = await supabaseClient.from('backlog_atual').upsert({
         id: true, por_regional_tipo: porRegionalTipo, total_considerado: totalConsiderado,
-        ignoradas_unidade: ignoradasUnidade, total_linhas: rows.length-1,
+        ignoradas_unidade: ignoradasUnidade, total_linhas: totalLinhas,
         filename: file.name, uploaded_by: CURRENT_USER.id, uploaded_at: BACKLOG_CHAMADOS.uploadedAt
       }, { onConflict: 'id' });
       if (upErr) throw upErr;
@@ -3523,7 +3632,7 @@ async function handleBacklogXlsx(file){
       showToast('Erro ao gravar o backlog no banco: ' + dbErr.message);
     }
     const t5 = performance.now();
-    console.log(`[backlog] arrayBuffer=${(t1-t0).toFixed(0)}ms XLSX.read=${(t2-t1).toFixed(0)}ms sheet_to_json=${(t3-t2).toFixed(0)}ms loop(${rows.length}linhas)=${(t4-t3).toFixed(0)}ms gravarSupabase=${(t5-t4).toFixed(0)}ms TOTAL=${(t5-t0).toFixed(0)}ms`);
+    console.log(`[backlog] leitura(${totalLinhas} linhas)=${(t4-t0).toFixed(0)}ms gravarSupabase=${(t5-t4).toFixed(0)}ms TOTAL=${(t5-t0).toFixed(0)}ms`);
     updateBacklogXlsxStatus();
     showProgress(false);
     render();
